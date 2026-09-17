@@ -1,0 +1,154 @@
+%% UML class diagram generated from db/create.sql
+%% SOLID-oriented design note: lookup enums, core entities, association tables, and audit/history tables are modeled separately so each table has one clear responsibility.
+
+classDiagram
+direction LR
+
+class RoleType {
+  <<enumeration>>
+  CLIENT
+  AUDITOR
+  REPORTER
+  ADMIM
+}
+
+class InstrumentType {
+  <<enumeration>>
+  STOCK
+  BOND
+  MUTUAL_FUND
+  ETF
+}
+
+class OrderType {
+  <<enumeration>>
+  BUY
+  SELL
+}
+
+class OrderStatus {
+  <<enumeration>>
+  CREATED
+  PENDING
+  PLACED
+  ACCEPTED
+  FILLED
+  CANCELED
+  REJECTED
+}
+
+class TransactionType {
+  <<enumeration>>
+  BUY
+  SELL
+  DEPOSIT
+  WITHDRAW
+}
+
+class LogStatus {
+  <<enumeration>>
+  SUCCESS
+  FAILURE
+}
+
+class Role {
+  +Integer roleId
+  +RoleType name
+}
+
+class User {
+  +Integer userId
+  +Integer roleId
+  +String username
+  +String email
+  +String password_hash
+  +Timestamp created_at
+  +String phone_number
+  +Timestamp last_login
+  +Integer reward_points
+}
+
+class Account {
+  +Integer accountId
+  +Integer userId
+  +String nickname
+  +Double cashBalance
+  +Timestamp createdAt
+}
+
+class Instrument {
+  +Integer instrumentId
+  +String ticker
+  +String name
+  +InstrumentType type
+  +String market
+}
+
+class AccountHolding {
+  +Integer accountId
+  +Integer instrumentId
+  +Double quantity
+  +Double amountInvested
+  +Timestamp lastUpdated
+}
+
+class Order {
+  +Integer orderId
+  +Integer accountId
+  +Integer instrumentId
+  +Double quantity
+  +Double stockPrice
+  +OrderType orderType
+  +OrderStatus status
+}
+
+class OrderStatusHistory {
+  +Integer orderId
+  +Timestamp changedAt
+  +OrderStatus oldStatus
+  +OrderStatus newStatus
+}
+
+class AccountTransaction {
+  +Integer transactionId
+  +Integer accountId
+  +Integer orderId
+  +Double amount
+  +TransactionType transactionType
+  +Timestamp createdAt
+}
+
+class UserLog {
+  +Integer logId
+  +Integer userId
+  +String ipAddress
+  +String event
+  +LogStatus status
+  +Timestamp happenedAt
+}
+
+class TransactionLog {
+  +Integer logId
+  +Integer userId
+  +Integer accountId
+  +String event
+  +String ipAddress
+  +Integer transactionId
+  +LogStatus status
+  +Timestamp happenedAt
+}
+
+roles "1" --> "0..*" users : assigns
+users "1" --> "0..*" accounts : owns
+accounts "1" --> "0..*" account_holdings : holds
+instruments "1" --> "0..*" account_holdings : referenced_by
+accounts "1" --> "0..*" orders : places
+instruments "1" --> "0..*" orders : ordered_item
+orders "1" --> "0..*" order_status_history : status_changes
+accounts "1" --> "0..*" account_transactions : records
+orders "1" --> "0..*" account_transactions : settles
+users "1" --> "0..*" user_logs : generates
+users "1" --> "0..*" transaction_log : initiates
+accounts "1" --> "0..*" transaction_log : affects
+account_transactions "1" --> "0..*" transaction_log : audited_by
+

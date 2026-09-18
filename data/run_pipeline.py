@@ -6,7 +6,12 @@ Usage: python -m data.run_pipeline
 """
 
 import sys
-from .pipeline import DataPipeline
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from data.pipeline import DataPipeline
 
 if __name__ == "__main__":
     # Check for custom output directory

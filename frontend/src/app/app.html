@@ -1,0 +1,838 @@
+<!-- Site Header -->
+<header class="site-header">
+  <div class="header-container">
+    
+    <!-- Brand in Top Left -->
+    <a href="#" class="brand-section" (click)="$event.preventDefault(); activeTab = 'dashboard'">
+      <div class="brand-logo-icon">T³</div>
+      <div class="brand-text-wrap">
+        <div class="brand-title">Traders, Tickers, and Triumph</div>
+        <div class="brand-tagline">Client Investment Platform</div>
+      </div>
+    </a>
+
+    <!-- Navigation Tabs -->
+    <nav aria-label="Main Navigation">
+      <ul class="nav-tabs">
+        <li>
+          <button 
+            type="button"
+            class="nav-tab-btn" 
+            [class.active]="activeTab === 'dashboard'" 
+            (click)="activeTab = 'dashboard'"
+          >
+            <span>Dashboard</span>
+          </button>
+        </li>
+        <li>
+          <button 
+            type="button"
+            class="nav-tab-btn" 
+            [class.active]="activeTab === 'holdings'" 
+            (click)="activeTab = 'holdings'"
+          >
+            <span>Holdings</span>
+            <span class="tab-badge">Live</span>
+          </button>
+        </li>
+        <li>
+          <button 
+            type="button"
+            class="nav-tab-btn" 
+            [class.active]="activeTab === 'orders'" 
+            (click)="activeTab = 'orders'"
+          >
+            <span>Order History</span>
+          </button>
+        </li>
+        <li>
+          <button 
+            type="button"
+            class="nav-tab-btn" 
+            [class.active]="activeTab === 'market'" 
+            (click)="activeTab = 'market'"
+          >
+            <span>Market Watch</span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Header Actions & User Profile -->
+    <div class="header-actions">
+      <!-- Live Market Status -->
+      <div class="market-badge" title="Market status: Open (NYSE/NASDAQ)">
+        <span class="market-pulse"></span>
+        <span>Markets Open</span>
+      </div>
+
+      <!-- User Selector Button -->
+      <button 
+        type="button"
+        class="user-selector-btn" 
+        (click)="openUserSwitcher()" 
+        title="Switch User Account"
+      >
+        <div class="user-avatar">{{ tradingService.currentUser().displayName.charAt(0) }}</div>
+        <div class="user-meta">
+          <span class="user-name-text">{{ tradingService.currentUser().fullName }}</span>
+          <span class="user-account-label">
+            {{ tradingService.currentAccount().nickname }} • ${{ tradingService.currentAccount().cashBalance | number:'1.2-2' }}
+          </span>
+        </div>
+        <span style="font-size: 11px; color: var(--brown-500); margin-left: 2px;">▼</span>
+      </button>
+    </div>
+
+  </div>
+</header>
+
+<!-- Main Container -->
+<main class="main-wrapper">
+
+  <!-- ====================================================================
+       TAB: DASHBOARD (MAIN VIEW)
+       ==================================================================== -->
+  @if (activeTab === 'dashboard') {
+    <section class="view-section active">
+
+      <!-- Topbar: Greeting & Backend Connection Status -->
+      <div class="dashboard-topbar">
+        <div>
+          <!-- Requirement: "Just Hello "name", no message" -->
+          <h1 class="dashboard-greeting-title">Hello {{ tradingService.currentUser().displayName }}!</h1>
+        </div>
+        <div class="backend-indicator">
+          <span class="backend-dot" [class.connected]="tradingService.backendConnected()"></span>
+          <span>
+            @if (tradingService.backendConnected()) {
+              Spring API: Connected (8082)
+            } @else {
+              Faux Trading Mode (Offline API)
+            }
+          </span>
+        </div>
+      </div>
+
+      <!-- ====================================================================
+           Hero Financial Overview Card
+           Requirement: "The dashboard should also display their current balance, 
+           portfolio value, and a total of them as a larger view with the others 
+           as subtext below them."
+           ==================================================================== -->
+      <div class="hero-financial-card">
+        <div class="net-worth-header">
+          <div class="net-worth-caption">Total Net Worth</div>
+          <div class="net-worth-badge-group">
+            <div 
+              class="financial-change-pill"
+              [class.positive]="tradingService.portfolioSummary().dayChangeAmount >= 0"
+              [class.negative]="tradingService.portfolioSummary().dayChangeAmount < 0"
+            >
+              <span>{{ tradingService.portfolioSummary().dayChangeAmount >= 0 ? '▲' : '▼' }}</span>
+              <span>
+                {{ tradingService.portfolioSummary().dayChangeAmount >= 0 ? '+' : '' }}${{ tradingService.portfolioSummary().dayChangeAmount | number:'1.2-2' }}
+                ({{ tradingService.portfolioSummary().dayChangeAmount >= 0 ? '+' : '' }}{{ tradingService.portfolioSummary().dayChangePct | number:'1.2-2' }}%) Today
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Larger Main View of Total (Balance + Portfolio Value) -->
+        <div class="net-worth-main-display">
+          <span class="net-worth-currency">$</span>
+          <span class="net-worth-amount">{{ tradingService.portfolioSummary().totalNetWorth | number:'1.2-2' }}</span>
+          <span class="net-worth-period-text">USD • Real-time Asset Valuation</span>
+        </div>
+
+        <!-- Subtext Metrics Below the Large Total -->
+        <div class="financial-subtext-grid">
+          
+          <!-- Cash Balance Subtext -->
+          <div class="subtext-metric-item">
+            <div class="subtext-label">
+              <span>Cash Balance</span>
+              <span title="Available cash in your brokerage account to execute buy orders">ℹ️</span>
+            </div>
+            <div class="subtext-value">${{ tradingService.portfolioSummary().cashBalance | number:'1.2-2' }}</div>
+            <div class="subtext-helper">Available to trade immediately</div>
+          </div>
+
+          <!-- Portfolio Value Subtext -->
+          <div class="subtext-metric-item">
+            <div class="subtext-label">
+              <span>Portfolio Value</span>
+              <span title="Current market value of all held stocks & ETFs">ℹ️</span>
+            </div>
+            <div class="subtext-value">${{ tradingService.portfolioSummary().portfolioValue | number:'1.2-2' }}</div>
+            <div class="subtext-helper">{{ tradingService.holdings().length }} open asset positions</div>
+          </div>
+
+          <!-- Total Unrealized Return Subtext -->
+          <div class="subtext-metric-item">
+            <div class="subtext-label">Total Unrealized Gain</div>
+            <div 
+              class="subtext-value"
+              [class.text-earthy-green]="tradingService.portfolioSummary().totalUnrealizedGain >= 0"
+              [class.text-earthy-red]="tradingService.portfolioSummary().totalUnrealizedGain < 0"
+            >
+              {{ tradingService.portfolioSummary().totalUnrealizedGain >= 0 ? '+' : '' }}${{ tradingService.portfolioSummary().totalUnrealizedGain | number:'1.2-2' }}
+              ({{ tradingService.portfolioSummary().totalUnrealizedGain >= 0 ? '+' : '' }}{{ tradingService.portfolioSummary().totalReturnPct | number:'1.2-2' }}%)
+            </div>
+            <div class="subtext-helper">All-time position performance</div>
+          </div>
+
+          <!-- Buying Power -->
+          <div class="subtext-metric-item">
+            <div class="subtext-label">Buying Power</div>
+            <div class="subtext-value">${{ tradingService.portfolioSummary().cashBalance | number:'1.2-2' }}</div>
+            <div class="subtext-helper">100% Cash / No Margin</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ====================================================================
+           Dashboard Grid: Portfolio Growth Chart + Buy/Sell Trading Desk
+           ==================================================================== -->
+      <div class="dashboard-grid-layout">
+
+        <!-- Left: Large Portfolio Growth Chart -->
+        <div class="card-container">
+          <div class="card-header-flex">
+            <div class="card-title-group">
+              <h2>Portfolio Performance</h2>
+              <p>Historical growth of combined cash and equity value</p>
+            </div>
+            
+            <!-- Timeframe Selector Buttons -->
+            <div class="timeframe-pill-group" role="group" aria-label="Chart Timeframes">
+              @for (tf of timeframes; track tf) {
+                <button 
+                  type="button"
+                  class="timeframe-btn" 
+                  [class.active]="currentTimeframe === tf" 
+                  (click)="setTimeframe(tf)"
+                >
+                  {{ tf }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="chart-canvas-container">
+            <canvas #portfolioChartCanvas></canvas>
+          </div>
+        </div>
+
+        <!-- Right: Buy and Sell Trading Desk -->
+        <!-- Requirement: "a section to buy and sell stocks through a stock search 
+             that they can then choose the amount to buy or sell with while also 
+             checking against their current balance." -->
+        <div class="card-container trading-desk-card" id="tradingDeskCard">
+          <div class="card-header-flex" style="margin-bottom: 12px;">
+            <div class="card-title-group">
+              <h2>Trading Desk</h2>
+              <p>Execute live spot equity orders</p>
+            </div>
+            <span class="tab-badge">Instant</span>
+          </div>
+
+          <!-- Buy / Sell Mode Switcher -->
+          <div class="trade-toggle-wrap">
+            <button 
+              type="button"
+              class="trade-toggle-btn" 
+              [class.buy-active]="tradeMode === 'BUY'"
+              (click)="setTradeMode('BUY')"
+            >
+              BUY
+            </button>
+            <button 
+              type="button"
+              class="trade-toggle-btn" 
+              [class.sell-active]="tradeMode === 'SELL'"
+              (click)="setTradeMode('SELL')"
+            >
+              SELL
+            </button>
+          </div>
+
+          <!-- Stock Search Autocomplete -->
+          <div class="stock-search-wrap">
+            <label for="stockSearchInput" class="trade-form-label">
+              <span>Select Stock / ETF</span>
+              <span class="trade-form-helper">Search ticker or company</span>
+            </label>
+            <div class="stock-search-input-wrap">
+              <span class="stock-search-icon">🔍</span>
+              <input 
+                type="text" 
+                id="stockSearchInput" 
+                class="stock-search-input" 
+                placeholder="Search AAPL, NVDA, SPY, MSFT..." 
+                [(ngModel)]="searchQuery"
+                (focus)="searchDropdownOpen = true"
+                autocomplete="off"
+              >
+            </div>
+
+            <!-- Dynamic Dropdown -->
+            @if (searchDropdownOpen) {
+              <div class="stock-search-dropdown open">
+                @for (inst of filteredSearchResults; track inst.instrumentId) {
+                  <div class="search-result-item" (click)="selectInstrument(inst)">
+                    <div>
+                      <div class="search-result-symbol">
+                        {{ inst.ticker }} 
+                        <span style="font-size: 11px; color: var(--brown-500); font-weight: 500;">• {{ inst.market }}</span>
+                      </div>
+                      <div class="search-result-name">{{ inst.name }}</div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div class="search-result-price">${{ inst.price | number:'1.2-2' }}</div>
+                      <div 
+                        style="font-size: 11px; font-weight: 700;"
+                        [class.text-earthy-green]="inst.changePercent >= 0"
+                        [class.text-earthy-red]="inst.changePercent < 0"
+                      >
+                        {{ inst.changePercent >= 0 ? '+' : '' }}{{ inst.changePercent | number:'1.2-2' }}%
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Selected Stock Mini Quote -->
+          @if (selectedInstrument) {
+            <div class="selected-quote-card">
+              <div class="quote-left">
+                <span class="quote-badge">{{ selectedInstrument.ticker }}</span>
+                <div>
+                  <div class="quote-title">{{ selectedInstrument.name }}</div>
+                  <div class="quote-sub">{{ selectedInstrument.market }} • Vol: {{ selectedInstrument.volumeFormatted }}</div>
+                </div>
+              </div>
+              <div class="quote-right">
+                <div class="quote-current-price">${{ selectedInstrument.price | number:'1.2-2' }}</div>
+                <div 
+                  class="quote-change"
+                  [class.text-earthy-green]="selectedInstrument.changePercent >= 0"
+                  [class.text-earthy-red]="selectedInstrument.changePercent < 0"
+                >
+                  {{ selectedInstrument.changePercent >= 0 ? '+' : '' }}{{ selectedInstrument.changePercent | number:'1.2-2' }}% 
+                  ({{ selectedInstrument.changeAmount >= 0 ? '+' : '' }}${{ selectedInstrument.changeAmount | number:'1.2-2' }})
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Shares Input Field -->
+          <div class="trade-form-field">
+            <div class="trade-form-label">
+              <span>Order Quantity</span>
+              <span class="trade-form-helper">
+                Available Cash: ${{ tradingService.currentAccount().cashBalance | number:'1.2-2' }}
+              </span>
+            </div>
+            <div class="trade-input-row">
+              <input 
+                type="number" 
+                class="trade-number-input" 
+                [(ngModel)]="tradeShares"
+                min="0.01" 
+                step="any"
+              >
+              <span class="input-suffix">SHARES</span>
+            </div>
+
+            <!-- Quick Percentage Chips -->
+            <div class="quick-pct-row">
+              <button class="quick-pct-btn" type="button" (click)="applyPercentage(25)">25%</button>
+              <button class="quick-pct-btn" type="button" (click)="applyPercentage(50)">50%</button>
+              <button class="quick-pct-btn" type="button" (click)="applyPercentage(75)">75%</button>
+              <button class="quick-pct-btn" type="button" (click)="applyPercentage(100)">MAX</button>
+            </div>
+          </div>
+
+          <!-- Live Order Summary -->
+          <div class="order-summary-box">
+            <div class="order-summary-row">
+              <span>Quantity:</span>
+              <strong>{{ tradeShares }} {{ tradeShares === 1 ? 'Share' : 'Shares' }}</strong>
+            </div>
+            <div class="order-summary-row">
+              <span>Execution Price:</span>
+              <span>${{ (selectedInstrument ? selectedInstrument.price : 0) | number:'1.2-2' }}</span>
+            </div>
+            <div class="order-summary-row">
+              <span>Total Estimated:</span>
+              <strong>${{ currentTradeTotal | number:'1.2-2' }}</strong>
+            </div>
+          </div>
+
+          <!-- Live Balance Check Validation Alert -->
+          <div 
+            class="balance-check-alert"
+            [class.warning]="validationStatus.isWarning"
+            [class.ok]="!validationStatus.isWarning"
+          >
+            <span>
+              {{ validationStatus.isWarning ? '⚠️' : '✓' }} 
+              <strong>{{ validationStatus.isWarning ? 'Check:' : 'Approved:' }}</strong> 
+              {{ validationStatus.message }}
+            </span>
+          </div>
+
+          <!-- Submit Order Button -->
+          <button 
+            type="button"
+            class="submit-trade-btn" 
+            [class.buy-action]="tradeMode === 'BUY'"
+            [class.sell-action]="tradeMode === 'SELL'"
+            [disabled]="!validationStatus.isValid"
+            (click)="submitTrade()"
+          >
+            <span>
+              @if (validationStatus.isValid) {
+                Confirm {{ tradeMode }} {{ tradeShares }} {{ selectedInstrument?.ticker }} for ${{ currentTradeTotal | number:'1.2-2' }}
+              } @else {
+                {{ tradeMode === 'BUY' ? 'Insufficient Cash to Buy' : 'Cannot Execute Sale' }}
+              }
+            </span>
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- ====================================================================
+           Top 10 Trending Stocks Section
+           Requirement: "a chart of the top ten current trending stocks with 
+           options to view top 10 by volume, gaining, losing, etc."
+           ==================================================================== -->
+      <div class="trending-section">
+        <div class="card-header-flex">
+          <div class="card-title-group">
+            <h2>Market Leaders & Trending Stocks</h2>
+            <p>Top 10 ranked stocks by activity, volume, and momentum</p>
+          </div>
+
+          <!-- Filter Navigation Tabs -->
+          <div class="trending-filter-nav" role="tablist">
+            <button 
+              type="button"
+              class="trending-filter-btn" 
+              [class.active]="currentTrendingFilter === 'trending'" 
+              (click)="setTrendingFilter('trending')"
+            >
+              Top Trending
+            </button>
+            <button 
+              type="button"
+              class="trending-filter-btn" 
+              [class.active]="currentTrendingFilter === 'gaining'" 
+              (click)="setTrendingFilter('gaining')"
+            >
+              Top Gainers
+            </button>
+            <button 
+              type="button"
+              class="trending-filter-btn" 
+              [class.active]="currentTrendingFilter === 'losing'" 
+              (click)="setTrendingFilter('losing')"
+            >
+              Top Losers
+            </button>
+            <button 
+              type="button"
+              class="trending-filter-btn" 
+              [class.active]="currentTrendingFilter === 'volume'" 
+              (click)="setTrendingFilter('volume')"
+            >
+              Highest Volume
+            </button>
+          </div>
+        </div>
+
+        <div class="trending-grid-wrap">
+          
+          <!-- Top 10 Chart View -->
+          <div class="trending-chart-box">
+            <div style="font-size: 13px; font-weight: 700; color: var(--brown-600); margin-bottom: 12px;">
+              Top 10 Ranking Chart ({{ currentTrendingFilter | uppercase }})
+            </div>
+            <div style="position: relative; flex: 1; min-height: 320px;">
+              <canvas #trendingChartCanvas></canvas>
+            </div>
+          </div>
+
+          <!-- Top 10 Stock List / Table View -->
+          <div class="trending-list-box">
+            <table class="trending-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Stock</th>
+                  <th>Price</th>
+                  <th>24h Change</th>
+                  <th>Volume</th>
+                  <th class="text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (stock of tradingService.getTrendingStocks(currentTrendingFilter); track stock.instrumentId; let idx = $index) {
+                  <tr>
+                    <td class="trending-rank">#{{ idx + 1 }}</td>
+                    <td>
+                      <div class="trending-stock-cell">
+                        <span class="trending-stock-ticker">{{ stock.ticker }}</span>
+                        <span class="trending-stock-name">{{ stock.name }}</span>
+                      </div>
+                    </td>
+                    <td class="fw-bold">${{ stock.price | number:'1.2-2' }}</td>
+                    <td 
+                      class="fw-bold"
+                      [class.text-earthy-green]="stock.changePercent >= 0"
+                      [class.text-earthy-red]="stock.changePercent < 0"
+                    >
+                      {{ stock.changePercent >= 0 ? '+' : '' }}{{ stock.changePercent | number:'1.2-2' }}%
+                    </td>
+                    <td style="color: var(--brown-600);">{{ stock.volumeFormatted }}</td>
+                    <td class="text-right">
+                      <button 
+                        type="button"
+                        class="quick-trade-mini-btn" 
+                        (click)="quickTrade(stock.ticker, 'BUY')"
+                      >
+                        Trade
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ====================================================================
+           Current User's Portfolio Section
+           ==================================================================== -->
+      <div class="card-container" style="margin-bottom: 30px;">
+        <div class="card-header-flex">
+          <div class="card-title-group">
+            <h2>Your Portfolio Holdings</h2>
+            <p>Real-time valuation of assets currently in your account</p>
+          </div>
+          <button type="button" class="quick-trade-mini-btn" (click)="activeTab = 'holdings'">View Full Portfolio →</button>
+        </div>
+
+        <div class="portfolio-table-wrap">
+          <table class="modern-data-table">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Quantity</th>
+                <th>Avg Cost</th>
+                <th>Market Price</th>
+                <th>Total Value</th>
+                <th>Unrealized Gain / Loss</th>
+                <th class="text-right">Quick Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (holding of tradingService.holdings(); track holding.holdingId) {
+                <tr>
+                  <td>
+                    <div class="holding-ticker-cell">
+                      <div class="ticker-icon-circle">{{ holding.ticker.substring(0, 3) }}</div>
+                      <div>
+                        <div class="fw-extrabold" style="color: var(--brown-900);">{{ holding.ticker }}</div>
+                        <div style="font-size: 11px; color: var(--brown-500);">{{ holding.name }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="fw-bold">{{ holding.quantity | number:'1.2-2' }}</td>
+                  <td>${{ holding.avgCost | number:'1.2-2' }}</td>
+                  <td class="fw-bold">${{ holding.currentPrice | number:'1.2-2' }}</td>
+                  <td class="fw-extrabold">${{ holding.totalValue | number:'1.2-2' }}</td>
+                  <td 
+                    class="fw-bold"
+                    [class.text-earthy-green]="holding.unrealizedGain >= 0"
+                    [class.text-earthy-red]="holding.unrealizedGain < 0"
+                  >
+                    {{ holding.unrealizedGain >= 0 ? '+' : '' }}${{ holding.unrealizedGain | number:'1.2-2' }}
+                    ({{ holding.unrealizedGain >= 0 ? '+' : '' }}{{ holding.unrealizedGainPct | number:'1.2-2' }}%)
+                  </td>
+                  <td class="text-right">
+                    <div class="holding-actions-group">
+                      <button type="button" class="quick-trade-mini-btn" (click)="quickTrade(holding.ticker, 'BUY')">Buy</button>
+                      <button type="button" class="quick-trade-mini-btn" (click)="quickTrade(holding.ticker, 'SELL')">Sell</button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 32px; color: var(--brown-500);">
+                    No open stock positions yet. Use the trading desk to make your first purchase!
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  }
+
+  <!-- ====================================================================
+       TAB: HOLDINGS (SECONDARY TAB)
+       ==================================================================== -->
+  @if (activeTab === 'holdings') {
+    <section class="view-section active">
+      <div class="card-container">
+        <div class="card-header-flex">
+          <div class="card-title-group">
+            <h2>Detailed Portfolio Holdings</h2>
+            <p>Comprehensive position breakdown for {{ tradingService.currentAccount().nickname }}</p>
+          </div>
+        </div>
+        <div class="portfolio-table-wrap">
+          <table class="modern-data-table">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Quantity</th>
+                <th>Avg Cost</th>
+                <th>Market Price</th>
+                <th>Total Value</th>
+                <th>Unrealized Gain / Loss</th>
+                <th class="text-right">Quick Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (holding of tradingService.holdings(); track holding.holdingId) {
+                <tr>
+                  <td>
+                    <div class="holding-ticker-cell">
+                      <div class="ticker-icon-circle">{{ holding.ticker.substring(0, 3) }}</div>
+                      <div>
+                        <div class="fw-extrabold" style="color: var(--brown-900);">{{ holding.ticker }}</div>
+                        <div style="font-size: 11px; color: var(--brown-500);">{{ holding.name }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="fw-bold">{{ holding.quantity | number:'1.2-2' }}</td>
+                  <td>${{ holding.avgCost | number:'1.2-2' }}</td>
+                  <td class="fw-bold">${{ holding.currentPrice | number:'1.2-2' }}</td>
+                  <td class="fw-extrabold">${{ holding.totalValue | number:'1.2-2' }}</td>
+                  <td 
+                    class="fw-bold"
+                    [class.text-earthy-green]="holding.unrealizedGain >= 0"
+                    [class.text-earthy-red]="holding.unrealizedGain < 0"
+                  >
+                    {{ holding.unrealizedGain >= 0 ? '+' : '' }}${{ holding.unrealizedGain | number:'1.2-2' }}
+                    ({{ holding.unrealizedGain >= 0 ? '+' : '' }}{{ holding.unrealizedGainPct | number:'1.2-2' }}%)
+                  </td>
+                  <td class="text-right">
+                    <div class="holding-actions-group">
+                      <button type="button" class="quick-trade-mini-btn" (click)="quickTrade(holding.ticker, 'BUY')">Buy</button>
+                      <button type="button" class="quick-trade-mini-btn" (click)="quickTrade(holding.ticker, 'SELL')">Sell</button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 32px; color: var(--brown-500);">
+                    No open positions in this account.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- ====================================================================
+       TAB: ORDER HISTORY (SECONDARY TAB)
+       ==================================================================== -->
+  @if (activeTab === 'orders') {
+    <section class="view-section active">
+      <div class="card-container">
+        <div class="card-header-flex">
+          <div class="card-title-group">
+            <h2>Order History & Trade Log</h2>
+            <p>Executed transaction ledger for {{ tradingService.currentAccount().nickname }}</p>
+          </div>
+        </div>
+        <div class="orders-table-wrap">
+          <table class="modern-data-table">
+            <thead>
+              <tr>
+                <th>Date / Time</th>
+                <th>Type</th>
+                <th>Symbol</th>
+                <th>Shares</th>
+                <th>Executed Price</th>
+                <th>Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (order of tradingService.accountOrders(); track order.orderId) {
+                <tr>
+                  <td style="font-size: 12px; color: var(--brown-500);">{{ order.createdAt }}</td>
+                  <td>
+                    <span class="order-badge" [class.buy]="order.orderType === 'BUY'" [class.sell]="order.orderType === 'SELL'">
+                      {{ order.orderType }}
+                    </span>
+                  </td>
+                  <td class="fw-extrabold">{{ order.ticker }}</td>
+                  <td>{{ order.quantity }} shares</td>
+                  <td>${{ order.stockPrice | number:'1.2-2' }}</td>
+                  <td class="fw-bold">${{ order.totalAmount | number:'1.2-2' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" style="text-align: center; padding: 32px; color: var(--brown-500);">
+                    No orders on record.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- ====================================================================
+       TAB: MARKET WATCH (SECONDARY TAB)
+       ==================================================================== -->
+  @if (activeTab === 'market') {
+    <section class="view-section active">
+      <div class="card-container">
+        <div class="card-header-flex">
+          <div class="card-title-group">
+            <h2>Market Overview & Quotes</h2>
+            <p>Broad market instruments available on Traders, Tickers, and Triumph</p>
+          </div>
+        </div>
+        <div class="trending-list-box" style="max-height: none;">
+          <table class="trending-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Stock</th>
+                <th>Price</th>
+                <th>24h Change</th>
+                <th>Volume</th>
+                <th class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (stock of tradingService.instruments(); track stock.instrumentId; let idx = $index) {
+                <tr>
+                  <td class="trending-rank">#{{ idx + 1 }}</td>
+                  <td>
+                    <div class="trending-stock-cell">
+                      <span class="trending-stock-ticker">{{ stock.ticker }}</span>
+                      <span class="trending-stock-name">{{ stock.name }}</span>
+                    </div>
+                  </td>
+                  <td class="fw-bold">${{ stock.price | number:'1.2-2' }}</td>
+                  <td 
+                    class="fw-bold"
+                    [class.text-earthy-green]="stock.changePercent >= 0"
+                    [class.text-earthy-red]="stock.changePercent < 0"
+                  >
+                    {{ stock.changePercent >= 0 ? '+' : '' }}{{ stock.changePercent | number:'1.2-2' }}%
+                  </td>
+                  <td style="color: var(--brown-600);">{{ stock.volumeFormatted }}</td>
+                  <td class="text-right">
+                    <button 
+                      type="button"
+                      class="quick-trade-mini-btn" 
+                      (click)="quickTrade(stock.ticker, 'BUY')"
+                    >
+                      Trade
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  }
+
+</main>
+
+<!-- Site Footer -->
+<footer class="site-footer">
+  <div class="footer-content">
+    <div>
+      <strong>Traders, Tickers, and Triumph</strong> • Investment Trading Platform
+    </div>
+    <div>
+      Connected to Tidbits Backend API • Faux Trading Simulator Active
+    </div>
+    <div>
+      &copy; 2026 Traders, Tickers, and Triumph. All rights reserved.
+    </div>
+  </div>
+</footer>
+
+<!-- Toast Notifications -->
+<div class="toast-container">
+  @for (toast of toasts; track toast.id) {
+    <div class="toast" [class.success]="toast.type === 'success'" [class.error]="toast.type === 'error'" [class.info]="toast.type === 'info'">
+      <span>{{ toast.message }}</span>
+    </div>
+  }
+</div>
+
+<!-- User Account Switcher Modal -->
+@if (userSwitcherOpen) {
+  <div class="modal-overlay open" (click)="closeUserSwitcher()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">Switch Trading Account</h3>
+        <button type="button" class="modal-close-btn" (click)="closeUserSwitcher()">&times;</button>
+      </div>
+      <p style="font-size: 13px; color: var(--brown-500); margin-bottom: 16px;">
+        Select an active client profile to view their individual portfolio and cash balance.
+      </p>
+      <div class="user-picker-list">
+        @for (user of tradingService.users(); track user.userId) {
+          <div 
+            class="user-picker-item" 
+            [class.active]="user.userId === tradingService.activeUserId()"
+            (click)="switchUser(user.userId)"
+          >
+            <div>
+              <div class="fw-extrabold" style="color: var(--brown-900);">{{ user.fullName }}</div>
+              <div style="font-size: 12px; color: var(--brown-500);">
+                {{ user.accounts[0].nickname }} • ${{ user.accounts[0].cashBalance | number:'1.2-2' }}
+              </div>
+            </div>
+            <div>
+              @if (user.userId === tradingService.activeUserId()) {
+                <span class="tab-badge">Active</span>
+              } @else {
+                <button type="button" class="quick-trade-mini-btn">Switch</button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

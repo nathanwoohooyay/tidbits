@@ -19,6 +19,7 @@ public class TransactionLogService {
     }
 
     public Optional<TransactionLog> getTransactionLogById(Integer logId) {
+
         return Optional.empty();
     }
 

@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public class UserDTO {
     private Integer userId;
-    private Integer roleId;
     private String username;
     private String email;
     private LocalDateTime createdAt;
@@ -15,10 +14,9 @@ public class UserDTO {
     public UserDTO() {
     }
 
-    public UserDTO(Integer userId, Integer roleId, String username, String email, LocalDateTime createdAt,
+    public UserDTO(Integer userId, String username, String email, LocalDateTime createdAt,
                    String phoneNumber, LocalDateTime lastLogin, Integer rewardPoints) {
         this.userId = userId;
-        this.roleId = roleId;
         this.username = username;
         this.email = email;
         this.createdAt = createdAt;
@@ -29,8 +27,6 @@ public class UserDTO {
 
     public Integer getUserId() { return userId; }
     public void setUserId(Integer userId) { this.userId = userId; }
-    public Integer getRoleId() { return roleId; }
-    public void setRoleId(Integer roleId) { this.roleId = roleId; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
     public String getEmail() { return email; }

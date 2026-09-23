@@ -2,6 +2,7 @@ package com.tidbits.model.dto;
 
 import com.tidbits.model.enums.OrderType;
 import com.tidbits.model.enums.OrderStatus;
+import java.util.Date;
 
 public class OrderDTO {
     private Integer orderId;
@@ -11,12 +12,13 @@ public class OrderDTO {
     private Double stockPrice;
     private OrderType orderType;
     private OrderStatus status;
+    private Date lastUpdatedAt;
 
     public OrderDTO() {
     }
 
     public OrderDTO(Integer orderId, Integer accountId, Integer instrumentId, Double quantity, Double stockPrice,
-                    OrderType orderType, OrderStatus status) {
+                    OrderType orderType, OrderStatus status, Date lastUpdatedAt) {
         this.orderId = orderId;
         this.accountId = accountId;
         this.instrumentId = instrumentId;
@@ -24,6 +26,7 @@ public class OrderDTO {
         this.stockPrice = stockPrice;
         this.orderType = orderType;
         this.status = status;
+        this.lastUpdatedAt = lastUpdatedAt;
     }
 
     public Integer getOrderId() { return orderId; }
@@ -40,4 +43,6 @@ public class OrderDTO {
     public void setOrderType(OrderType orderType) { this.orderType = orderType; }
     public OrderStatus getStatus() { return status; }
     public void setStatus(OrderStatus status) { this.status = status; }
+    public Date getLastUpdatedAt() { return lastUpdatedAt; }
+    public void setLastUpdatedAt(Date lastUpdatedAt) { this.lastUpdatedAt = lastUpdatedAt; }
 }

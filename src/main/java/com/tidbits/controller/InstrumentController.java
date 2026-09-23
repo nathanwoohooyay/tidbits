@@ -20,8 +20,8 @@ public class InstrumentController {
         return ResponseEntity.ok(null);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Instrument> getInstrumentById(@PathVariable Integer id) {
+    @GetMapping("/{instrumentId}")
+    public ResponseEntity<Instrument> getInstrumentById(@PathVariable Integer instrumentId) {
         return ResponseEntity.ok(null);
     }
 
@@ -30,13 +30,13 @@ public class InstrumentController {
         return ResponseEntity.ok(List.of());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Instrument> updateInstrument(@PathVariable Integer id, @RequestBody Instrument instrument) {
+    @PatchMapping("/{instrumentId}")
+    public ResponseEntity<Instrument> updateInstrument(@PathVariable Integer instrumentId, @RequestBody Instrument instrument) {
         return ResponseEntity.ok(null);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteInstrument(@PathVariable Integer id) {
+    @DeleteMapping("/{instrumentId}")
+    public ResponseEntity<Void> deleteInstrument(@PathVariable Integer instrumentId) {
         return ResponseEntity.noContent().build();
     }
 }

@@ -9,34 +9,29 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/account-transactions")
+@RequestMapping("/api/accounts/{accountId}/transactions")
 public class AccountTransactionController {
 
     @Autowired
     private AccountTransactionService accountTransactionService;
 
-    @PostMapping
-    public ResponseEntity<AccountTransaction> createAccountTransaction(@RequestBody AccountTransaction accountTransaction) {
+    @PostMapping("/")
+    public ResponseEntity<AccountTransaction> createAccountTransaction(@RequestBody AccountTransaction accountTransaction, @PathVariable Integer accountId) {
         return ResponseEntity.ok(null);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<AccountTransaction> getAccountTransactionById(@PathVariable Integer id) {
+    @GetMapping("/{transactionId}")
+    public ResponseEntity<AccountTransaction> getAccountTransactionById(@PathVariable Integer transactionId, @PathVariable Integer accountId) {
         return ResponseEntity.ok(null);
     }
 
     @GetMapping
-    public ResponseEntity<List<AccountTransaction>> getAllAccountTransactions() {
+    public ResponseEntity<List<AccountTransaction>> getAccountTransactions(@PathVariable Integer accountId) {
         return ResponseEntity.ok(List.of());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<AccountTransaction> updateAccountTransaction(@PathVariable Integer id, @RequestBody AccountTransaction accountTransaction) {
-        return ResponseEntity.ok(null);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAccountTransaction(@PathVariable Integer id) {
-        return ResponseEntity.noContent().build();
-    }
+    // @PostMapping("/account/{accountId}/transactions")
+    // public ResponseEntity<AccountTransaction> createAccountTransactionForAccount(@RequestBody AccountTransaction accountTransaction) {
+    //     return ResponseEntity.ok(null);
+    // }
 }

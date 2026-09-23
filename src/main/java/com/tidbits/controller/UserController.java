@@ -1,5 +1,6 @@
 package com.tidbits.controller;
 
+import com.tidbits.model.dto.ChangePasswordDTO;
 import com.tidbits.model.entity.User;
 import com.tidbits.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,9 +21,9 @@ public class UserController {
         return ResponseEntity.ok(userService.createUser(user));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Integer id) {
-        return ResponseEntity.ok(userService.getUserById(id).orElse(null));
+    @GetMapping("/{userId}")
+    public ResponseEntity<User> getUserById(@PathVariable Integer userId) {
+        return ResponseEntity.ok(userService.getUserById(userId).orElse(null));
     }
 
     @GetMapping
@@ -30,14 +31,24 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Integer id, @RequestBody User user) {
-        return ResponseEntity.ok(userService.updateUser(id, user));
+    @PutMapping("/{userId}")
+    public ResponseEntity<User> updateUser(@PathVariable Integer userId, @RequestBody User user) {
+        return ResponseEntity.ok(userService.updateUser(userId, user));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
-        userService.deleteUser(id);
+    @PatchMapping("/{userId}")
+    public ResponseEntity<User> partiallyUpdateUser(@PathVariable Integer userId, @RequestBody User user) {
+        return ResponseEntity.ok(userService.partiallyUpdateUser(userId, user));
+    }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Integer userId) {
+        userService.deleteUser(userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{userId}/change-password")
+    public ResponseEntity<User> changePassword(@PathVariable Integer userId, @RequestBody ChangePasswordDTO changePasswordDTO) {
+        return ResponseEntity.ok(userService.changePassword(userId, changePasswordDTO.getNewPassword(), changePasswordDTO.getOldPassword(), changePasswordDTO.getConfirmPassword()));
     }
 }

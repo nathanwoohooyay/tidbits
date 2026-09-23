@@ -9,34 +9,24 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/orders")
+@RequestMapping("/api/accounts/{accountId}/orders")
 public class OrderController {
 
     @Autowired
     private OrderService orderService;
 
     @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
+    public ResponseEntity<Order> createOrder(@RequestBody Order order, @PathVariable Integer accountId) {
         return ResponseEntity.ok(null);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Integer id) {
+    @GetMapping("/{orderId}")
+    public ResponseEntity<Order> getOrderById(@PathVariable Integer orderId, @PathVariable Integer accountId) {
         return ResponseEntity.ok(null);
     }
 
     @GetMapping
-    public ResponseEntity<List<Order>> getAllOrders() {
+    public ResponseEntity<List<Order>> getAllOrdersByAccountId(@PathVariable Integer accountId) {
         return ResponseEntity.ok(List.of());
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Order> updateOrder(@PathVariable Integer id, @RequestBody Order order) {
-        return ResponseEntity.ok(null);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOrder(@PathVariable Integer id) {
-        return ResponseEntity.noContent().build();
     }
 }

@@ -16,11 +16,6 @@ public class RoleController {
     @Autowired
     private RoleService roleService;
 
-    @PostMapping
-    public ResponseEntity<Role> createRole(@RequestBody Role role) {
-        return ResponseEntity.ok(null);
-    }
-
     @GetMapping("/{id}")
     public ResponseEntity<Role> getRoleById(@PathVariable Integer id) {
         return ResponseEntity.ok(null);

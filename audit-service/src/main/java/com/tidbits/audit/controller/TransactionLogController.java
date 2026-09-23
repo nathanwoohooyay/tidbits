@@ -1,7 +1,7 @@
-package com.tidbits.controller;
+package com.tidbits.audit.controller;
 
-import com.tidbits.model.entity.TransactionLog;
-import com.tidbits.service.TransactionLogService;
+import com.tidbits.audit.model.dto.TransactionLogDTO;
+import com.tidbits.audit.service.TransactionLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,17 +16,17 @@ public class TransactionLogController {
     private TransactionLogService transactionLogService;
 
     @GetMapping("/{transactionId}")
-    public ResponseEntity<TransactionLog> getTransactionLogById(@PathVariable Integer transactionId) {
+    public ResponseEntity<TransactionLogDTO> getTransactionLogById(@PathVariable Integer transactionId) {
         return ResponseEntity.ok(null);
     }
 
     @GetMapping("/users/{userId}")
-    public ResponseEntity<List<TransactionLog>> getTransactionLogsByUserId(@PathVariable Integer userId) {
+    public ResponseEntity<List<TransactionLogDTO>> getTransactionLogsByUserId(@PathVariable Integer userId) {
         return ResponseEntity.ok(List.of());
     }
 
     @GetMapping
-    public ResponseEntity<List<TransactionLog>> getAllTransactionLogs() {
+    public ResponseEntity<List<TransactionLogDTO>> getAllTransactionLogs() {
         return ResponseEntity.ok(List.of());
     }
 }

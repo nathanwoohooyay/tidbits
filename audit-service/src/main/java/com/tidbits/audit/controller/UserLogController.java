@@ -1,7 +1,8 @@
-package com.tidbits.controller;
+package com.tidbits.audit.controller;
 
-import com.tidbits.model.entity.UserLog;
-import com.tidbits.service.UserLogService;
+import com.tidbits.audit.model.dto.UserLogDTO;
+import com.tidbits.audit.model.entity.UserLog;
+import com.tidbits.audit.service.UserLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,22 +17,22 @@ public class UserLogController {
     private UserLogService userLogService;
 
     @PostMapping
-    public ResponseEntity<UserLog> createUserLog(@RequestBody UserLog userLog) {
+    public ResponseEntity<UserLogDTO> createUserLog(@RequestBody UserLog userLog) {
         return ResponseEntity.ok(null);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserLog> getUserLogById(@PathVariable Integer id) {
+    public ResponseEntity<UserLogDTO> getUserLogById(@PathVariable Integer id) {
         return ResponseEntity.ok(null);
     }
 
     @GetMapping
-    public ResponseEntity<List<UserLog>> getAllUserLogs() {
+    public ResponseEntity<List<UserLogDTO>> getAllUserLogs() {
         return ResponseEntity.ok(List.of());
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserLog> updateUserLog(@PathVariable Integer id, @RequestBody UserLog userLog) {
+    public ResponseEntity<UserLogDTO> updateUserLog(@PathVariable Integer id, @RequestBody UserLog userLog) {
         return ResponseEntity.ok(null);
     }
 

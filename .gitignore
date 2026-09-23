@@ -1,5 +1,5 @@
 # Environment Variables
-.env
+client-service/.env
 .env.local
 .env.*.local
 

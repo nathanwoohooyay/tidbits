@@ -8,10 +8,14 @@
     <groupId>com.tidbits</groupId>
     <artifactId>tidbits-app</artifactId>
     <version>1.0.0</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>Tidbits Application</name>
     <description>Investment trading platform</description>
+    <modules>
+        <module>audit-service</module>
+        <module>client-service</module>
+    </modules>
 
     <parent>
         <groupId>org.springframework.boot</groupId>

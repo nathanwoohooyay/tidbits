@@ -4,12 +4,21 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,20}$/;
 const PHONE_ALLOWED_CHARS_REGEX = /^\+?[\d\s().-]{7,25}$/;
 
+console.log(parsePhoneNumberFromString("+1 (123) 123-1233"))
+console.log(validateSignupInput({
+  username: 'alice',
+  password: 'password',
+  email: 'alice@example.com',
+  phoneNumber: '5555555555',
+}))
+
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
 function isValidPhoneNumber(phoneNumber) {
   const trimmed = phoneNumber.trim();
+  console.log(phoneNumber)
   if (!PHONE_ALLOWED_CHARS_REGEX.test(trimmed)) {
     return false;
   }
@@ -31,7 +40,7 @@ function validateSignupInput(payload) {
 
   const normalizedUsername = username.trim();
   const normalizedEmail = email.trim();
-  const phoneNumberObject = parsePhoneNumberFromString(phoneNumber.trim());
+  const phoneNumberObject = parsePhoneNumberFromString("+1" + phoneNumber.trim());
 
   if (!EMAIL_REGEX.test(normalizedEmail)) {
     return {
@@ -42,7 +51,7 @@ function validateSignupInput(payload) {
     };
   }
 
-  if (phoneNumberObject === undefined || !isValidPhoneNumber(phoneNumberObject.number)) {
+  if (phoneNumberObject === undefined || !isValidPhoneNumber(phoneNumberObject.nationalNumber)) {
     return {
       ok: false,
       status: 422,
@@ -50,7 +59,7 @@ function validateSignupInput(payload) {
       message: 'phone number not valid',
     };
   }
-  const normalizedPhoneNumber = phoneNumberObject.number
+  const normalizedPhoneNumber = phoneNumberObject.nationalNumber
 
   if (!PASSWORD_REGEX.test(password)) {
     return {

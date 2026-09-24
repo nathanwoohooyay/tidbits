@@ -11,11 +11,11 @@ test('validateSignupInput returns 400 for non-string or missing required fields'
   const cases = [
     undefined,
     {},
-    { username: null, password: 'Password1', email: 'user@example.com', phoneNumber: '+1 555 555 5555' },
-    { username: 'alice', password: null, email: 'user@example.com', phoneNumber: '+1 555 555 5555' },
-    { username: 'alice', password: 'Password1', email: 12, phoneNumber: '+1 555 555 5555' },
+    { username: null, password: 'Password1', email: 'user@example.com', phoneNumber: '555 555 5555' },
+    { username: 'alice', password: null, email: 'user@example.com', phoneNumber: '555 555 5555' },
+    { username: 'alice', password: 'Password1', email: 12, phoneNumber: '555 555 5555' },
     { username: 'alice', password: 'Password1', email: 'user@example.com', phoneNumber: {} },
-    { username: '   ', password: 'Password1', email: 'user@example.com', phoneNumber: '+1 555 555 5555' },
+    { username: '   ', password: 'Password1', email: 'user@example.com', phoneNumber: '555 555 5555' },
   ];
 
   for (const payload of cases) {
@@ -31,7 +31,7 @@ test('validateSignupInput returns 422 for invalid email', () => {
     username: 'alice',
     password: 'Password1',
     email: 'invalid-email',
-    phoneNumber: '+15555555555',
+    phoneNumber: '5555555555',
   });
 
   assert.deepEqual(result, {
@@ -63,7 +63,7 @@ test('validateSignupInput returns 422 for invalid password', () => {
     username: 'alice',
     password: 'password',
     email: 'alice@example.com',
-    phoneNumber: '+15555555555',
+    phoneNumber: '5555555555',
   });
 
   assert.deepEqual(result, {
@@ -79,14 +79,14 @@ test('validateSignupInput returns normalized data for valid input', () => {
     username: '  alice  ',
     password: 'Password1',
     email: '  alice@example.com  ',
-    phoneNumber: '  +15555555555  ',
+    phoneNumber: '  5555555555  ',
   });
 
   assert.equal(result.ok, true);
   assert.deepEqual(result.data, {
     normalizedUsername: 'alice',
     normalizedEmail: 'alice@example.com',
-    normalizedPhoneNumber: '+15555555555',
+    normalizedPhoneNumber: '5555555555',
     password: 'Password1',
   });
 });

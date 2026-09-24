@@ -1,6 +1,12 @@
 {
+  "/api/auth": {
+    "target": "http://127.0.0.1:4000",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
   "/api": {
-    "target": "http://127.0.0.1:5001",
+    "target": "http://127.0.0.1:8082",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"

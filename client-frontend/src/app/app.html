@@ -27,28 +27,15 @@
       </div>
 
       <div class="form-group">
-        <label for="login-password">Password Hash</label>
-        <input id="login-password" type="text" [(ngModel)]="loginPasswordHash"
-               placeholder="e.g. $2b$12$hash1" autocomplete="current-password"
+         <label for="login-password">Password</label>
+         <input id="login-password" type="password" [(ngModel)]="loginPassword"
+           placeholder="Enter your password" autocomplete="current-password"
                (keyup.enter)="login()">
       </div>
 
       <button class="btn-primary" id="login-btn" (click)="login()" [disabled]="loginLoading">
         {{ loginLoading ? 'Signing in…' : 'Sign In' }}
       </button>
-
-      @if (sampleUsers.length > 0) {
-        <div class="sample-users">
-          <p class="sample-users-title">Quick Login (Test Users)</p>
-          <div class="sample-chips">
-            @for (u of sampleUsers; track u.user_id) {
-              <button class="sample-chip" (click)="fillSampleUser(u)" [title]="u.email">
-                {{ u.username }}
-              </button>
-            }
-          </div>
-        </div>
-      }
     </div>
   </div>
 }
@@ -93,6 +80,23 @@
             <p class="greeting-sub">{{ selectedAccount()?.nickname }} · {{ today | date:'EEEE, MMMM d, y' }}</p>
           </div>
         </section>
+
+        @if (marketNotice || accountNotice || holdingsNotice || ordersNotice) {
+          <section class="backend-notices" aria-label="Backend status notices">
+            @if (marketNotice) {
+              <div class="api-notice warning" role="status">{{ marketNotice }}</div>
+            }
+            @if (accountNotice) {
+              <div class="api-notice error" role="alert">{{ accountNotice }}</div>
+            }
+            @if (holdingsNotice) {
+              <div class="api-notice info" role="status">{{ holdingsNotice }}</div>
+            }
+            @if (ordersNotice) {
+              <div class="api-notice info" role="status">{{ ordersNotice }}</div>
+            }
+          </section>
+        }
 
         <!-- ── Hero Metrics ──────────────────────────────── -->
         <section class="hero-metrics" aria-label="Portfolio overview">

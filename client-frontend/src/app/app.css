@@ -1,1 +1,31 @@
-﻿
+﻿.backend-notices {
+	display: grid;
+	gap: 0.5rem;
+}
+
+.api-notice {
+	border-radius: 12px;
+	border: 1px solid transparent;
+	padding: 0.7rem 0.9rem;
+	font-size: 0.82rem;
+	line-height: 1.45;
+}
+
+.api-notice.warning {
+	background: rgba(232, 196, 140, 0.2);
+	border-color: rgba(199, 124, 48, 0.45);
+	color: #5a350f;
+}
+
+.api-notice.info {
+	background: rgba(181, 206, 229, 0.2);
+	border-color: rgba(74, 126, 174, 0.45);
+	color: #1f4465;
+}
+
+.api-notice.error {
+	background: rgba(230, 155, 145, 0.2);
+	border-color: rgba(177, 67, 49, 0.45);
+	color: #6b2318;
+}
+

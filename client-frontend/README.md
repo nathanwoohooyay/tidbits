@@ -2,6 +2,16 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.7.
 
+## Backend Connection
+
+This frontend now connects to the Spring Boot `client-service` backend.
+
+- All API requests are sent to `/api/*` from the Angular app.
+- In local development, `proxy.conf.json` forwards `/api` to `http://127.0.0.1:8081`.
+- Start `client-service` before running this frontend.
+
+If your Spring Boot app runs on a different port (for example `8082`), update `proxy.conf.json` accordingly.
+
 ## Development server
 
 To start a local development server, run:

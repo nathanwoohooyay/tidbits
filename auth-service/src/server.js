@@ -78,7 +78,6 @@ app.post('/api/auth/login', async (req, res) => {
   if (!validation.ok) {
     return sendError(res, req, validation.status, validation.errorCode, validation.message);
   }
-
   const { normalizedUsername, password } = validation.data;
 
   try {
@@ -119,5 +118,5 @@ app.get('/api/auth/health', (req, res) => res.json({ status: 'up' }));
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`mission-auth-stub listening on http://localhost:${PORT}`);
-  console.log(`Try: curl -X POST http://localhost:${PORT}/signup -H "Content-Type: application/json" -d '{"username":"alice","email":"alice@example.com","password":"mission123","phoneNumber":"+1-555-0123"}'`);
+  console.log(`Try: curl -X POST http://localhost:${PORT}/api/auth/signup -H "Content-Type: application/json" -d '{"username":"alice","email":"alice@example.com","password":"mission123","phoneNumber":"+1-555-0123"}'`);
 });

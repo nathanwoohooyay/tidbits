@@ -23,7 +23,7 @@ public class AccountService {
     }
 
     public List<Account> getAccountsByUserId(Integer userId) {
-        return List.of();
+        return accountRepository.findByUserId(userId);
     }
 
     public List<Account> getAllAccounts() {

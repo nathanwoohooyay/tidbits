@@ -1,12 +1,12 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, signal, computed, ViewChild, ElementRef, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Component, AfterViewInit, OnDestroy, OnInit, signal, computed, ViewChild, ElementRef, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { Chart, registerables } from 'chart.js';
 Chart.register(...registerables);
 
 /* ── Interfaces ────────────────────────────────────────── */
-interface SampleUser { user_id: number; username: string; password_hash: string; email: string; account_count: number; }
 interface User { user_id: number; username: string; email: string; role_id: number; reward_points: number; }
 interface Account { account_id: number; user_id: number; nickname: string; cash_balance: number; created_at: string; }
 interface Instrument {
@@ -33,18 +33,20 @@ interface Order {
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App implements OnInit, AfterViewInit, OnDestroy {
+export class App implements AfterViewInit, OnDestroy, OnInit {
   readonly Math = Math;
   readonly today = new Date();
   private http = inject(HttpClient);
+  private readonly apiBase = '/api';
+  private readonly tokenStorageKey = 'tidbits_auth_token';
 
   /* Auth */
   view = signal<'login' | 'dashboard'>('login');
   loginUsername = '';
-  loginPasswordHash = '';
+  loginPassword = '';
   loginError = '';
   loginLoading = false;
-  sampleUsers: SampleUser[] = [];
+  authToken = signal<string | null>(null);
 
   /* Session */
   currentUser = signal<User | null>(null);
@@ -60,6 +62,10 @@ export class App implements OnInit, AfterViewInit, OnDestroy {
   holdings = signal<Holding[]>([]);
   orders = signal<Order[]>([]);
   loading = signal(false);
+  marketNotice = '';
+  holdingsNotice = '';
+  ordersNotice = '';
+  accountNotice = '';
 
   /* Trending filter */
   trendFilter: 'trending' | 'gainers' | 'losers' | 'volume' = 'trending';
@@ -121,59 +127,58 @@ export class App implements OnInit, AfterViewInit, OnDestroy {
     return held?.quantity ?? 0;
   });
 
-  ngOnInit() {
-    this.loadSampleUsers();
-  }
-
   ngAfterViewInit() {}
+
+  ngOnInit() {
+    void this.restoreSessionFromStorage();
+  }
 
   ngOnDestroy() {
     this.portfolioChart?.destroy();
   }
 
   /* ── Auth ─────────────────────────────────────────────── */
-  loadSampleUsers() {
-    this.http.get<SampleUser[]>('/api/users/sample').subscribe({
-      next: users => this.sampleUsers = users,
-      error: () => this.sampleUsers = []
-    });
-  }
-
-  fillSampleUser(u: SampleUser) {
-    this.loginUsername = u.username;
-    this.loginPasswordHash = u.password_hash;
-    this.loginError = '';
-  }
-
   login() {
-    if (!this.loginUsername.trim() || !this.loginPasswordHash.trim()) {
-      this.loginError = 'Please enter username and password hash.';
+    if (!this.loginUsername.trim() || !this.loginPassword.trim()) {
+      this.loginError = 'Please enter username and password.';
       return;
     }
     this.loginLoading = true;
     this.loginError = '';
-    this.http.post<{ success: boolean; user: User; accounts: Account[]; error?: string }>('/api/login', {
+    this.http.post<{ token?: string; error?: string }>(`${this.apiBase}/auth/login`, {
       username: this.loginUsername.trim(),
-      password_hash: this.loginPasswordHash.trim()
+      password: this.loginPassword.trim()
     }).subscribe({
-      next: res => {
-        this.loginLoading = false;
-        if (res.success) {
-          this.currentUser.set(res.user);
-          this.accounts.set(res.accounts);
-          const firstAccount = res.accounts[0];
-          if (firstAccount) {
-            this.selectedAccountId.set(firstAccount.account_id);
-            this.view.set('dashboard');
-            this.loadDashboard();
-          } else {
+      next: async res => {
+        if (!res?.token) {
+          this.loginLoading = false;
+          this.loginError = res?.error ?? 'Login failed. Check credentials.';
+          return;
+        }
+
+        try {
+          this.setAuthToken(res.token);
+          await this.hydrateSessionFromToken(res.token);
+
+          const firstAccount = this.accounts()[0];
+          if (!firstAccount) {
             this.loginError = 'No accounts found for this user.';
+            return;
           }
+
+          this.clearDataNotices();
+          this.selectedAccountId.set(firstAccount.account_id);
+          this.view.set('dashboard');
+          this.loadDashboard();
+        } catch {
+          this.loginError = 'Login succeeded, but account data could not be loaded.';
+        } finally {
+          this.loginLoading = false;
         }
       },
       error: err => {
         this.loginLoading = false;
-        this.loginError = err.error?.error ?? 'Login failed. Check credentials.';
+        this.loginError = this.getApiError(err, 'Login failed. Check credentials.');
       }
     });
   }
@@ -186,12 +191,14 @@ export class App implements OnInit, AfterViewInit, OnDestroy {
     this.orders.set([]);
     this.instruments.set([]);
     this.loginUsername = '';
-    this.loginPasswordHash = '';
+    this.loginPassword = '';
+    this.clearAuthToken();
     this.tradeInstrumentId = null;
     this.tradeQuantity = null;
     this.tradeError = '';
     this.tradeSuccess = '';
     this.chartData = {};
+    this.clearDataNotices();
     this.portfolioChart?.destroy();
     this.portfolioChart = null;
   }
@@ -206,33 +213,74 @@ export class App implements OnInit, AfterViewInit, OnDestroy {
   /* ── Data Loading ─────────────────────────────────────── */
   loadDashboard() {
     this.loading.set(true);
-    this.http.get<Instrument[]>('/api/instruments').subscribe({
+    this.http.get<any[]>(`${this.apiBase}/instruments`, this.authOptions()).subscribe({
       next: data => {
-        this.instruments.set(data);
+        const instruments = (data ?? []).map(item => this.mapInstrument(item));
+        this.instruments.set(instruments);
+        this.marketNotice = instruments.length === 0
+          ? 'Market Snapshot is empty because /api/instruments returned no items. This may be temporary while backend endpoints are being completed.'
+          : '';
         this.buildChartData();
-        this.loadAccountData(this.selectedAccountId());
+        const accountId = this.selectedAccountId();
+        if (!accountId) {
+          this.accountNotice = 'No active account was selected after login.';
+          this.loading.set(false);
+          return;
+        }
+        this.loadAccountData(accountId);
       },
-      error: () => { this.loading.set(false); }
+      error: () => {
+        this.loading.set(false);
+        this.marketNotice = 'Market Snapshot is unavailable because /api/instruments could not be loaded from Spring Boot.';
+      }
     });
   }
 
   loadAccountData(accountId: number) {
-    Promise.all([
-      this.http.get<Holding[]>(`/api/accounts/${accountId}/holdings`).toPromise(),
-      this.http.get<Order[]>(`/api/accounts/${accountId}/orders`).toPromise(),
-      this.http.get<Account>(`/api/accounts/${accountId}`).toPromise(),
-    ]).then(([holdings, orders, account]) => {
-      if (holdings) this.holdings.set(holdings);
-      if (orders)   this.orders.set(orders);
-      if (account) {
-        this.accounts.update(accs =>
-          accs.map(a => a.account_id === accountId ? { ...a, cash_balance: account.cash_balance } : a)
-        );
+    Promise.allSettled([
+      firstValueFrom(this.http.get<any[]>(`${this.apiBase}/accounts/${accountId}/holdings/`, this.authOptions())),
+      firstValueFrom(this.http.get<any[]>(`${this.apiBase}/accounts/${accountId}/orders`, this.authOptions())),
+      firstValueFrom(this.http.get<any>(`${this.apiBase}/accounts/${accountId}`, this.authOptions())),
+    ]).then(([holdingsResult, ordersResult, accountResult]) => {
+      if (holdingsResult.status === 'fulfilled') {
+        const mappedHoldings = (holdingsResult.value ?? []).map(item => this.mapHolding(item));
+        this.holdings.set(mappedHoldings);
+        this.holdingsNotice = mappedHoldings.length === 0
+          ? 'No holdings were returned for this account. This can mean the account has no positions or the holdings endpoint is still being implemented.'
+          : '';
+      } else {
+        this.holdings.set([]);
+        this.holdingsNotice = `Could not load holdings from /api/accounts/${accountId}/holdings/.`;
       }
+
+      if (ordersResult.status === 'fulfilled') {
+        const mappedOrders = (ordersResult.value ?? []).map(item => this.mapOrder(item));
+        this.orders.set(mappedOrders);
+        this.ordersNotice = mappedOrders.length === 0
+          ? 'No orders were returned for this account. This can be normal for new accounts or temporary while backend endpoints are being completed.'
+          : '';
+      } else {
+        this.orders.set([]);
+        this.ordersNotice = `Could not load trade history from /api/accounts/${accountId}/orders.`;
+      }
+
+      if (accountResult.status === 'fulfilled' && accountResult.value) {
+        const mappedAccount = this.mapAccount(accountResult.value);
+        this.accounts.update(accs =>
+          accs.map(a => a.account_id === accountId ? { ...a, cash_balance: mappedAccount.cash_balance } : a)
+        );
+        this.accountNotice = '';
+      } else {
+        this.accountNotice = `Could not refresh account summary from /api/accounts/${accountId}.`;
+      }
+
       this.loading.set(false);
       this.buildChartData();
       setTimeout(() => this.renderPortfolioChart(), 100);
-    }).catch(() => this.loading.set(false));
+    }).catch(() => {
+      this.loading.set(false);
+      this.accountNotice = 'Dashboard data could not be refreshed due to an unexpected client error.';
+    });
   }
 
   /* ── Chart ────────────────────────────────────────────── */
@@ -356,13 +404,13 @@ export class App implements OnInit, AfterViewInit, OnDestroy {
     this.tradeInProgress = true;
     this.tradeError = '';
     this.tradeSuccess = '';
-    this.http.post<any>('/api/orders', {
+    this.http.post<any>(`${this.apiBase}/orders`, {
       accountId: this.selectedAccountId(),
       instrumentId: this.tradeInstrumentId,
       orderType: this.tradeMode,
       quantity: this.tradeQuantity,
       stockPrice: this.selectedInstrument()?.price
-    }).subscribe({
+    }, this.authOptions()).subscribe({
       next: res => {
         this.tradeLoading = false;
         this.tradeInProgress = false;
@@ -375,7 +423,7 @@ export class App implements OnInit, AfterViewInit, OnDestroy {
       error: err => {
         this.tradeLoading = false;
         this.tradeInProgress = false;
-        this.tradeError = err.error?.error ?? 'Trade execution failed.';
+        this.tradeError = this.getApiError(err, 'Trade execution failed.');
       }
     });
   }
@@ -405,6 +453,242 @@ export class App implements OnInit, AfterViewInit, OnDestroy {
 
   statusClass(status: string): string {
     return 'status-' + status.toLowerCase();
+  }
+
+  private clearDataNotices() {
+    this.marketNotice = '';
+    this.holdingsNotice = '';
+    this.ordersNotice = '';
+    this.accountNotice = '';
+  }
+
+  private async restoreSessionFromStorage() {
+    const token = localStorage.getItem(this.tokenStorageKey);
+    if (!token) {
+      return;
+    }
+
+    if (this.isTokenExpired(token)) {
+      this.clearAuthToken();
+      return;
+    }
+
+    this.loginLoading = true;
+    this.loginError = '';
+
+    try {
+      this.setAuthToken(token);
+      await this.hydrateSessionFromToken(token);
+
+      const firstAccount = this.accounts()[0];
+      if (!firstAccount) {
+        this.loginError = 'No accounts found for this user.';
+        return;
+      }
+
+      this.clearDataNotices();
+      this.selectedAccountId.set(firstAccount.account_id);
+      this.view.set('dashboard');
+      this.loadDashboard();
+    } catch {
+      this.loginError = 'Existing login token could not be used to restore account data.';
+    } finally {
+      this.loginLoading = false;
+    }
+  }
+
+  private setAuthToken(token: string) {
+    this.authToken.set(token);
+    localStorage.setItem(this.tokenStorageKey, token);
+  }
+
+  private clearAuthToken() {
+    this.authToken.set(null);
+    localStorage.removeItem(this.tokenStorageKey);
+  }
+
+  private isTokenExpired(token: string): boolean {
+    const payload = this.parseJwtPayload(token);
+    const exp = this.asNumber(payload['exp']);
+    if (!exp) {
+      return false;
+    }
+
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    return nowInSeconds >= exp;
+  }
+
+  private authOptions() {
+    const token = this.authToken();
+    if (!token) {
+      return {};
+    }
+
+    return {
+      headers: new HttpHeaders({
+        Authorization: `Bearer ${token}`
+      })
+    };
+  }
+
+  private async hydrateSessionFromToken(token: string) {
+    const payload = this.parseJwtPayload(token);
+    const userId = this.asNumber(payload['sub']);
+    if (!userId) {
+      throw new Error('Token subject was missing.');
+    }
+
+    const [userRaw, accountRows] = await Promise.all([
+      firstValueFrom(this.http.get<any>(`${this.apiBase}/users/${userId}`, this.authOptions())),
+      firstValueFrom(this.http.get<any[]>(`${this.apiBase}/users/${userId}/accounts`, this.authOptions())),
+    ]);
+
+    this.currentUser.set(this.mapUser(userRaw));
+    this.accounts.set((accountRows ?? []).map(row => this.mapAccount(row)));
+  }
+
+  private parseJwtPayload(token: string): Record<string, unknown> {
+    const parts = token.split('.');
+    if (parts.length < 2) {
+      return {};
+    }
+
+    try {
+      const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+      const decoded = atob(padded);
+      const parsed = JSON.parse(decoded);
+      return typeof parsed === 'object' && parsed !== null ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private mapUser(raw: any): User {
+    return {
+      user_id: this.asNumber(raw?.user_id ?? raw?.userId),
+      username: String(raw?.username ?? ''),
+      email: String(raw?.email ?? ''),
+      role_id: this.asNumber(raw?.role_id ?? raw?.roleId),
+      reward_points: this.asNumber(raw?.reward_points ?? raw?.rewardPoints)
+    };
+  }
+
+  private mapAccount(raw: any): Account {
+    return {
+      account_id: this.asNumber(raw?.account_id ?? raw?.accountId),
+      user_id: this.asNumber(raw?.user_id ?? raw?.userId),
+      nickname: String(raw?.nickname ?? ''),
+      cash_balance: this.asNumber(raw?.cash_balance ?? raw?.cashBalance),
+      created_at: String(raw?.created_at ?? raw?.createdAt ?? '')
+    };
+  }
+
+  private mapInstrument(raw: any): Instrument {
+    const price = this.asNumber(raw?.price, 100);
+    const changePercent = this.asNumber(raw?.changePercent ?? raw?.change_percent, 0);
+    const changeAmount = this.asNumber(raw?.changeAmount ?? raw?.change_amount, price * (changePercent / 100));
+    const volume = this.asNumber(raw?.volume, 0);
+
+    return {
+      instrument_id: this.asNumber(raw?.instrument_id ?? raw?.instrumentId),
+      ticker: String(raw?.ticker ?? ''),
+      name: String(raw?.name ?? ''),
+      type: String(raw?.type ?? ''),
+      market: String(raw?.market ?? ''),
+      price,
+      changePercent,
+      changeAmount,
+      volume,
+      volumeFormatted: String(raw?.volumeFormatted ?? raw?.volume_formatted ?? this.formatCompactNumber(volume)),
+      marketCap: String(raw?.marketCap ?? raw?.market_cap ?? 'N/A'),
+      dayHigh: this.asNumber(raw?.dayHigh ?? raw?.day_high, price),
+      dayLow: this.asNumber(raw?.dayLow ?? raw?.day_low, price),
+      sparkline: this.mapSparkline(raw?.sparkline, price)
+    };
+  }
+
+  private mapHolding(raw: any): Holding {
+    const quantity = this.asNumber(raw?.quantity);
+    const amountInvested = this.asNumber(raw?.amount_invested ?? raw?.amountInvested);
+    const currentPrice = this.asNumber(raw?.currentPrice ?? raw?.current_price, this.asNumber(raw?.stockPrice ?? raw?.stock_price, 0));
+    const totalValue = this.asNumber(raw?.totalValue ?? raw?.total_value, quantity * currentPrice);
+    const avgCost = this.asNumber(raw?.avgCost ?? raw?.avg_cost, quantity > 0 ? amountInvested / quantity : 0);
+    const unrealizedGain = this.asNumber(raw?.unrealizedGain ?? raw?.unrealized_gain, totalValue - amountInvested);
+
+    return {
+      account_id: this.asNumber(raw?.account_id ?? raw?.accountId),
+      instrument_id: this.asNumber(raw?.instrument_id ?? raw?.instrumentId),
+      quantity,
+      amount_invested: amountInvested,
+      ticker: String(raw?.ticker ?? ''),
+      name: String(raw?.name ?? ''),
+      type: String(raw?.type ?? ''),
+      market: String(raw?.market ?? ''),
+      currentPrice,
+      changePercent: this.asNumber(raw?.changePercent ?? raw?.change_percent),
+      totalValue,
+      avgCost,
+      unrealizedGain,
+      unrealizedGainPct: this.asNumber(raw?.unrealizedGainPct ?? raw?.unrealized_gain_pct, amountInvested > 0 ? (unrealizedGain / amountInvested) * 100 : 0)
+    };
+  }
+
+  private mapOrder(raw: any): Order {
+    return {
+      order_id: this.asNumber(raw?.order_id ?? raw?.orderId),
+      account_id: this.asNumber(raw?.account_id ?? raw?.accountId),
+      instrument_id: this.asNumber(raw?.instrument_id ?? raw?.instrumentId),
+      quantity: this.asNumber(raw?.quantity),
+      stock_price: this.asNumber(raw?.stock_price ?? raw?.stockPrice),
+      order_type: String(raw?.order_type ?? raw?.orderType ?? '').toLowerCase(),
+      status: String(raw?.status ?? '').toLowerCase(),
+      ticker: String(raw?.ticker ?? ''),
+      name: String(raw?.name ?? ''),
+      created_at: String(raw?.created_at ?? raw?.createdAt ?? '')
+    };
+  }
+
+  private mapSparkline(raw: any, price: number): number[] {
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return [price * 0.97, price * 0.985, price];
+    }
+
+    return raw
+      .map((v: any) => this.asNumber(v, price))
+      .filter((v: number) => Number.isFinite(v));
+  }
+
+  private asNumber(value: unknown, fallback = 0): number {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  private formatCompactNumber(value: number): string {
+    if (!Number.isFinite(value) || value <= 0) {
+      return '0';
+    }
+    if (value >= 1_000_000_000) {
+      return `${(value / 1_000_000_000).toFixed(1)}B`;
+    }
+    if (value >= 1_000_000) {
+      return `${(value / 1_000_000).toFixed(1)}M`;
+    }
+    if (value >= 1_000) {
+      return `${(value / 1_000).toFixed(1)}K`;
+    }
+    return value.toFixed(0);
+  }
+
+  private getApiError(error: any, fallback: string): string {
+    const payloadError = error?.error?.error;
+    if (typeof payloadError === 'string' && payloadError.trim()) {
+      return payloadError;
+    }
+    return fallback;
   }
 
   trackByInstrument(_: number, item: Instrument): number { return item.instrument_id; }

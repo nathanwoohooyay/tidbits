@@ -8,8 +8,8 @@ import com.tidbits.mapper.UserMapper;
 import com.tidbits.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,19 +23,15 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    @PostMapping
-    public ResponseEntity<UserDTO> createUser(@RequestBody UserCreateRequestDTO request) {
-        return ResponseEntity.ok(UserMapper.toUserDTO(userService.createUser(UserMapper.toCreateEntity(request))));
-    }
+//    @PostMapping
+//    public ResponseEntity<UserDTO> createUser(@RequestBody UserCreateRequestDTO request) {
+//        return ResponseEntity.ok(UserMapper.toUserDTO(userService.createUser(UserMapper.toCreateEntity(request))));
+//    }
 
     @GetMapping("/{userId}")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Integer userId) {
         return ResponseEntity.ok(UserMapper.toUserDTO(userService.getUserById(userId).orElse(null)));
-    }
-
-    @GetMapping
-    public ResponseEntity<List<UserDTO>> getAllUsers(@AuthenticationPrincipal Jwt jwt) {
-        return ResponseEntity.ok(userService.getAllUsers().stream().map(UserMapper::toUserDTO).filter(Objects::nonNull).toList());
     }
 
     @PutMapping("/{userId}")

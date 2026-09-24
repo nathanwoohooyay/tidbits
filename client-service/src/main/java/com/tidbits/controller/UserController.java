@@ -35,22 +35,26 @@ public class UserController {
     }
 
     @PutMapping("/{userId}")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> updateUser(@PathVariable Integer userId, @RequestBody UserUpdateDTO request) {
         return ResponseEntity.ok(UserMapper.toUserDTO(userService.updateUser(userId, UserMapper.toUpdateEntity(request))));
     }
 
     @PatchMapping("/{userId}")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> partiallyUpdateUser(@PathVariable Integer userId, @RequestBody UserDTO userDTO) {
         return ResponseEntity.ok(null);
     }
 
     @DeleteMapping("/{userId}")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<Void> deleteUser(@PathVariable Integer userId) {
         userService.deleteUser(userId);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{userId}/change-password")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> changePassword(@PathVariable Integer userId, @RequestBody ChangePasswordDTO changePasswordDTO) {
         return ResponseEntity.ok(null);
     }

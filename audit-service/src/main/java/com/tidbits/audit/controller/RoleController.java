@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/roles")
@@ -18,12 +19,19 @@ public class RoleController {
 
     @GetMapping("/{id}")
     public ResponseEntity<RoleDTO> getRoleById(@PathVariable Integer id) {
-        return ResponseEntity.ok(null);
+        return roleService.getRoleById(id)
+                .map(this::toDto)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping
     public ResponseEntity<List<RoleDTO>> getAllRoles() {
-        return ResponseEntity.ok(List.of());
+        List<RoleDTO> roles = roleService.getAllRoles()
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(roles);
     }
 
     @PutMapping("/{id}")
@@ -34,5 +42,9 @@ public class RoleController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRole(@PathVariable Integer id) {
         return ResponseEntity.noContent().build();
+    }
+
+    private RoleDTO toDto(Role role) {
+        return new RoleDTO(role.getRoleId(), role.getName());
     }
 }

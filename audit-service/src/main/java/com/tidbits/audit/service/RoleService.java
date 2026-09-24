@@ -16,25 +16,26 @@ public class RoleService {
     private RoleRepository roleRepository;
 
     public Role createRole(Role role) {
-        return null;
+        return roleRepository.save(role);
     }
 
     public Optional<Role> getRoleById(Integer roleId) {
-        return Optional.empty();
+        return roleRepository.findById(roleId);
     }
 
     public Optional<Role> getRoleByName(RoleType name) {
-        return Optional.empty();
+        return roleRepository.findByName(name);
     }
 
     public List<Role> getAllRoles() {
-        return List.of();
+        return roleRepository.findAll();
     }
 
     public Role updateRole(Integer roleId, Role role) {
-        return null;
+        return roleRepository.save(role);
     }
 
     public void deleteRole(Integer roleId) {
+        roleRepository.deleteById(roleId);
     }
 }

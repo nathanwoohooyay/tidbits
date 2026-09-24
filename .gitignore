@@ -1,5 +1,8 @@
 # Environment Variables
 client-service/.env
+audit-service/.env
+auth-service/.env
+auth-service/.env.*
 .env.local
 .env.*.local
 
@@ -29,6 +32,13 @@ dependency-reduced-pom.xml
 *.nar
 .mvn/wrapper/maven-wrapper.jar
 .mvn/wrapper/maven-wrapper.properties
+
+# Auth Service (Node.js)
+auth-service/node_modules/
+auth-service/npm-debug.log*
+auth-service/yarn-error.log*
+auth-service/.npm/
+auth-service/coverage/
 
 # IDE
 .idea/

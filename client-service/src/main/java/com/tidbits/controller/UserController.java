@@ -8,6 +8,9 @@ import com.tidbits.mapper.UserMapper;
 import com.tidbits.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,38 +23,38 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    @PostMapping
-    public ResponseEntity<UserDTO> createUser(@RequestBody UserCreateRequestDTO request) {
-        return ResponseEntity.ok(UserMapper.toUserDTO(userService.createUser(UserMapper.toCreateEntity(request))));
-    }
+//    @PostMapping
+//    public ResponseEntity<UserDTO> createUser(@RequestBody UserCreateRequestDTO request) {
+//        return ResponseEntity.ok(UserMapper.toUserDTO(userService.createUser(UserMapper.toCreateEntity(request))));
+//    }
 
     @GetMapping("/{userId}")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Integer userId) {
         return ResponseEntity.ok(UserMapper.toUserDTO(userService.getUserById(userId).orElse(null)));
     }
 
-    @GetMapping
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers().stream().map(UserMapper::toUserDTO).filter(Objects::nonNull).toList());
-    }
-
     @PutMapping("/{userId}")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> updateUser(@PathVariable Integer userId, @RequestBody UserUpdateDTO request) {
         return ResponseEntity.ok(UserMapper.toUserDTO(userService.updateUser(userId, UserMapper.toUpdateEntity(request))));
     }
 
     @PatchMapping("/{userId}")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> partiallyUpdateUser(@PathVariable Integer userId, @RequestBody UserDTO userDTO) {
         return ResponseEntity.ok(null);
     }
 
     @DeleteMapping("/{userId}")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<Void> deleteUser(@PathVariable Integer userId) {
         userService.deleteUser(userId);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{userId}/change-password")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> changePassword(@PathVariable Integer userId, @RequestBody ChangePasswordDTO changePasswordDTO) {
         return ResponseEntity.ok(null);
     }

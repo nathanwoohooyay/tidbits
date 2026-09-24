@@ -118,6 +118,5 @@ app.get('/api/auth/health', (req, res) => res.json({ status: 'up' }));
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`mission-auth-stub listening on http://localhost:${PORT}`);
-  console.log(`Try: curl -X POST http://localhost:${PORT}/signup -H "Content-Type: application/json" -d '{"username":"alice","email":"alice@example.com","password":"mission123","phoneNumber":"+1-555-0123"}'`);
+  console.log(`listening on http://localhost:${PORT}`);
 });

@@ -4,21 +4,12 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,20}$/;
 const PHONE_ALLOWED_CHARS_REGEX = /^\+?[\d\s().-]{7,25}$/;
 
-console.log(parsePhoneNumberFromString("+1 (123) 123-1233"))
-console.log(validateSignupInput({
-  username: 'alice',
-  password: 'password',
-  email: 'alice@example.com',
-  phoneNumber: '5555555555',
-}))
-
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
 function isValidPhoneNumber(phoneNumber) {
   const trimmed = phoneNumber.trim();
-  console.log(phoneNumber)
   if (!PHONE_ALLOWED_CHARS_REGEX.test(trimmed)) {
     return false;
   }

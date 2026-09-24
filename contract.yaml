@@ -1754,6 +1754,7 @@ components:
       required:
         - username
         - email
+        - phoneNumber
         - passwordHash
         - roleId
       properties:

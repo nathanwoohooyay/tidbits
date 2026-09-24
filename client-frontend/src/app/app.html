@@ -1,0 +1,448 @@
+<!-- Loading Overlay -->
+@if (loading()) {
+  <div class="loading-overlay" role="status" aria-label="Loading">
+    <div class="spinner"></div>
+  </div>
+}
+
+<!-- ════════════════════════════════════════════════════════ LOGIN SCREEN -->
+@if (view() === 'login') {
+  <div class="login-screen">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-brand-icon">📈</div>
+        <h1>Traders, Tickers,<br>and Triumph</h1>
+        <p>Sign in to your trading dashboard</p>
+      </div>
+
+      @if (loginError) {
+        <div class="login-error" role="alert">{{ loginError }}</div>
+      }
+
+      <div class="form-group">
+        <label for="login-username">Username</label>
+        <input id="login-username" type="text" [(ngModel)]="loginUsername"
+               placeholder="e.g. john_investor" autocomplete="username"
+               (keyup.enter)="login()">
+      </div>
+
+      <div class="form-group">
+        <label for="login-password">Password Hash</label>
+        <input id="login-password" type="text" [(ngModel)]="loginPasswordHash"
+               placeholder="e.g. $2b$12$hash1" autocomplete="current-password"
+               (keyup.enter)="login()">
+      </div>
+
+      <button class="btn-primary" id="login-btn" (click)="login()" [disabled]="loginLoading">
+        {{ loginLoading ? 'Signing in…' : 'Sign In' }}
+      </button>
+
+      @if (sampleUsers.length > 0) {
+        <div class="sample-users">
+          <p class="sample-users-title">Quick Login (Test Users)</p>
+          <div class="sample-chips">
+            @for (u of sampleUsers; track u.user_id) {
+              <button class="sample-chip" (click)="fillSampleUser(u)" [title]="u.email">
+                {{ u.username }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- ════════════════════════════════════════════════════════ DASHBOARD -->
+@if (view() === 'dashboard') {
+  <div class="app-shell">
+    <!-- Header -->
+    <header class="app-header" role="banner">
+      <div class="header-brand">
+        <span>Traders</span>, Tickers, and <span>Triumph</span>
+      </div>
+      <div class="header-right">
+        @if (accounts().length > 1) {
+          <div class="account-selector">
+            <select id="account-selector" [value]="selectedAccountId()" (change)="onAccountChange($event)"
+                    aria-label="Select account">
+              @for (acc of accounts(); track acc.account_id) {
+                <option [value]="acc.account_id">
+                  {{ acc.nickname }} — {{ formatCurrency(acc.cash_balance) }}
+                </option>
+              }
+            </select>
+          </div>
+        } @else if (accounts().length === 1) {
+          <span style="color:var(--clr-tan);font-size:.85rem;opacity:.8">
+            {{ accounts()[0].nickname }}
+          </span>
+        }
+        <button class="btn-signout" id="signout-btn" (click)="signOut()">Sign Out</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-content" role="main">
+      <div class="dashboard-grid">
+
+        <!-- ── Greeting ───────────────────────────────────── -->
+        <section class="greeting-section" aria-label="Greeting">
+          <div class="greeting-text">
+            <h2>Hello {{ currentUser()?.username }}!</h2>
+            <p class="greeting-sub">{{ selectedAccount()?.nickname }} · {{ today | date:'EEEE, MMMM d, y' }}</p>
+          </div>
+        </section>
+
+        <!-- ── Hero Metrics ──────────────────────────────── -->
+        <section class="hero-metrics" aria-label="Portfolio overview">
+          <!-- Total Net Worth -->
+          <div class="metric-card hero" id="total-net-worth">
+            <div class="metric-label">Total Net Worth</div>
+            <div class="metric-value">{{ formatCurrency(totalNetWorth()) }}</div>
+            @if (portfolioGainLoss() !== 0) {
+              <div class="metric-change" [class.positive]="portfolioGainLoss() >= 0" [class.negative]="portfolioGainLoss() < 0">
+                {{ portfolioGainLoss() >= 0 ? '▲' : '▼' }}
+                {{ formatCurrency(Math.abs(portfolioGainLoss())) }} unrealized
+              </div>
+            }
+          </div>
+
+          <!-- Cash Balance -->
+          <div class="metric-card" id="cash-balance">
+            <div class="metric-label">Cash Balance</div>
+            <div class="metric-value">{{ formatCurrency(cashBalance()) }}</div>
+            <div class="metric-change positive" style="background:transparent;padding:0;margin-top:.25rem;font-size:.78rem;color:var(--clr-sienna)">
+              Available to invest
+            </div>
+          </div>
+
+          <!-- Portfolio Value -->
+          <div class="metric-card" id="portfolio-value">
+            <div class="metric-label">Portfolio Value</div>
+            <div class="metric-value">{{ formatCurrency(portfolioValue()) }}</div>
+            @if (portfolioGainLoss() !== 0) {
+              <div class="metric-change" [class.positive]="portfolioGainLoss() >= 0" [class.negative]="portfolioGainLoss() < 0">
+                {{ portfolioGainLoss() >= 0 ? '▲' : '▼' }}
+                {{ formatPercent(portfolioValue() > 0 ? (portfolioGainLoss() / (portfolioValue() - portfolioGainLoss())) * 100 : 0) }}
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- ── Portfolio Chart ───────────────────────────── -->
+        <section class="section-card" aria-label="Portfolio growth chart">
+          <div class="section-header">
+            <span class="section-title">📊 Portfolio Growth</span>
+            <div class="timeframe-tabs" role="group" aria-label="Chart timeframe">
+              @for (tf of ['1D','1W','1M','3M','1Y','ALL']; track tf) {
+                <button class="timeframe-tab" [class.active]="chartTimeframe === tf"
+                        (click)="setChartTimeframe($any(tf))" [id]="'tf-' + tf">{{ tf }}</button>
+              }
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="chart-container">
+              <canvas #portfolioChartRef id="portfolio-chart" aria-label="Portfolio performance chart" role="img"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Trending Stocks ───────────────────────────── -->
+        <section class="section-card" aria-label="Trending stocks">
+          <div class="section-header">
+            <span class="section-title">🔥 Market Snapshot</span>
+            <div class="filter-tabs" role="group" aria-label="Stock filter">
+              @for (f of [['trending','Trending'],['gainers','Top Gainers'],['losers','Top Losers'],['volume','Volume']]; track f[0]) {
+                <button class="filter-tab" [class.active]="trendFilter === f[0]"
+                        (click)="setTrendFilter($any(f[0]))" [id]="'filter-' + f[0]">{{ f[1] }}</button>
+              }
+            </div>
+          </div>
+          <div class="section-body" style="padding:0 1.5rem 1.5rem">
+            <table class="stock-table" aria-label="Stock market data">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Symbol</th>
+                  <th>Company</th>
+                  <th class="right">Price</th>
+                  <th class="right">Change</th>
+                  <th class="right">Volume</th>
+                  <th class="right">Market Cap</th>
+                  <th class="right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (stock of trendingStocks(); track stock.instrument_id; let i = $index) {
+                  <tr>
+                    <td style="color:var(--clr-sienna);font-weight:600">{{ i + 1 }}</td>
+                    <td><span class="ticker-badge">{{ stock.ticker }}</span></td>
+                    <td><div class="stock-name">{{ stock.name }}</div></td>
+                    <td class="right"><span class="price-value">{{ formatCurrency(stock.price) }}</span></td>
+                    <td class="right">
+                      <span class="change-badge" [class.positive]="stock.changePercent >= 0" [class.negative]="stock.changePercent < 0">
+                        {{ stock.changePercent >= 0 ? '▲' : '▼' }} {{ formatPercent(stock.changePercent) }}
+                      </span>
+                    </td>
+                    <td class="right" style="font-size:.82rem;color:var(--clr-sienna)">{{ stock.volumeFormatted }}</td>
+                    <td class="right" style="font-size:.82rem;color:var(--clr-sienna)">{{ stock.marketCap }}</td>
+                    <td class="right">
+                      <button class="btn-quick-trade btn-quick-buy" (click)="quickTrade(stock.instrument_id, 'buy')" [id]="'buy-' + stock.ticker">Buy</button>
+                      <button class="btn-quick-trade btn-quick-sell" (click)="quickTrade(stock.instrument_id, 'sell')" [id]="'sell-' + stock.ticker">Sell</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ── Current Holdings ──────────────────────────── -->
+        <section class="section-card" aria-label="Current portfolio holdings">
+          <div class="section-header">
+            <span class="section-title">💼 Your Holdings</span>
+            <span style="font-size:.82rem;color:var(--clr-sienna)">{{ holdings().length }} position{{ holdings().length !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="section-body" style="padding:0 1.5rem 1.5rem">
+            @if (holdings().length === 0) {
+              <div class="empty-state">
+                <span class="empty-icon">📋</span>
+                No positions held in this account yet. Start trading below!
+              </div>
+            } @else {
+              <table class="holdings-table" aria-label="Portfolio holdings">
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th>Company</th>
+                    <th class="right">Qty</th>
+                    <th class="right">Avg Cost</th>
+                    <th class="right">Price</th>
+                    <th class="right">Market Value</th>
+                    <th class="right">Gain / Loss</th>
+                    <th class="right">G/L %</th>
+                    <th class="right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (h of holdings(); track h.instrument_id) {
+                    <tr>
+                      <td><span class="ticker-badge">{{ h.ticker }}</span></td>
+                      <td><span class="stock-name">{{ h.name }}</span></td>
+                      <td class="right">{{ h.quantity | number:'1.0-4' }}</td>
+                      <td class="right">{{ formatCurrency(h.avgCost) }}</td>
+                      <td class="right">{{ formatCurrency(h.currentPrice) }}</td>
+                      <td class="right" style="font-weight:700">{{ formatCurrency(h.totalValue) }}</td>
+                      <td class="right" [class.gain-text]="h.unrealizedGain >= 0" [class.loss-text]="h.unrealizedGain < 0">
+                        {{ h.unrealizedGain >= 0 ? '+' : '' }}{{ formatCurrency(h.unrealizedGain) }}
+                      </td>
+                      <td class="right" [class.gain-text]="h.unrealizedGainPct >= 0" [class.loss-text]="h.unrealizedGainPct < 0">
+                        {{ formatPercent(h.unrealizedGainPct) }}
+                      </td>
+                      <td class="right">
+                        <button class="btn-quick-trade btn-quick-buy" (click)="quickTrade(h.instrument_id, 'buy')" [id]="'holdings-buy-' + h.ticker">Buy</button>
+                        <button class="btn-quick-trade btn-quick-sell" (click)="quickTrade(h.instrument_id, 'sell')" [id]="'holdings-sell-' + h.ticker">Sell</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+        </section>
+
+        <!-- ── Trade Desk ────────────────────────────────── -->
+        <section class="section-card" id="trade-section" aria-label="Trade execution">
+          <div class="section-header">
+            <span class="section-title">⚡ Trade Desk</span>
+            <span style="font-size:.82rem;color:var(--clr-sienna)">Cash: {{ formatCurrency(cashBalance()) }}</span>
+          </div>
+          <div class="section-body">
+            <div class="trade-desk">
+              <!-- Left: Trade Form -->
+              <div>
+                <div class="trade-mode-toggle" role="group" aria-label="Trade mode">
+                  <button class="trade-mode-btn buy" [class.active]="tradeMode === 'buy'"
+                          (click)="setTradeMode('buy')" id="trade-mode-buy">BUY</button>
+                  <button class="trade-mode-btn sell" [class.active]="tradeMode === 'sell'"
+                          (click)="setTradeMode('sell')" id="trade-mode-sell">SELL</button>
+                </div>
+
+                <div class="trade-input-group">
+                  <label for="trade-instrument-select">Select Instrument</label>
+                  <select id="trade-instrument-select" [(ngModel)]="tradeInstrumentId"
+                          (ngModelChange)="onTradeInstrumentChange()">
+                    <option [value]="null" disabled selected>-- Choose a stock --</option>
+                    @for (inst of instruments(); track inst.instrument_id) {
+                      <option [value]="inst.instrument_id">{{ inst.ticker }} — {{ inst.name }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="trade-input-group">
+                  <label for="trade-quantity">Quantity (shares)</label>
+                  <input id="trade-quantity" type="number" min="0.001" step="0.001"
+                         [(ngModel)]="tradeQuantity" placeholder="0"
+                         (ngModelChange)="tradeError='';tradeSuccess=''">
+                </div>
+
+                @if (selectedInstrument() && tradeQuantity && tradeQuantity > 0) {
+                  <div class="trade-summary">
+                    <div class="trade-summary-row">
+                      <span class="trade-summary-label">Price per share</span>
+                      <span>{{ formatCurrency(selectedInstrument()!.price) }}</span>
+                    </div>
+                    <div class="trade-summary-row">
+                      <span class="trade-summary-label">Quantity</span>
+                      <span>{{ tradeQuantity }}</span>
+                    </div>
+                    @if (tradeMode === 'sell') {
+                      <div class="trade-summary-row">
+                        <span class="trade-summary-label">You own</span>
+                        <span>{{ heldQuantity() | number:'1.0-4' }} shares</span>
+                      </div>
+                    }
+                    <div class="trade-summary-row">
+                      <span class="trade-summary-label">{{ tradeMode === 'buy' ? 'Total Cost' : 'Proceeds' }}</span>
+                      <span>{{ formatCurrency(tradeTotalCost()) }}</span>
+                    </div>
+                  </div>
+                }
+
+                @if (tradeError) {
+                  <div class="trade-error" role="alert">⚠ {{ tradeError }}</div>
+                }
+                @if (tradeSuccess) {
+                  <div class="trade-success" role="status">{{ tradeSuccess }}</div>
+                }
+
+                @if (tradeMode === 'buy') {
+                  <button class="btn-execute-buy" id="execute-trade-btn"
+                          (click)="executeTrade()" [disabled]="!canExecuteTrade() || tradeLoading">
+                    {{ tradeLoading ? 'Executing…' : 'Execute Buy Order' }}
+                  </button>
+                } @else {
+                  <button class="btn-execute-sell" id="execute-trade-btn"
+                          (click)="executeTrade()" [disabled]="!canExecuteTrade() || tradeLoading">
+                    {{ tradeLoading ? 'Executing…' : 'Execute Sell Order' }}
+                  </button>
+                }
+              </div>
+
+              <!-- Right: Stock Info -->
+              <div>
+                @if (selectedInstrument()) {
+                  <div class="trade-stock-info">
+                    <div class="stock-info-header">
+                      <div class="stock-info-meta">
+                        <h3>{{ selectedInstrument()!.ticker }}</h3>
+                        <p>{{ selectedInstrument()!.name }}</p>
+                        <p style="margin-top:.25rem;font-size:.75rem">{{ selectedInstrument()!.market }} · {{ selectedInstrument()!.type }}</p>
+                      </div>
+                      <div class="stock-price-display">
+                        <div class="price">{{ formatCurrency(selectedInstrument()!.price) }}</div>
+                        <div class="price-change"
+                             [class.gain-text]="selectedInstrument()!.changePercent >= 0"
+                             [class.loss-text]="selectedInstrument()!.changePercent < 0">
+                          {{ selectedInstrument()!.changePercent >= 0 ? '▲' : '▼' }}
+                          {{ formatPercent(selectedInstrument()!.changePercent) }}
+                          ({{ formatCurrency(Math.abs(selectedInstrument()!.changeAmount)) }})
+                        </div>
+                      </div>
+                    </div>
+                    <div class="stock-info-stats">
+                      <div class="stat-item">
+                        <span class="stat-label">Day High</span>
+                        <span class="stat-value">{{ formatCurrency(selectedInstrument()!.dayHigh) }}</span>
+                      </div>
+                      <div class="stat-item">
+                        <span class="stat-label">Day Low</span>
+                        <span class="stat-value">{{ formatCurrency(selectedInstrument()!.dayLow) }}</span>
+                      </div>
+                      <div class="stat-item">
+                        <span class="stat-label">Volume</span>
+                        <span class="stat-value">{{ selectedInstrument()!.volumeFormatted }}</span>
+                      </div>
+                      <div class="stat-item">
+                        <span class="stat-label">Market Cap</span>
+                        <span class="stat-value">{{ selectedInstrument()!.marketCap }}</span>
+                      </div>
+                      @if (tradeMode === 'sell') {
+                        <div class="stat-item">
+                          <span class="stat-label">You Own</span>
+                          <span class="stat-value">{{ heldQuantity() | number:'1.0-4' }} shares</span>
+                        </div>
+                        <div class="stat-item">
+                          <span class="stat-label">Position Value</span>
+                          <span class="stat-value">{{ formatCurrency(heldQuantity() * selectedInstrument()!.price) }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                } @else {
+                  <div class="trade-stock-info" style="display:flex;align-items:center;justify-content:center;min-height:200px;flex-direction:column;gap:.75rem;color:var(--clr-sienna)">
+                    <span style="font-size:2.5rem">🔍</span>
+                    <p style="font-size:.875rem;text-align:center">Select a stock above<br>to view details</p>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Trade History ──────────────────────────────── -->
+        <section class="section-card" aria-label="Trade history">
+          <div class="section-header">
+            <span class="section-title">📜 Trade History</span>
+            <span style="font-size:.82rem;color:var(--clr-sienna)">{{ orders().length }} order{{ orders().length !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="section-body" style="padding:0 1.5rem 1.5rem">
+            @if (orders().length === 0) {
+              <div class="empty-state">
+                <span class="empty-icon">📋</span>
+                No trade history yet.
+              </div>
+            } @else {
+              <table class="history-table" aria-label="Trade history">
+                <thead>
+                  <tr>
+                    <th>Date / Time</th>
+                    <th>Symbol</th>
+                    <th>Company</th>
+                    <th>Type</th>
+                    <th class="right">Price</th>
+                    <th class="right">Qty</th>
+                    <th class="right">Total</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (ord of orders(); track ord.order_id) {
+                    <tr>
+                      <td style="font-size:.8rem;color:var(--clr-sienna)">{{ ord.created_at | date:'MMM d, y · h:mm a' }}</td>
+                      <td><span class="ticker-badge">{{ ord.ticker }}</span></td>
+                      <td><span class="stock-name">{{ ord.name }}</span></td>
+                      <td>
+                        <span class="order-type-badge" [class.buy]="ord.order_type === 'buy'" [class.sell]="ord.order_type === 'sell'">
+                          {{ ord.order_type }}
+                        </span>
+                      </td>
+                      <td class="right">{{ formatCurrency(ord.stock_price) }}</td>
+                      <td class="right">{{ ord.quantity | number:'1.0-4' }}</td>
+                      <td class="right" style="font-weight:700">{{ formatCurrency(ord.stock_price * ord.quantity) }}</td>
+                      <td>
+                        <span class="status-badge" [ngClass]="statusClass(ord.status)">{{ ord.status }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+}

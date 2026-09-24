@@ -25,6 +25,29 @@ curl -X POST http://localhost:4000/login \
 Returns `{"token": "eyJhbGc..."}`. Use `bob`/`wrongpermissions` to see a `GUEST`-role token
 instead of a `MISSION_OPERATOR` one, or any wrong password to see a `401`.
 
+## Tests
+
+Run all auth-service tests:
+
+```bash
+npm test
+```
+
+Run only auth validation tests:
+
+```bash
+npm run test:auth-validation
+```
+
+Test suite layout is organized by feature so new tests can grow without touching existing paths:
+
+- `test/validation/*.test.js` for request and rule validation modules
+- `test/routes/*.test.js` for endpoint behavior and status code contracts
+- `test/utils/*.test.js` for shared helpers like DTO mapping or error formatting
+
+Current suite includes `test/validation/authValidation.test.js`, covering signup/login input checks,
+password/email/phone rules, and duplicate-field conflict mapping.
+
 ## The shared secret
 
 The mission service (Java) and this stub both know the same HMAC secret

@@ -3,6 +3,12 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
+const { sendError } = require('./utils/errorResponse');
+const {
+  validateSignupInput,
+  validateLoginInput,
+  getSignupConflictError,
+} = require('./validation/authValidation');
 
 const app = express();
 app.use(express.json());
@@ -25,11 +31,12 @@ const pool = new Pool({
 });
 
 app.post('/api/auth/signup', async (req, res) => {
-  const { username, email, password, phoneNumber } = req.body || {};
-  console.log(req.body);
-  if (!username || !email || !password || !phoneNumber) {
-    return res.status(400).json({ error: 'username, email, password, and phoneNumber are required' });
+  const validation = validateSignupInput(req.body);
+  if (!validation.ok) {
+    return sendError(res, req, validation.status, validation.errorCode, validation.message);
   }
+
+  const { normalizedUsername, normalizedEmail, normalizedPhoneNumber, password } = validation.data;
 
   try {
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -46,7 +53,7 @@ app.post('/api/auth/signup', async (req, res) => {
       )
       RETURNING user_id, username, email, phone_number AS "phoneNumber", created_at
       `,
-      [DEFAULT_SIGNUP_ROLE, username, email, passwordHash, phoneNumber]
+      [DEFAULT_SIGNUP_ROLE, normalizedUsername, normalizedEmail, passwordHash, normalizedPhoneNumber]
     );
 
     return res.status(201).json({
@@ -55,21 +62,24 @@ app.post('/api/auth/signup', async (req, res) => {
     });
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ error: 'username, email, or phone number already exists' });
+      const conflict = getSignupConflictError(error);
+      return sendError(res, req, 409, conflict.errorCode, conflict.message);
     }
     if (error.code === '23502') {
-      return res.status(500).json({ error: 'default signup role is not configured in roles table' });
+      return sendError(res, req, 500, 'ROLE_NOT_CONFIGURED', 'default signup role is not configured in roles table');
     }
     console.error('signup failed', error);
-    return res.status(500).json({ error: 'internal server error' });
+    return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
   }
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) {
-    return res.status(400).json({ error: 'username and password are required' });
+  const validation = validateLoginInput(req.body);
+  if (!validation.ok) {
+    return sendError(res, req, validation.status, validation.errorCode, validation.message);
   }
+
+  const { normalizedUsername, password } = validation.data;
 
   try {
     const result = await pool.query(
@@ -79,17 +89,17 @@ app.post('/api/auth/login', async (req, res) => {
       JOIN roles r ON r.role_id = u.role_id
       WHERE u.username = $1
       `,
-      [username]
+      [normalizedUsername]
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'invalid username or password' });
+      return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
     }
 
     const user = result.rows[0];
     const passwordMatches = await bcrypt.compare(password || '', user.password_hash);
     if (!passwordMatches) {
-      return res.status(401).json({ error: 'invalid username or password' });
+      return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
     }
 
     const token = jwt.sign(
@@ -100,7 +110,7 @@ app.post('/api/auth/login', async (req, res) => {
     return res.json({ token });
   } catch (error) {
     console.error('login failed', error);
-    return res.status(500).json({ error: 'internal server error' });
+    return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
   }
 });
 

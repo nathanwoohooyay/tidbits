@@ -1,3 +1,5 @@
+const {isPossiblePhoneNumber, parsePhoneNumberFromString} = require("libphonenumber-js")
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,20}$/;
 const PHONE_ALLOWED_CHARS_REGEX = /^\+?[\d\s().-]{7,25}$/;
@@ -11,8 +13,8 @@ function isValidPhoneNumber(phoneNumber) {
   if (!PHONE_ALLOWED_CHARS_REGEX.test(trimmed)) {
     return false;
   }
-  const digitsOnly = trimmed.replace(/\D/g, '');
-  return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+
+  return isPossiblePhoneNumber(phoneNumber, "US")
 }
 
 function validateSignupInput(payload) {
@@ -29,7 +31,7 @@ function validateSignupInput(payload) {
 
   const normalizedUsername = username.trim();
   const normalizedEmail = email.trim();
-  const normalizedPhoneNumber = phoneNumber.trim();
+  const phoneNumberObject = parsePhoneNumberFromString(phoneNumber.trim());
 
   if (!EMAIL_REGEX.test(normalizedEmail)) {
     return {
@@ -40,7 +42,7 @@ function validateSignupInput(payload) {
     };
   }
 
-  if (!isValidPhoneNumber(normalizedPhoneNumber)) {
+  if (phoneNumberObject === undefined || !isValidPhoneNumber(phoneNumberObject.number)) {
     return {
       ok: false,
       status: 422,
@@ -48,6 +50,7 @@ function validateSignupInput(payload) {
       message: 'phone number not valid',
     };
   }
+  const normalizedPhoneNumber = phoneNumberObject.number
 
   if (!PASSWORD_REGEX.test(password)) {
     return {

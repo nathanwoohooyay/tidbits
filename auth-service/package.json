@@ -4,13 +4,16 @@
   "description": "Minimal Node.js auth service for Sprint 6 - issues JWTs the mission service validates.",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "test:auth-validation": "node --test \"test/validation/authValidation.test.js\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
+    "libphonenumber-js": "^1.13.14",
     "pg": "^8.12.0"
   }
 }

@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tidbits-postgres
+    environment:
+      POSTGRES_DB: tidbits_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/create.sql:/docker-entrypoint-initdb.d/01-create.sql:ro
+      - ./db/testdata.sql:/docker-entrypoint-initdb.d/02-testdata.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tidbits_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: tidbits-auth-service
+    environment:
+      PORT: 4000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: tidbits_dev
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: dev-shared-secret-change-me
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  client-service:
+    build:
+      context: .
+      dockerfile: client-service/Dockerfile
+    container_name: tidbits-client-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: tidbits_dev
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SHARED_SECRET: dev-shared-secret-change-me
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  audit-service:
+    build:
+      context: .
+      dockerfile: audit-service/Dockerfile
+    container_name: tidbits-audit-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: tidbits_dev
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      SPRING_SECURITY_USER_NAME: devuser
+      SPRING_SECURITY_USER_PASSWORD: devpass
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

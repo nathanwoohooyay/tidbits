@@ -19,10 +19,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ErrorResponseDTO> handleBusinessException(BadRequestException ex) {
+        ErrorResponseDTO error = ErrorResponseDTO.of("BAD_REQUEST", ex.getMessage(), HttpStatus.BAD_REQUEST.value());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponseDTO> handleBusinessException(BusinessException ex) {
-        ErrorResponseDTO error = ErrorResponseDTO.of("BUSINESS_ERROR", ex.getMessage(), HttpStatus.BAD_REQUEST.value());
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        ErrorResponseDTO error = ErrorResponseDTO.of("BUSINESS_ERROR", ex.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY.value());
+        return new ResponseEntity<>(error, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     @ExceptionHandler(AccessDeniedException.class)

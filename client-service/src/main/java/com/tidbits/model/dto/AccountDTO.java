@@ -1,7 +1,5 @@
 package com.tidbits.model.dto;
 
-import java.time.LocalDateTime;
-
 public class AccountDTO {
     private Integer accountId;
     private Integer userId;
@@ -15,6 +13,7 @@ public class AccountDTO {
         this.accountId = accountId;
         this.userId = userId;
         this.nickname = nickname;
+        this.cashBalance = cashBalance;
     }
 
     public Integer getAccountId() { return accountId; }

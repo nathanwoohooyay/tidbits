@@ -30,6 +30,7 @@ From the project root:
 - Auth health: http://localhost:4000/api/auth/health
 - Client service: http://localhost:8082
 - Pricing batch quotes: http://localhost:8082/api/pricing/quotes?symbols=AAPL,MSFT,INFY.NS
+- Pricing historical candles: http://localhost:8082/api/pricing/candles/AAPL?from=2026-01-01&to=2026-08-26&interval=1d
 - Audit service: http://localhost:8083
 
 ## Notes

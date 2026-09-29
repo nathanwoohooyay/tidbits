@@ -1,10 +1,11 @@
 package com.tidbits.controller;
 
 import com.tidbits.model.dto.PricingBatchResponseDTO;
+import com.tidbits.model.dto.PricingCandlesResponseDTO;
 import com.tidbits.service.PricingService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,5 +31,15 @@ public class PricingController {
                 .toList();
 
         return ResponseEntity.ok(pricingService.getBatchQuotes(requestedSymbols));
+    }
+
+    @GetMapping("/candles/{symbol}")
+    public ResponseEntity<PricingCandlesResponseDTO> getHistoricalCandles(
+            @PathVariable String symbol,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false, defaultValue = "1d") String interval
+    ) {
+        return ResponseEntity.ok(pricingService.getHistoricalCandles(symbol, from, to, interval));
     }
 }

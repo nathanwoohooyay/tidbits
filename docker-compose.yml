@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18.4
     container_name: tidbits-postgres
     environment:
       POSTGRES_DB: tidbits_dev
@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./db/create.sql:/docker-entrypoint-initdb.d/01-create.sql:ro
       - ./db/testdata.sql:/docker-entrypoint-initdb.d/02-testdata.sql:ro
     healthcheck:

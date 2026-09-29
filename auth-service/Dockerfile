@@ -5,8 +5,6 @@ COPY package.json ./
 RUN npm install --omit=dev
 
 COPY src ./src
-COPY validation ./validation
-COPY utils ./utils
 
 EXPOSE 4000
 CMD ["npm", "start"]

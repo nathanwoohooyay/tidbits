@@ -45,7 +45,7 @@ app.post('/api/auth/signup', async (req, res) => {
       `
       INSERT INTO users (role_id, username, email, password_hash, phone_number)
       VALUES (
-        (SELECT role_id FROM roles WHERE name = $1::role_type),
+        (SELECT role_id FROM roles WHERE name::text = $1),
         $2,
         $3,
         $4,

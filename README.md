@@ -29,6 +29,7 @@ From the project root:
 
 - Auth health: http://localhost:4000/api/auth/health
 - Client service: http://localhost:8082
+- Pricing batch quotes: http://localhost:8082/api/pricing/quotes?symbols=AAPL,MSFT,INFY.NS
 - Audit service: http://localhost:8083
 
 ## Notes
@@ -38,3 +39,4 @@ From the project root:
   - db/testdata.sql
 - The JWT secret is shared between auth-service and client-service in docker-compose.yml.
 - Spring services use environment variables for database host, port, user, and password.
+- For Fauxnance pricing, set `FAUXNANCE_API_KEY` in the repository root `.env`.

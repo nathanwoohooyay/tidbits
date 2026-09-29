@@ -21,7 +21,6 @@ import org.springframework.web.client.RestTemplate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 public class PricingService {
@@ -44,7 +43,7 @@ public class PricingService {
 
     public PricingBatchResponseDTO getBatchQuotes(List<String> rawSymbols) {
         if (apiKey == null || apiKey.isBlank()) {
-            throw new BusinessException("Fauxnance API key is missing. Set FAUXNANCE_API_KEY in client-service/.env.");
+            throw new BusinessException("Fauxnance API key is missing. Set FAUXNANCE_API_KEY in the repository root .env.");
         }
 
         List<String> symbols = normalizeSymbols(rawSymbols);

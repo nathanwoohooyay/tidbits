@@ -1,8 +1,9 @@
 # Environment Variables
+.env
 client-service/.env
 audit-service/.env
 auth-service/.env
-auth-service/.env.*
+auth-service/.env
 .env.local
 .env.*.local
 

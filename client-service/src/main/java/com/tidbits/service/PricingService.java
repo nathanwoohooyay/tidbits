@@ -92,8 +92,8 @@ public class PricingService {
         HttpEntity<Void> requestEntity = authRequestEntity();
 
         String uri = UriComponentsBuilder.fromPath("/candles/{symbol}")
-                .queryParamIfPresent("from", nullable(from.toString()))
-                .queryParamIfPresent("to", nullable(to.toString()))
+                .queryParamIfPresent("from", nullableDate(from))
+                .queryParamIfPresent("to", nullableDate(to))
                 .queryParam("interval", normalizedInterval)
                 .buildAndExpand(symbol)
                 .toUriString();
@@ -160,13 +160,12 @@ public class PricingService {
         return "1d";
     }
 
-    private java.util.Optional<String> nullable(String value) {
+    private java.util.Optional<LocalDate> nullableDate(LocalDate value) {
         if (value == null) {
             return java.util.Optional.empty();
         }
 
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(trimmed);
+        return java.util.Optional.of(value);
     }
 
     private List<String> normalizeSymbols(List<String> rawSymbols) {

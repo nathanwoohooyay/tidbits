@@ -5,7 +5,7 @@ import java.util.List;
 
 public class OrderResponseDTO {
     private Integer orderId;
-    private Integer quantity;
+    private Double quantity;
     private Double price;
     private String orderType;
     private String status;
@@ -15,7 +15,7 @@ public class OrderResponseDTO {
     public OrderResponseDTO() {
     }
 
-    public OrderResponseDTO(Integer orderId, Integer quantity, Double price,
+    public OrderResponseDTO(Integer orderId, Double quantity, Double price,
                            String orderType, String status, InstrumentDTO instrument,
                             List<OrderStatusHistoryDTO> statusHistory) {
         this.orderId = orderId;
@@ -35,11 +35,11 @@ public class OrderResponseDTO {
         this.orderId = orderId;
     }
 
-    public Integer getQuantity() {
+    public Double getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(Integer quantity) {
+    public void setQuantity(Double quantity) {
         this.quantity = quantity;
     }
 

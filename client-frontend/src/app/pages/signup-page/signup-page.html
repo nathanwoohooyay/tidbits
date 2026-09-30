@@ -1,0 +1,47 @@
+<div class="signup-screen">
+  <div class="signup-card">
+    <h1>Create Account</h1>
+    <p class="subtitle">Register a new user account.</p>
+
+    @if (signupError) {
+      <div class="error" role="alert">{{ signupError }}</div>
+    }
+
+    @if (signupSuccess) {
+      <div class="success" role="status">{{ signupSuccess }}</div>
+    }
+
+    <div class="form-group">
+      <label for="signup-username">Username</label>
+      <input id="signup-username" type="text" [(ngModel)]="signupUsername" autocomplete="username">
+    </div>
+
+    <div class="form-group">
+      <label for="signup-email">Email</label>
+      <input id="signup-email" type="email" [(ngModel)]="signupEmail" autocomplete="email">
+    </div>
+
+    <div class="form-group">
+      <label for="signup-phone">Phone Number</label>
+      <input id="signup-phone" type="text" [(ngModel)]="signupPhoneNumber">
+    </div>
+
+    <div class="form-group">
+      <label for="signup-password">Password</label>
+      <input id="signup-password" type="password" [(ngModel)]="signupPassword" autocomplete="new-password">
+    </div>
+
+    <div class="form-group">
+      <label for="signup-confirm-password">Confirm Password</label>
+      <input id="signup-confirm-password" type="password" [(ngModel)]="signupConfirmPassword" autocomplete="new-password">
+    </div>
+
+    <button type="button" class="btn-primary" (click)="signup()" [disabled]="signupLoading">
+      {{ signupLoading ? 'Registering…' : 'Create Account' }}
+    </button>
+
+    <button type="button" class="link-btn" (click)="goToLogin()">Back to sign in</button>
+  </div>
+</div>
+
+

@@ -1,0 +1,41 @@
+<div class="login-screen">
+  <div class="login-card">
+    <h1>Sign In</h1>
+    <p class="subtitle">Use your account credentials to continue.</p>
+
+    @if (loginError) {
+      <div class="error" role="alert">{{ loginError }}</div>
+    }
+
+    <div class="form-group">
+      <label for="login-username">Username</label>
+      <input
+        id="login-username"
+        type="text"
+        [(ngModel)]="loginUsername"
+        placeholder="e.g. john_investor"
+        autocomplete="username"
+        (keyup.enter)="login()"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="login-password">Password</label>
+      <input
+        id="login-password"
+        type="password"
+        [(ngModel)]="loginPassword"
+        placeholder="Enter your password"
+        autocomplete="current-password"
+        (keyup.enter)="login()"
+      />
+    </div>
+
+    <button type="button" class="btn-primary" (click)="login()" [disabled]="loginLoading">
+      {{ loginLoading ? 'Signing in…' : 'Sign In' }}
+    </button>
+
+    <a routerLink="/signup" class="link">Create an account</a>
+  </div>
+</div>
+

@@ -152,6 +152,34 @@ public class OrderService {
         return updated;
     }
 
+    public OrderResponseDTO toResponseDto(Order order) {
+        OrderResponseDTO dto = new OrderResponseDTO();
+        dto.setOrderId(order.getOrderId());
+        dto.setQuantity(order.getQuantity());
+        dto.setPrice(order.getStockPrice());
+        dto.setOrderType(order.getOrderType() == null ? null : order.getOrderType().name());
+        dto.setStatus(order.getStatus() == null ? null : order.getStatus().name());
+
+        Instrument instrument = instrumentRepository.findById(order.getInstrumentId()).orElse(null);
+        if (instrument != null) {
+            InstrumentDTO instrumentDTO = new InstrumentDTO();
+            instrumentDTO.setInstrumentId(instrument.getInstrumentId());
+            instrumentDTO.setTicker(instrument.getTicker());
+            instrumentDTO.setName(instrument.getName());
+            instrumentDTO.setType(instrument.getType());
+            instrumentDTO.setMarket(instrument.getMarket());
+            dto.setInstrument(instrumentDTO);
+        }
+
+        List<OrderStatusHistoryDTO> history = orderStatusHistoryRepository.findByOrderId(order.getOrderId()).stream()
+                .sorted(Comparator.comparing(OrderStatusHistory::getChangedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(this::toHistoryDto)
+                .collect(Collectors.toList());
+        dto.setStatusHistory(history);
+
+        return dto;
+    }
+
     public List<OrderResponseDTO> toResponseDtoList(List<Order> orders) {
         return orders.stream().map(this::toResponseDto).collect(Collectors.toList());
     }

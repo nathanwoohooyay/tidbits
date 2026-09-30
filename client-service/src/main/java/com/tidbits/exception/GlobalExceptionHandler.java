@@ -2,10 +2,10 @@ package com.tidbits.exception;
 
 import com.tidbits.model.dto.ErrorResponseDTO;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -42,6 +42,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleAccessDenied(AccessDeniedException ex) {
         ErrorResponseDTO error = ErrorResponseDTO.of("ACCESS_DENIED", ex.getMessage(), HttpStatus.FORBIDDEN.value());
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRateLimitExceeded(RateLimitExceededException ex) {
+        ErrorResponseDTO error = ErrorResponseDTO.of("RATE_LIMIT_EXCEEDED", ex.getMessage(), HttpStatus.TOO_MANY_REQUESTS.value());
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
+        if (ex.getRetryAfter() != null && !ex.getRetryAfter().isBlank()) {
+            response.header(HttpHeaders.RETRY_AFTER, ex.getRetryAfter());
+        }
+        return response.body(error);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

@@ -3,6 +3,7 @@ package com.tidbits.controller;
 import com.tidbits.model.dto.PricingBatchResponseDTO;
 import com.tidbits.model.dto.PricingCandlesResponseDTO;
 import com.tidbits.service.PricingService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,20 +43,17 @@ public class PricingController {
             @RequestParam(required = false) LocalDate to,
             @RequestParam(required = false, defaultValue = "1d") String interval
     ) {
-        PricingCandlesResponseDTO candlesResponse = pricingService.getHistoricalCandles(symbol, from, to, interval);
+        PricingService.HistoricalCandlesResult result = pricingService.getHistoricalCandles(symbol, from, to, interval);
+        PricingCandlesResponseDTO candlesResponse = result.body();
 
-        if (isAcceptedBackfillResponse(candlesResponse)) {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(candlesResponse);
+        if (result.accepted()) {
+            ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.ACCEPTED);
+            if (result.retryAfter() != null && !result.retryAfter().isBlank()) {
+                response.header(HttpHeaders.RETRY_AFTER, result.retryAfter());
+            }
+            return response.body(candlesResponse);
         }
 
         return ResponseEntity.ok(candlesResponse);
-    }
-
-    private boolean isAcceptedBackfillResponse(PricingCandlesResponseDTO response) {
-        return response != null
-                && Boolean.TRUE.equals(response.partial())
-                && response.asOf() == null
-                && response.candles() != null
-                && response.candles().isEmpty();
     }
 }

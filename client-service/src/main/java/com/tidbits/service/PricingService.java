@@ -1,7 +1,6 @@
 package com.tidbits.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.nimbusds.jose.jwk.source.RateLimitReachedException;
 import com.tidbits.exception.*;
 import com.tidbits.model.dto.PricingBatchResponseDTO;
 import com.tidbits.model.dto.PricingCandleDTO;
@@ -47,6 +46,13 @@ public class PricingService {
         this.apiKey = apiKey;
     }
 
+        public record HistoricalCandlesResult(
+            PricingCandlesResponseDTO body,
+            boolean accepted,
+            String retryAfter
+        ) {
+        }
+
     public PricingBatchResponseDTO getBatchQuotes(List<String> rawSymbols) {
         requireApiKey();
 
@@ -77,7 +83,10 @@ public class PricingService {
         } catch (HttpClientErrorException.Forbidden ex) {
             throw new AccessDeniedException("Permissions lacked to access Fauxnance route.");
         } catch (HttpClientErrorException.TooManyRequests ex) {
-            throw new RateLimitExceededException("Fauxnance rate limit reached. Try again later.");
+            throw new RateLimitExceededException(
+                    "Fauxnance rate limit reached. Try again later.",
+                    ex.getResponseHeaders() != null ? ex.getResponseHeaders().getFirst(HttpHeaders.RETRY_AFTER) : null
+            );
         } catch (HttpServerErrorException | ResourceAccessException ex) {
             throw new BusinessException("Fauxnance is unavailable right now. Try again later.");
         } catch (RestClientException ex) {
@@ -85,7 +94,7 @@ public class PricingService {
         }
     }
 
-    public PricingCandlesResponseDTO getHistoricalCandles(String rawSymbol, LocalDate from, LocalDate to, String interval) {
+    public HistoricalCandlesResult getHistoricalCandles(String rawSymbol, LocalDate from, LocalDate to, String interval) {
         requireApiKey();
 
         String symbol = normalizeSymbol(rawSymbol);
@@ -109,7 +118,11 @@ public class PricingService {
             );
 
             if (response.getStatusCode() == HttpStatus.ACCEPTED) {
-                return acceptedCandlesResponse(symbol, normalizedInterval);
+                return new HistoricalCandlesResult(
+                    acceptedCandlesBody(symbol, normalizedInterval),
+                    true,
+                    response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)
+                );
             }
 
             JsonNode body = response.getBody();
@@ -117,7 +130,11 @@ public class PricingService {
                 throw new BusinessException("Fauxnance returned an empty candles response.");
             }
 
-            return toCandlesResponse(body);
+            return new HistoricalCandlesResult(
+                    toCandlesResponse(body),
+                    false,
+                    null
+            );
         } catch (HttpClientErrorException.BadRequest ex) {
             throw new BadRequestException("Invalid candles request. Check symbol, dates, and interval.");
         } catch (HttpClientErrorException.NotFound ex) {
@@ -127,7 +144,10 @@ public class PricingService {
         } catch (HttpClientErrorException.Forbidden ex) {
             throw new AccessDeniedException("Permissions lacked to access Fauxnance route.");
         } catch (HttpClientErrorException.TooManyRequests ex) {
-            throw new RateLimitExceededException("Fauxnance rate limit reached. Try again later.");
+            throw new RateLimitExceededException(
+                    "Fauxnance rate limit reached. Try again later.",
+                    ex.getResponseHeaders() != null ? ex.getResponseHeaders().getFirst(HttpHeaders.RETRY_AFTER) : null
+            );
         } catch (HttpServerErrorException | ResourceAccessException ex) {
             throw new BusinessException("Fauxnance is unavailable right now. Try again later.");
         } catch (RestClientException ex) {
@@ -135,7 +155,7 @@ public class PricingService {
         }
     }
 
-    private PricingCandlesResponseDTO acceptedCandlesResponse(String symbol, String interval) {
+    private PricingCandlesResponseDTO acceptedCandlesBody(String symbol, String interval) {
         return new PricingCandlesResponseDTO(
                 symbol,
                 interval,

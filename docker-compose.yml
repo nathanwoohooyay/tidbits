@@ -10,8 +10,8 @@ services:
       - "${DB_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
-      - ./db/create.sql:/docker-entrypoint-initdb.d/01-create.sql:ro
-      - ./db/testdata.sql:/docker-entrypoint-initdb.d/02-testdata.sql:ro
+      - ./db/create.sql:/docker-entrypoint-initdb.d/01-create.sql
+      - ./db/instruments_inserts.sql:/docker-entrypoint-initdb.d/02-inserts.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s

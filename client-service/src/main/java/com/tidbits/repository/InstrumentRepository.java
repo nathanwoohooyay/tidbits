@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface InstrumentRepository extends JpaRepository<Instrument, Integer> {
     Optional<Instrument> findByTicker(String ticker);
+    Optional<Instrument> findByTickerIgnoreCase(String ticker);
 }

@@ -161,7 +161,7 @@ class OrderServiceTest {
         instrument.setInstrumentId(instrumentId);
         instrument.setTicker("AAPL");
         instrument.setName("Apple Inc.");
-        instrument.setType(InstrumentType.EQUITY);
+        instrument.setType(InstrumentType.STOCK);
         instrument.setMarket("NASDAQ");
         return instrument;
     }

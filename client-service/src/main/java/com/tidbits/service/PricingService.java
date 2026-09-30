@@ -1,9 +1,8 @@
 package com.tidbits.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.tidbits.exception.BadRequestException;
-import com.tidbits.exception.BusinessException;
-import com.tidbits.exception.ResourceNotFoundException;
+import com.nimbusds.jose.jwk.source.RateLimitReachedException;
+import com.tidbits.exception.*;
 import com.tidbits.model.dto.PricingBatchResponseDTO;
 import com.tidbits.model.dto.PricingCandleDTO;
 import com.tidbits.model.dto.PricingCandlesResponseDTO;
@@ -15,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -72,10 +72,12 @@ public class PricingService {
             return toPricingResponse(body);
         } catch (HttpClientErrorException.BadRequest ex) {
             throw new BadRequestException("Invalid symbol list for Fauxnance batch quotes.");
-        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden ex) {
-            throw new BusinessException("Fauxnance rejected the API key. Check FAUXNANCE_API_KEY.");
+        } catch (HttpClientErrorException.Unauthorized ex) {
+            throw new AuthenticationException("Fauxnance rejected the API key. Check FAUXNANCE_API_KEY.");
+        } catch (HttpClientErrorException.Forbidden ex) {
+            throw new AccessDeniedException("Permissions lacked to access Fauxnance route.");
         } catch (HttpClientErrorException.TooManyRequests ex) {
-            throw new BusinessException("Fauxnance rate limit reached. Try again later.");
+            throw new RateLimitExceededException("Fauxnance rate limit reached. Try again later.");
         } catch (HttpServerErrorException | ResourceAccessException ex) {
             throw new BusinessException("Fauxnance is unavailable right now. Try again later.");
         } catch (RestClientException ex) {
@@ -107,7 +109,7 @@ public class PricingService {
             );
 
             if (response.getStatusCode() == HttpStatus.ACCEPTED) {
-                throw new BusinessException("Candle backfill is in progress for this symbol. Retry later.");
+                return acceptedCandlesResponse(symbol, normalizedInterval);
             }
 
             JsonNode body = response.getBody();
@@ -120,15 +122,30 @@ public class PricingService {
             throw new BadRequestException("Invalid candles request. Check symbol, dates, and interval.");
         } catch (HttpClientErrorException.NotFound ex) {
             throw new ResourceNotFoundException("Symbol was not recognized by Fauxnance.");
-        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden ex) {
-            throw new BusinessException("Fauxnance rejected the API key. Check FAUXNANCE_API_KEY.");
+        } catch (HttpClientErrorException.Unauthorized ex) {
+            throw new AuthenticationException("Fauxnance rejected the API key. Check FAUXNANCE_API_KEY.");
+        } catch (HttpClientErrorException.Forbidden ex) {
+            throw new AccessDeniedException("Permissions lacked to access Fauxnance route.");
         } catch (HttpClientErrorException.TooManyRequests ex) {
-            throw new BusinessException("Fauxnance rate limit reached. Try again later.");
+            throw new RateLimitExceededException("Fauxnance rate limit reached. Try again later.");
         } catch (HttpServerErrorException | ResourceAccessException ex) {
             throw new BusinessException("Fauxnance is unavailable right now. Try again later.");
         } catch (RestClientException ex) {
             throw new BusinessException("Failed to call Fauxnance historical candles endpoint.");
         }
+    }
+
+    private PricingCandlesResponseDTO acceptedCandlesResponse(String symbol, String interval) {
+        return new PricingCandlesResponseDTO(
+                symbol,
+                interval,
+                null,
+                null,
+                "fauxnance",
+                true,
+                null,
+                List.of()
+        );
     }
 
     private void requireApiKey() {

@@ -3,6 +3,7 @@ package com.tidbits.controller;
 import com.tidbits.model.dto.PricingBatchResponseDTO;
 import com.tidbits.model.dto.PricingCandlesResponseDTO;
 import com.tidbits.service.PricingService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +42,20 @@ public class PricingController {
             @RequestParam(required = false) LocalDate to,
             @RequestParam(required = false, defaultValue = "1d") String interval
     ) {
-        return ResponseEntity.ok(pricingService.getHistoricalCandles(symbol, from, to, interval));
+        PricingCandlesResponseDTO candlesResponse = pricingService.getHistoricalCandles(symbol, from, to, interval);
+
+        if (isAcceptedBackfillResponse(candlesResponse)) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(candlesResponse);
+        }
+
+        return ResponseEntity.ok(candlesResponse);
+    }
+
+    private boolean isAcceptedBackfillResponse(PricingCandlesResponseDTO response) {
+        return response != null
+                && Boolean.TRUE.equals(response.partial())
+                && response.asOf() == null
+                && response.candles() != null
+                && response.candles().isEmpty();
     }
 }

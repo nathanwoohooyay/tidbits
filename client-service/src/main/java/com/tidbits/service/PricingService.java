@@ -23,6 +23,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -82,7 +83,7 @@ public class PricingService {
         }
     }
 
-    public PricingCandlesResponseDTO getHistoricalCandles(String rawSymbol, String from, String to, String interval) {
+    public PricingCandlesResponseDTO getHistoricalCandles(String rawSymbol, LocalDate from, LocalDate to, String interval) {
         requireApiKey();
 
         String symbol = normalizeSymbol(rawSymbol);
@@ -91,8 +92,8 @@ public class PricingService {
         HttpEntity<Void> requestEntity = authRequestEntity();
 
         String uri = UriComponentsBuilder.fromPath("/candles/{symbol}")
-                .queryParamIfPresent("from", nullable(from))
-                .queryParamIfPresent("to", nullable(to))
+                .queryParamIfPresent("from", nullable(from.toString()))
+                .queryParamIfPresent("to", nullable(to.toString()))
                 .queryParam("interval", normalizedInterval)
                 .buildAndExpand(symbol)
                 .toUriString();

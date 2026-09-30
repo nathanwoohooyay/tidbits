@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
@@ -36,8 +37,8 @@ public class PricingController {
     @GetMapping("/candles/{symbol}")
     public ResponseEntity<PricingCandlesResponseDTO> getHistoricalCandles(
             @PathVariable String symbol,
-            @RequestParam(required = false) String from,
-            @RequestParam(required = false) String to,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to,
             @RequestParam(required = false, defaultValue = "1d") String interval
     ) {
         return ResponseEntity.ok(pricingService.getHistoricalCandles(symbol, from, to, interval));

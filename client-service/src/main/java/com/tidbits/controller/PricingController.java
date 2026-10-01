@@ -26,13 +26,13 @@ public class PricingController {
     }
 
     @GetMapping("/quotes")
-    public ResponseEntity<PricingBatchResponseDTO> getQuotes(@RequestParam String symbols) {
+    public ResponseEntity<PricingBatchResponseDTO> getQuotes(@RequestParam String symbols, @RequestParam(required = false, defaultValue = "false") boolean refresh) {
         List<String> requestedSymbols = Arrays.stream(symbols.split(","))
                 .map(String::trim)
                 .filter(symbol -> !symbol.isBlank())
                 .toList();
 
-        return ResponseEntity.ok(pricingService.getBatchQuotes(requestedSymbols));
+        return ResponseEntity.ok(pricingService.getBatchQuotes(requestedSymbols, refresh));
     }
 
     @GetMapping("/candles/{symbol}")

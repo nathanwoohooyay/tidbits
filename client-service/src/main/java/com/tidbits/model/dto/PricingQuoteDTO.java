@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record PricingQuoteDTO(
+        Integer instrumentId,
         String symbol,
         Double price,
         Double change,

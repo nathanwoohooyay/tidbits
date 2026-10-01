@@ -28,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -219,7 +221,10 @@ public class OrderService {
             throw new BadRequestException("Instrument " + instrument.getInstrumentId() + " is missing a ticker symbol.");
         }
 
-        List<PricingQuoteDTO> quotes = pricingService.requestQuotePriceFromFauxnance(List.of(instrument.getTicker()));
+        List<PricingQuoteDTO> quotes = pricingService.getRequestedQuotes(
+            List.of(instrument.getTicker()),
+            Map.of(instrument.getTicker().toUpperCase(Locale.ROOT), instrument)
+        );
         if (quotes.isEmpty()) {
             throw new BadRequestException("No quote data was returned for symbol " + instrument.getTicker() + ".");
         }

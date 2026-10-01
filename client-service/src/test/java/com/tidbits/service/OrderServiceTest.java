@@ -32,6 +32,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -69,7 +71,7 @@ class OrderServiceTest {
         Order order = order(1, 2, 10.0, 25.0, OrderType.BUY, null);
         when(accountRepository.findById(1)).thenReturn(Optional.of(account(1, 100.0)));
         when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
-        when(pricingService.requestQuotePriceFromFauxnance(List.of("AAPL")))
+        when(pricingService.getRequestedQuotes(eq(List.of("AAPL")), anyMap()))
             .thenReturn(List.of(quote("AAPL", 25.0, 20.0, 25.0)));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> orderService.createOrder(order));
@@ -85,7 +87,7 @@ class OrderServiceTest {
 
         when(accountRepository.findById(1)).thenReturn(Optional.of(account));
         when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
-        when(pricingService.requestQuotePriceFromFauxnance(List.of("AAPL")))
+        when(pricingService.getRequestedQuotes(eq(List.of("AAPL")), anyMap()))
             .thenReturn(List.of(quote("AAPL", 999.0, 49.0, 50.0)));
         when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.empty());
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
@@ -124,7 +126,7 @@ class OrderServiceTest {
 
         when(accountRepository.findById(1)).thenReturn(Optional.of(account));
         when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
-        when(pricingService.requestQuotePriceFromFauxnance(List.of("AAPL")))
+        when(pricingService.getRequestedQuotes(eq(List.of("AAPL")), anyMap()))
             .thenReturn(List.of(quote("AAPL", 100.0, 100.0, 101.0)));
         when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.of(holding));
 
@@ -142,7 +144,7 @@ class OrderServiceTest {
 
         when(accountRepository.findById(1)).thenReturn(Optional.of(account));
         when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
-        when(pricingService.requestQuotePriceFromFauxnance(List.of("AAPL")))
+        when(pricingService.getRequestedQuotes(eq(List.of("AAPL")), anyMap()))
             .thenReturn(List.of(quote("AAPL", 900.0, 80.0, 110.0)));
         when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.of(holding));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {

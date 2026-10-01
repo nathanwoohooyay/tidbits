@@ -41,12 +41,12 @@ app.post('/api/auth/signup', async (req, res) => {
 
   try {
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-
+    
     const result = await pool.query(
       `
       INSERT INTO users (role_id, username, email, password_hash, phone_number)
       VALUES (
-        (SELECT role_id FROM roles WHERE name::text = $1),
+        (SELECT role_id FROM roles WHERE name = $1),
         $2,
         $3,
         $4,

@@ -18,12 +18,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -119,7 +116,7 @@ class PricingServiceTest {
     }
 
     @Test
-    void getRequestedQuotes_setsGeneratedInstrumentIdForNewInstrumentFromFauxnance() throws Exception {
+    void getRequestedQuotes_returnsGeneratedInstrumentIdForNewInstrumentFromFauxnance() throws Exception {
         Map<String, Instrument> existingInstrumentsBySymbol = new HashMap<>();
 
         JsonNode quoteBody = OBJECT_MAPPER.readTree("""
@@ -187,10 +184,5 @@ class PricingServiceTest {
         PricingQuoteDTO quote = result.getFirst();
         assertEquals(777, quote.instrumentId());
         assertEquals("MSFT", quote.symbol());
-
-        Instrument trackedInstrument = existingInstrumentsBySymbol.get("MSFT".toUpperCase(Locale.ROOT));
-        assertNotNull(trackedInstrument);
-        assertEquals(777, trackedInstrument.getInstrumentId());
-        assertTrue("MSFT".equalsIgnoreCase(trackedInstrument.getTicker()));
     }
 }

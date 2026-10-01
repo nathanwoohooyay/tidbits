@@ -179,6 +179,7 @@ class OrderServiceTest {
     void updateOrderStatus_throwsForFinalStatusTransition() {
         Order order = order(1, 2, 1.0, 10.0, OrderType.BUY, OrderStatus.FILLED);
         order.setOrderId(3);
+        when(accountRepository.findById(1)).thenReturn(Optional.of(account(1, 1000.0)));
         when(orderRepository.findById(3)).thenReturn(Optional.of(order));
 
         BadRequestException ex = assertThrows(
@@ -193,6 +194,7 @@ class OrderServiceTest {
     void updateOrderStatus_updatesAndTracksHistoryForValidTransition() {
         Order order = order(1, 2, 1.0, 10.0, OrderType.BUY, OrderStatus.PLACED);
         order.setOrderId(3);
+        when(accountRepository.findById(1)).thenReturn(Optional.of(account(1, 1000.0)));
         when(orderRepository.findById(3)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

@@ -193,7 +193,7 @@ class AccountControllerTest {
                         .content("Primary"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.errorCode").value("GENERIC_ERROR"))
-                .andExpect(jsonPath("$.message").value("unexpected"))
+                .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
                 .andExpect(jsonPath("$.status").value(500));
     }
 

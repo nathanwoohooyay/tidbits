@@ -1,6 +1,7 @@
 package com.tidbits.service;
 
 import com.tidbits.exception.BadRequestException;
+import com.tidbits.model.dto.PricingQuoteDTO;
 import com.tidbits.model.entity.Account;
 import com.tidbits.model.entity.AccountHolding;
 import com.tidbits.model.entity.AccountTransaction;
@@ -25,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,6 +58,9 @@ class OrderServiceTest {
     @Mock
     private InstrumentRepository instrumentRepository;
 
+    @Mock
+    private PricingService pricingService;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -64,6 +69,8 @@ class OrderServiceTest {
         Order order = order(1, 2, 10.0, 25.0, OrderType.BUY, null);
         when(accountRepository.findById(1)).thenReturn(Optional.of(account(1, 100.0)));
         when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
+        when(pricingService.requestQuotePriceFromFauxnance(List.of("AAPL")))
+            .thenReturn(List.of(quote("AAPL", 25.0, 20.0, 25.0)));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> orderService.createOrder(order));
 
@@ -78,6 +85,8 @@ class OrderServiceTest {
 
         when(accountRepository.findById(1)).thenReturn(Optional.of(account));
         when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
+        when(pricingService.requestQuotePriceFromFauxnance(List.of("AAPL")))
+            .thenReturn(List.of(quote("AAPL", 999.0, 49.0, 50.0)));
         when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.empty());
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order saved = invocation.getArgument(0);
@@ -90,6 +99,7 @@ class OrderServiceTest {
         Order placed = orderService.createOrder(order);
 
         assertEquals(OrderStatus.PLACED, placed.getStatus());
+        assertEquals(50.0, placed.getStockPrice());
         assertEquals(500.0, account.getCashBalance());
 
         ArgumentCaptor<AccountHolding> holdingCaptor = ArgumentCaptor.forClass(AccountHolding.class);
@@ -114,12 +124,39 @@ class OrderServiceTest {
 
         when(accountRepository.findById(1)).thenReturn(Optional.of(account));
         when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
+        when(pricingService.requestQuotePriceFromFauxnance(List.of("AAPL")))
+            .thenReturn(List.of(quote("AAPL", 100.0, 100.0, 101.0)));
         when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.of(holding));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> orderService.createOrder(order));
 
         assertEquals("Insufficient holdings quantity for sell order.", ex.getMessage());
         verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void createOrder_sellOrderUsesBidPriceForExecution() {
+        Order order = order(1, 2, 2.0, 1.0, OrderType.SELL, null);
+        Account account = account(1, 1000.0);
+        AccountHolding holding = new AccountHolding(7, 1, 2, 5.0, 500.0, LocalDateTime.now());
+
+        when(accountRepository.findById(1)).thenReturn(Optional.of(account));
+        when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
+        when(pricingService.requestQuotePriceFromFauxnance(List.of("AAPL")))
+            .thenReturn(List.of(quote("AAPL", 900.0, 80.0, 110.0)));
+        when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.of(holding));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order saved = invocation.getArgument(0);
+            if (saved.getOrderId() == null) {
+                saved.setOrderId(100);
+            }
+            return saved;
+        });
+
+        Order placed = orderService.createOrder(order);
+
+        assertEquals(80.0, placed.getStockPrice());
+        assertEquals(1160.0, account.getCashBalance());
     }
 
     @Test
@@ -161,8 +198,8 @@ class OrderServiceTest {
         instrument.setInstrumentId(instrumentId);
         instrument.setTicker("AAPL");
         instrument.setName("Apple Inc.");
-        instrument.setType(InstrumentType.STOCK);
-        instrument.setMarket("NASDAQ");
+        instrument.setType(InstrumentType.equity);
+        instrument.setExchange("NASDAQ");
         return instrument;
     }
 
@@ -176,5 +213,13 @@ class OrderServiceTest {
         order.setOrderType(orderType);
         order.setStatus(status);
         return order;
+    }
+
+    private PricingQuoteDTO quote(String symbol, Double price) {
+        return quote(symbol, price, price, price);
+    }
+
+    private PricingQuoteDTO quote(String symbol, Double price, Double bid, Double ask) {
+        return new PricingQuoteDTO(symbol, price, null, bid, ask, null, null, "USD", null, false, "fauxnance", null, null);
     }
 }

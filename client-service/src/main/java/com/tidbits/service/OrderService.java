@@ -3,6 +3,7 @@ package com.tidbits.service;
 import com.tidbits.exception.BadRequestException;
 import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.dto.InstrumentDTO;
+import com.tidbits.model.dto.PricingQuoteDTO;
 import com.tidbits.model.dto.OrderResponseDTO;
 import com.tidbits.model.dto.OrderStatusHistoryDTO;
 import com.tidbits.model.entity.Account;
@@ -52,6 +53,9 @@ public class OrderService {
     @Autowired
     private InstrumentRepository instrumentRepository;
 
+    @Autowired
+    private PricingService pricingService;
+
     private static final Set<OrderStatus> FINAL_STATUSES = Set.of(
             OrderStatus.FILLED,
             OrderStatus.CANCELED,
@@ -65,8 +69,11 @@ public class OrderService {
         Account account = accountRepository.findById(order.getAccountId())
                 .orElseThrow(() -> new ResourceNotFoundException("Account " + order.getAccountId() + " not found."));
 
-        instrumentRepository.findById(order.getInstrumentId())
+        Instrument instrument = instrumentRepository.findById(order.getInstrumentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Instrument " + order.getInstrumentId() + " not found."));
+
+        double quotePrice = resolveQuotePrice(instrument, order.getOrderType());
+        order.setStockPrice(quotePrice);
 
         double totalAmount = order.getQuantity() * order.getStockPrice();
         if (order.getOrderType() == OrderType.BUY) {
@@ -167,7 +174,7 @@ public class OrderService {
             instrumentDTO.setTicker(instrument.getTicker());
             instrumentDTO.setName(instrument.getName());
             instrumentDTO.setType(instrument.getType());
-            instrumentDTO.setMarket(instrument.getMarket());
+            instrumentDTO.setExchange(instrument.getExchange());
             dto.setInstrument(instrumentDTO);
         }
 
@@ -205,10 +212,31 @@ public class OrderService {
         if (order.getQuantity() == null || order.getQuantity() <= 0) {
             throw new BadRequestException("Order quantity must be greater than zero.");
         }
+    }
 
-        if (order.getStockPrice() == null || order.getStockPrice() <= 0) {
-            throw new BadRequestException("Order price must be greater than zero.");
+    private double resolveQuotePrice(Instrument instrument, OrderType orderType) {
+        if (instrument.getTicker() == null || instrument.getTicker().isBlank()) {
+            throw new BadRequestException("Instrument " + instrument.getInstrumentId() + " is missing a ticker symbol.");
         }
+
+        List<PricingQuoteDTO> quotes = pricingService.requestQuotePriceFromFauxnance(List.of(instrument.getTicker()));
+        if (quotes.isEmpty()) {
+            throw new BadRequestException("No quote data was returned for symbol " + instrument.getTicker() + ".");
+        }
+
+        PricingQuoteDTO quote = quotes.get(0);
+        if (quote.errorCode() != null) {
+            String errorMessage = quote.errorMessage() == null ? quote.errorCode() : quote.errorCode() + ": " + quote.errorMessage();
+            throw new BadRequestException("Quote request failed for symbol " + instrument.getTicker() + ". " + errorMessage);
+        }
+
+        Double sidePrice = orderType == OrderType.BUY ? quote.ask() : quote.bid();
+        String side = orderType == OrderType.BUY ? "ask" : "bid";
+        if (sidePrice == null || sidePrice <= 0) {
+            throw new BadRequestException("Invalid " + side + " quote price returned for symbol " + instrument.getTicker() + ".");
+        }
+
+        return sidePrice;
     }
 
     private void processBuyOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {

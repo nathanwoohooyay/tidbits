@@ -311,7 +311,7 @@ public class PricingService {
         }
     }
 
-    private List<PricingQuoteDTO> requestQuotePriceFromFauxnance(List<String> symbols) {
+    public List<PricingQuoteDTO> requestQuotePriceFromFauxnance(List<String> symbols) {
         HttpEntity<Void> requestEntity = authRequestEntity();
         String symbolsParam = String.join(",", symbols);
 

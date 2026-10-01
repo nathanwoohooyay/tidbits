@@ -223,10 +223,10 @@ public class PricingService {
                 null,
                 instrument.getChangePercent(),
                 instrument.getPrevClose(),
-                null,
+                instrument.getCurrency(),
                 instrument.getLastUpdated() == null ? null : instrument.getLastUpdated().toString(),
                 null,
-                null,
+                "database",
                 null,
                 null
         );
@@ -473,7 +473,7 @@ public class PricingService {
                     numberOrNull(quoteNode.path("bid")),
                     numberOrNull(quoteNode.path("ask")),
                     numberOrNull(quoteNode.path("changePercent")),
-                    numberOrNull(quoteNode.path("prevClose")),
+                    numberOrNull(quoteNode.path("previousClose")),
                     textOrNull(quoteNode.path("currency")),
                     textOrNull(quoteNode.path("asOf")),
                     item.path("stale").asBoolean(false),

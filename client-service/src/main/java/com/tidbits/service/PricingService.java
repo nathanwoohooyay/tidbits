@@ -1,12 +1,14 @@
 package com.tidbits.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.nimbusds.jose.jwk.source.RateLimitReachedException;
 import com.tidbits.exception.*;
 import com.tidbits.model.dto.PricingBatchResponseDTO;
 import com.tidbits.model.dto.PricingCandleDTO;
 import com.tidbits.model.dto.PricingCandlesResponseDTO;
 import com.tidbits.model.dto.PricingQuoteDTO;
+import com.tidbits.model.entity.Instrument;
+import com.tidbits.model.enums.InstrumentType;
+import com.tidbits.repository.InstrumentRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -24,9 +26,14 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class PricingService {
@@ -34,55 +41,106 @@ public class PricingService {
     private static final int MAX_SYMBOLS = 25;
 
     private final RestTemplate restTemplate;
+    private final InstrumentRepository instrumentRepository;
     private final String apiKey;
+    private final long quoteCacheTtlMinutes;
 
     public PricingService(
             RestTemplateBuilder restTemplateBuilder,
+            InstrumentRepository instrumentRepository,
             @Value("${fauxnance.base-url}") String fauxnanceBaseUrl,
-            @Value("${fauxnance.api-key:}") String apiKey
+            @Value("${fauxnance.api-key:}") String apiKey,
+            @Value("${pricing.quote-cache-ttl-minutes:5}") long quoteCacheTtlMinutes
     ) {
         this.restTemplate = restTemplateBuilder
                 .rootUri(fauxnanceBaseUrl)
                 .build();
+        this.instrumentRepository = instrumentRepository;
         this.apiKey = apiKey;
+        this.quoteCacheTtlMinutes = quoteCacheTtlMinutes;
     }
 
     public PricingBatchResponseDTO getBatchQuotes(List<String> rawSymbols) {
-        requireApiKey();
-
         List<String> symbols = normalizeSymbols(rawSymbols);
-        String symbolsParam = String.join(",", symbols);
+        List<PricingQuoteDTO> quotes = getDbQuoteOrRequestQuote(symbols);
 
-        HttpEntity<Void> requestEntity = authRequestEntity();
+        String asOf = quotes.stream()
+                .map(PricingQuoteDTO::asOf)
+                .filter(value -> value != null && !value.isBlank())
+                .max(String::compareTo)
+                .orElse(null);
 
-        try {
-            ResponseEntity<JsonNode> response = restTemplate.exchange(
-                    "/quotes?symbols={symbols}",
-                    HttpMethod.GET,
-                    requestEntity,
-                    JsonNode.class,
-                    symbolsParam
-            );
+        return new PricingBatchResponseDTO(asOf, quotes);
+    }
 
-            JsonNode body = response.getBody();
-            if (body == null) {
-                throw new BusinessException("Fauxnance returned an empty response.");
+    public List<PricingQuoteDTO> getDbQuoteOrRequestQuote(List<String> symbols) {
+        List<PricingQuoteDTO> dbQuotes = new ArrayList<>();
+        List<String> symbolsToRequest = new ArrayList<>();
+        Map<String, Instrument> existingInstrumentsBySymbol = new HashMap<>();
+
+        for (String symbol : symbols) {
+            Optional<Instrument> instrument = getDbQuote(symbol);
+            if (instrument.isPresent() && isFresh(instrument.get())) {
+                dbQuotes.add(toDatabaseQuoteResponse(instrument.get()));
+                continue;
             }
 
-            return toPricingResponse(body);
-        } catch (HttpClientErrorException.BadRequest ex) {
-            throw new BadRequestException("Invalid symbol list for Fauxnance batch quotes.");
-        } catch (HttpClientErrorException.Unauthorized ex) {
-            throw new AuthenticationException("Fauxnance rejected the API key. Check FAUXNANCE_API_KEY.");
-        } catch (HttpClientErrorException.Forbidden ex) {
-            throw new AccessDeniedException("Permissions lacked to access Fauxnance route.");
-        } catch (HttpClientErrorException.TooManyRequests ex) {
-            throw new RateLimitExceededException("Fauxnance rate limit reached. Try again later.");
-        } catch (HttpServerErrorException | ResourceAccessException ex) {
-            throw new BusinessException("Fauxnance is unavailable right now. Try again later.");
-        } catch (RestClientException ex) {
-            throw new BusinessException("Failed to call Fauxnance batch quotes endpoint.");
+            symbolsToRequest.add(symbol);
+            existingInstrumentsBySymbol.put(symbol.toUpperCase(Locale.ROOT), instrument.orElse(null));
         }
+
+        List<PricingQuoteDTO> requestedQuotes = getRequestedQuotes(symbolsToRequest, existingInstrumentsBySymbol);
+
+        Map<String, PricingQuoteDTO> quotesBySymbol = new HashMap<>();
+        for (PricingQuoteDTO quote : dbQuotes) {
+            if (quote.symbol() != null) {
+                quotesBySymbol.put(quote.symbol().toUpperCase(Locale.ROOT), quote);
+            }
+        }
+        for (PricingQuoteDTO quote : requestedQuotes) {
+            if (quote.symbol() != null) {
+                quotesBySymbol.put(quote.symbol().toUpperCase(Locale.ROOT), quote);
+            }
+        }
+
+        List<PricingQuoteDTO> orderedQuotes = new ArrayList<>(symbols.size());
+        for (String symbol : symbols) {
+            PricingQuoteDTO quote = quotesBySymbol.get(symbol.toUpperCase(Locale.ROOT));
+            if (quote != null) {
+                orderedQuotes.add(quote);
+            }
+        }
+
+        return orderedQuotes;
+    }
+
+    public Optional<Instrument> getDbQuote(String symbol) {
+        return instrumentRepository.findByTickerIgnoreCase(symbol);
+    }
+
+    public List<PricingQuoteDTO> getRequestedQuotes(List<String> symbols, Map<String, Instrument> existingInstrumentsBySymbol) {
+        if (symbols.isEmpty()) {
+            return List.of();
+        }
+
+        requireApiKey();
+
+        List<PricingQuoteDTO> requestedQuotes = requestQuotePriceFromFauxnance(symbols);
+        for (PricingQuoteDTO requestedQuote : requestedQuotes) {
+            if (requestedQuote.symbol() == null) {
+                continue;
+            }
+
+            String symbolKey = requestedQuote.symbol().toUpperCase(Locale.ROOT);
+            Instrument instrument = existingInstrumentsBySymbol.get(symbolKey);
+            if (instrument == null) {
+                instrument = requestSymbolInfoFromFauxnance(requestedQuote.symbol());
+            }
+
+            persistRequestedQuote(instrument, requestedQuote);
+        }
+
+        return requestedQuotes;
     }
 
     public PricingCandlesResponseDTO getHistoricalCandles(String rawSymbol, LocalDate from, LocalDate to, String interval) {
@@ -146,6 +204,162 @@ public class PricingService {
                 null,
                 List.of()
         );
+    }
+
+    private boolean isFresh(Instrument instrument) {
+        if (instrument.getLastUpdated() == null || quoteCacheTtlMinutes <= 0) {
+            return false;
+        }
+
+        return !instrument.getLastUpdated().isBefore(LocalDateTime.now().minusMinutes(quoteCacheTtlMinutes));
+    }
+
+    private PricingQuoteDTO toDatabaseQuoteResponse(Instrument instrument) {
+        return new PricingQuoteDTO(
+                instrument.getTicker(),
+                instrument.getLastPrice(),
+                instrument.getChange(),
+                null,
+                null,
+                instrument.getChangePercent(),
+                instrument.getPrevClose(),
+                instrument.getCurrency(),
+                instrument.getLastUpdated() == null ? null : instrument.getLastUpdated().toString(),
+                null,
+                "database",
+                null,
+                null
+        );
+    }
+
+    private void persistRequestedQuote(Instrument instrument, PricingQuoteDTO quote) {
+        if (quote.price() == null) {
+            return;
+        }
+
+        instrument.setTicker(quote.symbol());
+        instrument.setLastPrice(quote.price());
+        instrument.setCurrency(quote.currency());
+        instrument.setLastUpdated(asDateTimeOrNow(quote.asOf()));
+        instrument.setChange(quote.change());
+        instrument.setChangePercent(quote.changePercent());
+        instrument.setPrevClose(quote.prevClose());
+        instrumentRepository.save(instrument);
+    }
+
+    private Instrument requestSymbolInfoFromFauxnance(String symbol) {
+        HttpEntity<Void> requestEntity = authRequestEntity();
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(
+                    "/symbols/{symbol}",
+                    HttpMethod.GET,
+                    requestEntity,
+                    JsonNode.class,
+                    symbol
+            );
+
+            JsonNode body = response.getBody();
+            if (body == null) {
+                throw new BusinessException("Fauxnance returned an empty symbol response.");
+            }
+
+            JsonNode dataNode = body.path("data");
+            if (!dataNode.isObject() || dataNode.isMissingNode()) {
+                throw new BusinessException("Fauxnance symbol response format was not recognized.");
+            }
+
+            String resolvedSymbol = textOrNull(dataNode.path("symbol"));
+            String name = textOrNull(dataNode.path("name"));
+            String exchange = textOrNull(dataNode.path("exchange"));
+            String currency = textOrNull(dataNode.path("currency"));
+
+            Instrument instrument = new Instrument();
+            instrument.setTicker(resolvedSymbol == null ? symbol : resolvedSymbol);
+            instrument.setName(name == null ? instrument.getTicker() : name);
+            instrument.setType(toInstrumentType(dataNode.path("type")));
+            instrument.setExchange(exchange == null ? "UNKNOWN" : exchange);
+            instrument.setCurrency(currency);
+            return instrument;
+        } catch (HttpClientErrorException.BadRequest ex) {
+            throw new BadRequestException("Invalid symbol for Fauxnance symbol request.");
+        } catch (HttpClientErrorException.NotFound ex) {
+            throw new ResourceNotFoundException("Symbol was not recognized by Fauxnance.");
+        } catch (HttpClientErrorException.Unauthorized ex) {
+            throw new AuthenticationException("Fauxnance rejected the API key. Check FAUXNANCE_API_KEY.");
+        } catch (HttpClientErrorException.Forbidden ex) {
+            throw new AccessDeniedException("Permissions lacked to access Fauxnance route.");
+        } catch (HttpClientErrorException.TooManyRequests ex) {
+            throw new RateLimitExceededException("Fauxnance rate limit reached. Try again later.");
+        } catch (HttpServerErrorException | ResourceAccessException ex) {
+            throw new BusinessException("Fauxnance is unavailable right now. Try again later.");
+        } catch (RestClientException ex) {
+            throw new BusinessException("Failed to call Fauxnance symbol endpoint.");
+        }
+    }
+
+    private InstrumentType toInstrumentType(JsonNode node) {
+        String type = textOrNull(node);
+        if (type == null) {
+            return InstrumentType.equity;
+        }
+
+        try {
+            return InstrumentType.valueOf(type.toLowerCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return InstrumentType.equity;
+        }
+    }
+
+    private List<PricingQuoteDTO> requestQuotePriceFromFauxnance(List<String> symbols) {
+        HttpEntity<Void> requestEntity = authRequestEntity();
+        String symbolsParam = String.join(",", symbols);
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(
+                    "/quotes?symbols={symbols}",
+                    HttpMethod.GET,
+                    requestEntity,
+                    JsonNode.class,
+                    symbolsParam
+            );
+
+            JsonNode body = response.getBody();
+            if (body == null) {
+                throw new BusinessException("Fauxnance returned an empty response.");
+            }
+
+            List<PricingQuoteDTO> quotes = toPricingQuotes(body);
+            if (quotes.isEmpty()) {
+                throw new BusinessException("Fauxnance returned no quote rows.");
+            }
+
+            return quotes;
+        } catch (HttpClientErrorException.BadRequest ex) {
+            throw new BadRequestException("Invalid symbol(s) for Fauxnance quote request.");
+        } catch (HttpClientErrorException.Unauthorized ex) {
+            throw new AuthenticationException("Fauxnance rejected the API key. Check FAUXNANCE_API_KEY.");
+        } catch (HttpClientErrorException.Forbidden ex) {
+            throw new AccessDeniedException("Permissions lacked to access Fauxnance route.");
+        } catch (HttpClientErrorException.TooManyRequests ex) {
+            throw new RateLimitExceededException("Fauxnance rate limit reached. Try again later.");
+        } catch (HttpServerErrorException | ResourceAccessException ex) {
+            throw new BusinessException("Fauxnance is unavailable right now. Try again later.");
+        } catch (RestClientException ex) {
+            throw new BusinessException("Failed to call Fauxnance batch quotes endpoint.");
+        }
+    }
+
+    private LocalDateTime asDateTimeOrNow(String value) {
+        if (value == null || value.isBlank()) {
+            return LocalDateTime.now();
+        }
+
+        try {
+            return LocalDateTime.parse(value);
+        } catch (RuntimeException ex) {
+            return LocalDateTime.now();
+        }
     }
 
     private void requireApiKey() {
@@ -215,6 +429,12 @@ public class PricingService {
 
     private PricingBatchResponseDTO toPricingResponse(JsonNode body) {
         String asOf = body.path("meta").path("asOf").asText(null);
+        List<PricingQuoteDTO> quotes = toPricingQuotes(body);
+
+        return new PricingBatchResponseDTO(asOf, quotes);
+    }
+
+    private List<PricingQuoteDTO> toPricingQuotes(JsonNode body) {
         JsonNode quotesNode = body.path("data").path("quotes");
 
         if (!quotesNode.isArray()) {
@@ -232,6 +452,11 @@ public class PricingService {
                         null,
                         null,
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         false,
                         null,
                         errorNode.path("code").asText(null),
@@ -244,6 +469,11 @@ public class PricingService {
             quotes.add(new PricingQuoteDTO(
                     quoteNode.path("symbol").asText(symbol),
                     numberOrNull(quoteNode.path("price")),
+                    numberOrNull(quoteNode.path("change")),
+                    numberOrNull(quoteNode.path("bid")),
+                    numberOrNull(quoteNode.path("ask")),
+                    numberOrNull(quoteNode.path("changePercent")),
+                    numberOrNull(quoteNode.path("previousClose")),
                     textOrNull(quoteNode.path("currency")),
                     textOrNull(quoteNode.path("asOf")),
                     item.path("stale").asBoolean(false),
@@ -253,7 +483,7 @@ public class PricingService {
             ));
         }
 
-        return new PricingBatchResponseDTO(asOf, quotes);
+        return quotes;
     }
 
     private PricingCandlesResponseDTO toCandlesResponse(JsonNode body) {

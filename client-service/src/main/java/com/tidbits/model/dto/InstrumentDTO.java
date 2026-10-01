@@ -7,17 +7,17 @@ public class InstrumentDTO {
     private String ticker;
     private String name;
     private InstrumentType type;
-    private String market;
+    private String exchange;
 
     public InstrumentDTO() {
     }
 
-    public InstrumentDTO(Integer instrumentId, String ticker, String name, InstrumentType type, String market) {
+    public InstrumentDTO(Integer instrumentId, String ticker, String name, InstrumentType type, String exchange) {
         this.instrumentId = instrumentId;
         this.ticker = ticker;
         this.name = name;
         this.type = type;
-        this.market = market;
+        this.exchange = exchange;
     }
 
     public Integer getInstrumentId() { return instrumentId; }
@@ -28,6 +28,6 @@ public class InstrumentDTO {
     public void setName(String name) { this.name = name; }
     public InstrumentType getType() { return type; }
     public void setType(InstrumentType type) { this.type = type; }
-    public String getMarket() { return market; }
-    public void setMarket(String market) { this.market = market; }
+    public String getExchange() { return exchange; }
+    public void setExchange(String exchange) { this.exchange = exchange; }
 }

@@ -60,9 +60,12 @@ public class PricingService {
         this.quoteCacheTtlMinutes = quoteCacheTtlMinutes;
     }
 
-    public PricingBatchResponseDTO getBatchQuotes(List<String> rawSymbols) {
+    public PricingBatchResponseDTO getBatchQuotes(List<String> rawSymbols, boolean refresh) {
+
         List<String> symbols = normalizeSymbols(rawSymbols);
-        List<PricingQuoteDTO> quotes = getDbQuoteOrRequestQuote(symbols);
+        List<PricingQuoteDTO> quotes = refresh
+                ? getRefreshedQuotes(symbols)
+                : getDbQuoteOrRequestQuote(symbols);
 
         String asOf = quotes.stream()
                 .map(PricingQuoteDTO::asOf)
@@ -73,20 +76,37 @@ public class PricingService {
         return new PricingBatchResponseDTO(asOf, quotes);
     }
 
+    private List<PricingQuoteDTO> getRefreshedQuotes(List<String> symbols) {
+        return getRequestedQuotes(symbols, findExistingInstrumentsBySymbol(symbols));
+    }
+
+    private Map<String, Instrument> findExistingInstrumentsBySymbol(List<String> symbols) {
+        Map<String, Instrument> existingInstrumentsBySymbol = new HashMap<>();
+        List<Instrument> existingInstruments = getDbQuotes(symbols);
+
+        for (Instrument instrument : existingInstruments) {
+            existingInstrumentsBySymbol.put(instrument.getTicker().toUpperCase(Locale.ROOT), instrument);
+        }
+
+        return existingInstrumentsBySymbol;
+    }
+
     public List<PricingQuoteDTO> getDbQuoteOrRequestQuote(List<String> symbols) {
         List<PricingQuoteDTO> dbQuotes = new ArrayList<>();
         List<String> symbolsToRequest = new ArrayList<>();
-        Map<String, Instrument> existingInstrumentsBySymbol = new HashMap<>();
+        Map<String, Instrument> existingInstrumentsBySymbol = findExistingInstrumentsBySymbol(symbols);
 
         for (String symbol : symbols) {
-            Optional<Instrument> instrument = getDbQuote(symbol);
-            if (instrument.isPresent() && isFresh(instrument.get())) {
-                dbQuotes.add(toDatabaseQuoteResponse(instrument.get()));
+
+            Instrument instrument = existingInstrumentsBySymbol.get(symbol.toUpperCase(Locale.ROOT));
+            
+            if (instrument != null && isFresh(instrument)) {
+                dbQuotes.add(toDatabaseQuoteResponse(instrument));
                 continue;
             }
 
             symbolsToRequest.add(symbol);
-            existingInstrumentsBySymbol.put(symbol.toUpperCase(Locale.ROOT), instrument.orElse(null));
+            existingInstrumentsBySymbol.put(symbol.toUpperCase(Locale.ROOT), instrument);
         }
 
         List<PricingQuoteDTO> requestedQuotes = getRequestedQuotes(symbolsToRequest, existingInstrumentsBySymbol);
@@ -114,8 +134,8 @@ public class PricingService {
         return orderedQuotes;
     }
 
-    public Optional<Instrument> getDbQuote(String symbol) {
-        return instrumentRepository.findByTickerIgnoreCase(symbol);
+    public List<Instrument> getDbQuotes(List<String> symbols) {
+        return instrumentRepository.findByTickerInIgnoreCase(symbols);
     }
 
     public List<PricingQuoteDTO> getRequestedQuotes(List<String> symbols, Map<String, Instrument> existingInstrumentsBySymbol) {
@@ -216,6 +236,7 @@ public class PricingService {
 
     private PricingQuoteDTO toDatabaseQuoteResponse(Instrument instrument) {
         return new PricingQuoteDTO(
+                instrument.getInstrumentId(),
                 instrument.getTicker(),
                 instrument.getLastPrice(),
                 instrument.getChange(),
@@ -448,6 +469,7 @@ public class PricingService {
             if (item.hasNonNull("error")) {
                 JsonNode errorNode = item.path("error");
                 quotes.add(new PricingQuoteDTO(
+                        null,
                         symbol,
                         null,
                         null,

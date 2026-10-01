@@ -14,6 +14,6 @@ public interface InstrumentRepository extends JpaRepository<Instrument, Integer>
     Optional<Instrument> findByTicker(String ticker);
     Optional<Instrument> findByTickerIgnoreCase(String ticker);
 
-    @Query("SELECT i FROM Instrument i WHERE LOWER(i.ticker) IN :tickers")
-    List<Instrument> findByTickerInIgnoreCase(@Param("tickers") List<String> tickers);
+    @Query("SELECT i FROM Instrument i WHERE i.ticker IN :tickers")
+    List<Instrument> findByTickerIn(@Param("tickers") List<String> tickers);
 }

@@ -26,7 +26,7 @@ public class PricingController {
     }
 
     @GetMapping("/quotes")
-    public ResponseEntity<PricingBatchResponseDTO> getQuotes(@RequestParam String symbols, @RequestParam(required = false, defaultValue = false) boolean refresh) {
+    public ResponseEntity<PricingBatchResponseDTO> getQuotes(@RequestParam String symbols, @RequestParam(required = false, defaultValue = "false") boolean refresh) {
         List<String> requestedSymbols = Arrays.stream(symbols.split(","))
                 .map(String::trim)
                 .filter(symbol -> !symbol.isBlank())

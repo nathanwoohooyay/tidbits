@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleGenericException(Exception ex) {
         System.out.println("Exception caught: " + ex.getMessage());
         ex.printStackTrace();
-        ErrorResponseDTO error =  ErrorResponseDTO.of("GENERIC_ERROR", ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value());
+        ErrorResponseDTO error =  ErrorResponseDTO.of("GENERIC_ERROR", "An unexpected error occurred", HttpStatus.INTERNAL_SERVER_ERROR.value());
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

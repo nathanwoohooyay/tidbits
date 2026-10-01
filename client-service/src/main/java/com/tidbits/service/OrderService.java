@@ -22,6 +22,9 @@ import com.tidbits.repository.InstrumentRepository;
 import com.tidbits.repository.OrderRepository;
 import com.tidbits.repository.OrderStatusHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +33,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -68,8 +70,7 @@ public class OrderService {
     public Order createOrder(Order order) {
         validateOrderRequest(order);
 
-        Account account = accountRepository.findById(order.getAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("Account " + order.getAccountId() + " not found."));
+        Account account = getAuthorizedAccount(order.getAccountId());
 
         Instrument instrument = instrumentRepository.findById(order.getInstrumentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Instrument " + order.getInstrumentId() + " not found."));
@@ -107,6 +108,7 @@ public class OrderService {
     }
 
     public Order getOrderByIdForAccount(Integer accountId, Integer orderId) {
+        getAuthorizedAccount(accountId);
         return orderRepository.findById(orderId)
                 .filter(order -> order.getAccountId().equals(accountId))
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -114,6 +116,7 @@ public class OrderService {
     }
 
     public List<Order> getOrdersByAccountId(Integer accountId) {
+        getAuthorizedAccount(accountId);
         return orderRepository.findByAccountId(accountId);
     }
 
@@ -121,6 +124,8 @@ public class OrderService {
     public Order updateOrder(Integer orderId, Order order) {
         Order existingOrder = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order " + orderId + " not found."));
+
+        getAuthorizedAccount(existingOrder.getAccountId());
 
         if (order.getQuantity() != null && order.getQuantity() > 0) {
             existingOrder.setQuantity(order.getQuantity());
@@ -146,6 +151,7 @@ public class OrderService {
 
     @Transactional
     public Order updateOrderStatus(Integer accountId, Integer orderId, OrderStatus newStatus) {
+        getAuthorizedAccount(accountId);
         Order order = getOrderByIdForAccount(accountId, orderId);
 
         if (order.getStatus() == newStatus) {
@@ -159,6 +165,31 @@ public class OrderService {
         Order updated = orderRepository.save(order);
         createStatusHistory(orderId, oldStatus, newStatus);
         return updated;
+    }
+
+    private Account getAuthorizedAccount(Integer accountId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account " + accountId + " not found."));
+
+        Integer authenticatedUserId = getAuthenticatedUserId();
+        if (!authenticatedUserId.equals(account.getUserId())) {
+            throw new AccessDeniedException("Authenticated user does not own account " + accountId + ".");
+        }
+
+        return account;
+    }
+
+    private Integer getAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new AccessDeniedException("Authenticated user id is required.");
+        }
+
+        try {
+            return Integer.valueOf(authentication.getName());
+        } catch (NumberFormatException ex) {
+            throw new AccessDeniedException("Authenticated user id is invalid.");
+        }
     }
 
     public OrderResponseDTO toResponseDto(Order order) {

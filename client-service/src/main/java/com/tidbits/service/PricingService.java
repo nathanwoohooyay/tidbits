@@ -145,6 +145,8 @@ public class PricingService {
 
         requireApiKey();
 
+        Map<String, Instrument> mutableInstrumentsBySymbol = new HashMap<>(existingInstrumentsBySymbol);
+
         List<PricingQuoteDTO> requestedQuotes = requestQuotePriceFromFauxnance(symbols);
         List<PricingQuoteDTO> quotesWithInstrumentIds = new ArrayList<>(requestedQuotes.size());
         for (PricingQuoteDTO requestedQuote : requestedQuotes) {
@@ -154,13 +156,13 @@ public class PricingService {
             }
 
             String symbolKey = requestedQuote.symbol().toUpperCase(Locale.ROOT);
-            Instrument instrument = existingInstrumentsBySymbol.get(symbolKey);
+            Instrument instrument = mutableInstrumentsBySymbol.get(symbolKey);
             if (instrument == null) {
                 instrument = requestSymbolInfoFromFauxnance(requestedQuote.symbol());
             }
 
             instrument = persistRequestedQuote(instrument, requestedQuote);
-            existingInstrumentsBySymbol.put(symbolKey, instrument);
+            mutableInstrumentsBySymbol.put(symbolKey, instrument);
             quotesWithInstrumentIds.add(withInstrumentId(requestedQuote, instrument.getInstrumentId()));
         }
 

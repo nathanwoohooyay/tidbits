@@ -18,12 +18,16 @@ import com.tidbits.repository.AccountTransactionRepository;
 import com.tidbits.repository.InstrumentRepository;
 import com.tidbits.repository.OrderRepository;
 import com.tidbits.repository.OrderStatusHistoryRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,6 +45,16 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
+
+    @BeforeEach
+    void setUpAuthentication() {
+        SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("1", null));
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Mock
     private OrderRepository orderRepository;
@@ -191,6 +205,7 @@ class OrderServiceTest {
     private Account account(Integer accountId, Double balance) {
         Account account = new Account();
         account.setAccountId(accountId);
+        account.setUserId(1);
         account.setCashBalance(balance);
         return account;
     }
@@ -222,6 +237,21 @@ class OrderServiceTest {
     }
 
     private PricingQuoteDTO quote(String symbol, Double price, Double bid, Double ask) {
-        return new PricingQuoteDTO(symbol, price, null, bid, ask, null, null, "USD", null, false, "fauxnance", null, null);
+        return new PricingQuoteDTO(
+                null,
+                symbol,
+                price,
+                null,
+                bid,
+                ask,
+                null,
+                null,
+                "USD",
+                null,
+                false,
+                "fauxnance",
+                null,
+                null
+        );
     }
 }

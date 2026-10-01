@@ -6,6 +6,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public record PricingQuoteDTO(
         String symbol,
         Double price,
+        Double change,
+        Double bid,
+        Double ask,
+        Double changePercent,
+        Double prevClose,
         String currency,
         String asOf,
         Boolean stale,

@@ -218,7 +218,12 @@ public class PricingService {
         return new PricingQuoteDTO(
                 instrument.getTicker(),
                 instrument.getLastPrice(),
-                instrument.getCurrency(),
+                instrument.getChange(),
+                null,
+                null,
+                instrument.getChangePercent(),
+                instrument.getPrevClose(),
+                null,
                 instrument.getLastUpdated() == null ? null : instrument.getLastUpdated().toString(),
                 null,
                 null,
@@ -236,6 +241,9 @@ public class PricingService {
         instrument.setLastPrice(quote.price());
         instrument.setCurrency(quote.currency());
         instrument.setLastUpdated(asDateTimeOrNow(quote.asOf()));
+        instrument.setChange(quote.change());
+        instrument.setChangePercent(quote.changePercent());
+        instrument.setPrevClose(quote.prevClose());
         instrumentRepository.save(instrument);
     }
 
@@ -444,6 +452,11 @@ public class PricingService {
                         null,
                         null,
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         false,
                         null,
                         errorNode.path("code").asText(null),
@@ -456,6 +469,11 @@ public class PricingService {
             quotes.add(new PricingQuoteDTO(
                     quoteNode.path("symbol").asText(symbol),
                     numberOrNull(quoteNode.path("price")),
+                    numberOrNull(quoteNode.path("change")),
+                    numberOrNull(quoteNode.path("bid")),
+                    numberOrNull(quoteNode.path("ask")),
+                    numberOrNull(quoteNode.path("changePercent")),
+                    numberOrNull(quoteNode.path("prevClose")),
                     textOrNull(quoteNode.path("currency")),
                     textOrNull(quoteNode.path("asOf")),
                     item.path("stale").asBoolean(false),

@@ -60,6 +60,9 @@ public class OrderService {
     @Autowired
     private PricingService pricingService;
 
+    @Autowired
+    private OrderEventPublisher orderEventPublisher;
+
     private static final Set<OrderStatus> FINAL_STATUSES = Set.of(
             OrderStatus.FILLED,
             OrderStatus.CANCELED,
@@ -104,6 +107,8 @@ public class OrderService {
         transaction.setCreatedAt(LocalDateTime.now());
         accountTransactionRepository.save(transaction);
 
+        publishOrderEvent("ORDER_CREATED", placedOrder);
+
         return placedOrder;
     }
 
@@ -146,7 +151,9 @@ public class OrderService {
             createStatusHistory(existingOrder.getOrderId(), oldStatus, order.getStatus());
         }
 
-        return orderRepository.save(existingOrder);
+        Order updatedOrder = orderRepository.save(existingOrder);
+        publishOrderEvent("ORDER_UPDATED", updatedOrder);
+        return updatedOrder;
     }
 
     @Transactional
@@ -164,7 +171,12 @@ public class OrderService {
         order.setStatus(newStatus);
         Order updated = orderRepository.save(order);
         createStatusHistory(orderId, oldStatus, newStatus);
+        publishOrderEvent("ORDER_STATUS_UPDATED", updated);
         return updated;
+    }
+
+    private void publishOrderEvent(String eventType, Order order) {
+        orderEventPublisher.publish(eventType, order, toResponseDto(order));
     }
 
     private Account getAuthorizedAccount(Integer accountId) {

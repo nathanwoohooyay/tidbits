@@ -77,6 +77,9 @@ class OrderServiceTest {
     @Mock
     private PricingService pricingService;
 
+    @Mock
+    private OrderEventPublisher orderEventPublisher;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -130,6 +133,7 @@ class OrderServiceTest {
         assertEquals(TransactionType.BUY, txCaptor.getValue().getTransactionType());
 
         verify(orderStatusHistoryRepository, times(2)).save(any(OrderStatusHistory.class));
+        verify(orderEventPublisher).publish(eq("ORDER_CREATED"), eq(placed), any());
     }
 
     @Test
@@ -202,6 +206,7 @@ class OrderServiceTest {
 
         assertEquals(OrderStatus.ACCEPTED, updated.getStatus());
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(orderEventPublisher).publish(eq("ORDER_STATUS_UPDATED"), eq(updated), any());
     }
 
     private Account account(Integer accountId, Double balance) {

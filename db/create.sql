@@ -73,7 +73,7 @@ CREATE TABLE order_status_history(
 CREATE TABLE account_transactions (
     transaction_id SERIAL PRIMARY KEY,
     account_id INT NOT NULL REFERENCES accounts(account_id),
-    order_id INT NOT NULL REFERENCES orders(order_id),
+    order_id INT REFERENCES orders(order_id),
     amount NUMERIC(15, 2) NOT NULL CHECK (amount > 0),
     transaction_type transaction_type NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL

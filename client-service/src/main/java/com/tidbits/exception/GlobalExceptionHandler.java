@@ -4,6 +4,7 @@ import com.tidbits.model.dto.ErrorResponseDTO;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -26,8 +27,8 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ErrorResponseDTO> handleBusinessException(BadRequestException ex) {
+    @ExceptionHandler({BadRequestException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<ErrorResponseDTO> handleBusinessException(Exception ex) {
         ErrorResponseDTO error = ErrorResponseDTO.of("BAD_REQUEST", ex.getMessage(), HttpStatus.BAD_REQUEST.value());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }

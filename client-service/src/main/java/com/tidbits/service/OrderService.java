@@ -29,6 +29,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -36,6 +38,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 public class OrderService {
@@ -56,7 +59,7 @@ public class OrderService {
     private AccountTransactionRepository accountTransactionRepository;
 
     @Autowired
-    private OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private OrderStatusHistoryService orderStatusHistoryService;
 
     @Autowired
     private InstrumentRepository instrumentRepository;
@@ -82,13 +85,9 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Instrument " + order.getInstrumentId() + " not found."));
 
         order.setOrderId(null);
-        order.setStatus(OrderStatus.PLACED);
-        Order createdOrder = orderRepository.save(order);
-        createStatusHistory(createdOrder.getOrderId(), null, OrderStatus.PLACED);
+        orderStatusEvent(order, null, OrderStatus.PLACED);
 
-        publishOrderEvent("ORDER_PLACED", createdOrder);
-
-        return createdOrder;
+        return order;
     }
 
     @Transactional
@@ -108,7 +107,7 @@ public class OrderService {
         double quotePrice = resolveQuotePrice(instrument, orderType);
         currOrder.setStockPrice(quotePrice);
 
-        double totalAmount = currOrder.getQuantity() * currOrder.getStockPrice();
+        double totalAmount = floorToTwoDecimals(currOrder.getQuantity() * currOrder.getStockPrice());
 
         boolean status = true;
         if (orderType == OrderType.BUY) {
@@ -118,11 +117,7 @@ public class OrderService {
         }
 
         if (!status) {
-            currOrder.setStatus(OrderStatus.REJECTED);
-            orderRepository.save(currOrder);
-            createStatusHistory(currOrder.getOrderId(), OrderStatus.PLACED, OrderStatus.REJECTED);
-            
-            publishOrderEvent("ORDER_REJECTED", currOrder);
+            orderStatusEvent(currOrder, OrderStatus.PLACED, OrderStatus.REJECTED);
             return currOrder;
         }
 
@@ -136,19 +131,20 @@ public class OrderService {
         transaction.setCreatedAt(LocalDateTime.now());
         accountTransactionRepository.save(transaction);
 
-        currOrder.setStatus(OrderStatus.ACCEPTED);
-        orderRepository.save(currOrder);
-        createStatusHistory(currOrder.getOrderId(), OrderStatus.PLACED, OrderStatus.ACCEPTED);
+        orderStatusEvent(currOrder, OrderStatus.PLACED, OrderStatus.ACCEPTED);
 
-        publishOrderEvent("ORDER_ACCEPTED", currOrder);
+        orderStatusEvent(currOrder, OrderStatus.ACCEPTED, OrderStatus.FILLED);
 
-        currOrder.setStatus(OrderStatus.FILLED);
-        orderRepository.save(currOrder);
-        createStatusHistory(currOrder.getOrderId(), OrderStatus.ACCEPTED, OrderStatus.FILLED);
-
-        publishOrderEvent("ORDER_FILLED", currOrder);
 
         return currOrder;
+    }
+
+    private void orderStatusEvent(Order order, OrderStatus oldStatus, OrderStatus newStatus) {
+        order.setStatus(newStatus);
+        Order createdOrder = orderRepository.save(order);
+        orderStatusHistoryService.switchStatus(order, oldStatus, newStatus);
+        
+        publishOrderEvent("ORDER_" + newStatus.name(), order);
     }
 
     public Order getOrderByIdForAccount(Integer accountId, Integer orderId) {
@@ -169,56 +165,6 @@ public class OrderService {
     public List<Order> getOrdersByAccountId(Integer accountId) {
         getAuthorizedAccount(accountId);
         return orderRepository.findByAccountId(accountId);
-    }
-
-    @Transactional
-    public Order updateOrder(Integer orderId, Order order) {
-        Order existingOrder = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order " + orderId + " not found."));
-
-        getAuthorizedAccount(existingOrder.getAccountId());
-
-        if (order.getQuantity() != null && order.getQuantity() > 0) {
-            existingOrder.setQuantity(order.getQuantity());
-        }
-
-        if (order.getStockPrice() != null && order.getStockPrice() > 0) {
-            existingOrder.setStockPrice(order.getStockPrice());
-        }
-
-        if (order.getOrderType() != null) {
-            existingOrder.setOrderType(order.getOrderType());
-        }
-
-        if (order.getStatus() != null && order.getStatus() != existingOrder.getStatus()) {
-            OrderStatus oldStatus = existingOrder.getStatus();
-            validateStatusTransition(oldStatus, order.getStatus());
-            existingOrder.setStatus(order.getStatus());
-            createStatusHistory(existingOrder.getOrderId(), oldStatus, order.getStatus());
-        }
-
-        Order updatedOrder = orderRepository.save(existingOrder);
-        publishOrderEvent("ORDER_UPDATED", updatedOrder);
-        return updatedOrder;
-    }
-
-    @Transactional
-    public Order updateOrderStatus(Integer accountId, Integer orderId, OrderStatus newStatus) {
-        getAuthorizedAccount(accountId);
-        Order order = getOrderByIdForAccount(accountId, orderId);
-
-        if (order.getStatus() == newStatus) {
-            return order;
-        }
-
-        validateStatusTransition(order.getStatus(), newStatus);
-
-        OrderStatus oldStatus = order.getStatus();
-        order.setStatus(newStatus);
-        Order updated = orderRepository.save(order);
-        createStatusHistory(orderId, oldStatus, newStatus);
-        publishOrderEvent("ORDER_STATUS_UPDATED", updated);
-        return updated;
     }
 
     private void publishOrderEvent(String eventType, Order order) {
@@ -287,7 +233,7 @@ public class OrderService {
             dto.setInstrument(instrumentDTO);
         }
 
-        List<OrderStatusHistoryDTO> history = orderStatusHistoryRepository.findByOrderId(order.getOrderId()).stream()
+        List<OrderStatusHistoryDTO> history = orderStatusHistoryService.getHistoryByOrderId(order.getOrderId()).stream()
                 .sorted(Comparator.comparing(OrderStatusHistory::getChangedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(this::toHistoryDto)
                 .collect(Collectors.toList());
@@ -357,7 +303,7 @@ public class OrderService {
             return false;
         }
 
-        account.setCashBalance(currentBalance - totalAmount);
+        account.setCashBalance(floorToTwoDecimals(currentBalance - totalAmount));
 
         AccountHolding holding = accountHoldingRepository
                 .findByAccountIdAndInstrumentId(account.getAccountId(), instrumentId)
@@ -378,13 +324,13 @@ public class OrderService {
     }
 
     private boolean processSellOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {
-        AccountHolding holding = accountHoldingRepository
-                .findByAccountIdAndInstrumentId(account.getAccountId(), instrumentId)
-                .orElseThrow(() -> new BadRequestException("No holdings available to sell for instrument " + instrumentId + "."));
+        Optional<AccountHolding> holdingOpt = accountHoldingRepository
+                .findByAccountIdAndInstrumentId(account.getAccountId(), instrumentId);
 
-        if (holding.getQuantity() == null || holding.getQuantity() < quantity) {
+        if (holdingOpt.isEmpty() || holdingOpt.get().getQuantity() == null || holdingOpt.get().getQuantity() < quantity) {
             return false;
         }
+        AccountHolding holding = holdingOpt.get();
 
         double previousQuantity = holding.getQuantity();
         double remainingQuantity = previousQuantity - quantity;
@@ -400,18 +346,13 @@ public class OrderService {
         }
 
         double currentBalance = account.getCashBalance() == null ? 0.0 : account.getCashBalance();
-        account.setCashBalance(currentBalance + totalAmount);
+        account.setCashBalance(floorToTwoDecimals(currentBalance + totalAmount));
 
         return true;
     }
 
-    private void createStatusHistory(Integer orderId, OrderStatus oldStatus, OrderStatus newStatus) {
-        OrderStatusHistory statusHistory = new OrderStatusHistory();
-        statusHistory.setOrderId(orderId);
-        statusHistory.setChangedAt(LocalDateTime.now());
-        statusHistory.setOldStatus(oldStatus);
-        statusHistory.setNewStatus(newStatus);
-        orderStatusHistoryRepository.save(statusHistory);
+    private double floorToTwoDecimals(double value) {
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.FLOOR).doubleValue();
     }
 
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
@@ -424,19 +365,14 @@ public class OrderService {
         }
 
         switch (currentStatus) {
-            case CREATED -> {
-                if (!(newStatus == OrderStatus.PENDING || newStatus == OrderStatus.PLACED || newStatus == OrderStatus.CANCELED || newStatus == OrderStatus.REJECTED)) {
-                    throw new BadRequestException("Invalid status transition from CREATED to " + newStatus + ".");
+            case PLACED -> {
+                if (!(newStatus == OrderStatus.PENDING || newStatus == OrderStatus.ACCEPTED || newStatus == OrderStatus.CANCELED || newStatus == OrderStatus.REJECTED)) {
+                    throw new BadRequestException("Invalid status transition from PLACED to " + newStatus + ".");
                 }
             }
             case PENDING -> {
                 if (!(newStatus == OrderStatus.PLACED || newStatus == OrderStatus.CANCELED || newStatus == OrderStatus.REJECTED)) {
                     throw new BadRequestException("Invalid status transition from PENDING to " + newStatus + ".");
-                }
-            }
-            case PLACED -> {
-                if (!(newStatus == OrderStatus.ACCEPTED || newStatus == OrderStatus.CANCELED || newStatus == OrderStatus.REJECTED)) {
-                    throw new BadRequestException("Invalid status transition from PLACED to " + newStatus + ".");
                 }
             }
             case ACCEPTED -> {

@@ -38,22 +38,4 @@ public class OrderController {
         return ResponseEntity.ok(orderService.toResponseDtoList(orders));
     }
 
-    @PatchMapping("/{orderId}/status")
-    public ResponseEntity<OrderResponseDTO> updateOrderStatus(@PathVariable Integer accountId,
-                                                               @PathVariable Integer orderId,
-                                                               @RequestBody OrderStatusUpdateRequestDTO request) {
-        if (request == null || request.getStatus() == null || request.getStatus().isBlank()) {
-            throw new BadRequestException("Order status is required.");
-        }
-
-        OrderStatus status;
-        try {
-            status = OrderStatus.valueOf(request.getStatus().trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            throw new BadRequestException("Unsupported order status: " + request.getStatus());
-        }
-
-        Order updatedOrder = orderService.updateOrderStatus(accountId, orderId, status);
-        return ResponseEntity.ok(orderService.toResponseDto(updatedOrder));
-    }
 }

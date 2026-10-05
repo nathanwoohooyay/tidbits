@@ -2,10 +2,12 @@ package com.tidbits.service;
 
 import com.tidbits.exception.BadRequestException;
 import com.tidbits.exception.ResourceNotFoundException;
+import com.tidbits.model.dto.OrderEventDTO;
+import com.tidbits.model.dto.PricingQuoteDTO;
 import com.tidbits.model.entity.Account;
+import com.tidbits.model.entity.AccountHolding;
 import com.tidbits.model.entity.Instrument;
 import com.tidbits.model.entity.Order;
-import com.tidbits.model.entity.OrderStatusHistory;
 import com.tidbits.model.enums.InstrumentType;
 import com.tidbits.model.enums.OrderStatus;
 import com.tidbits.model.enums.OrderType;
@@ -14,12 +16,10 @@ import com.tidbits.repository.AccountRepository;
 import com.tidbits.repository.AccountTransactionRepository;
 import com.tidbits.repository.InstrumentRepository;
 import com.tidbits.repository.OrderRepository;
-import com.tidbits.repository.OrderStatusHistoryRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,11 +27,15 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -66,7 +70,7 @@ class OrderServiceTest {
     private AccountTransactionRepository accountTransactionRepository;
 
     @Mock
-    private OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private OrderStatusHistoryService orderStatusHistoryService;
 
     @Mock
     private InstrumentRepository instrumentRepository;
@@ -110,7 +114,7 @@ class OrderServiceTest {
         assertEquals(OrderStatus.PLACED, placed.getStatus());
         assertEquals(99, placed.getOrderId());
 
-        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(orderStatusHistoryService).switchStatus(placed, null, OrderStatus.PLACED);
         verify(orderEventPublisher).publish(eq("ORDER_PLACED"), eq(placed), any());
     }
 
@@ -143,33 +147,141 @@ class OrderServiceTest {
     }
 
     @Test
-    void updateOrderStatus_throwsForFinalStatusTransition() {
-        Order order = order(1, 2, 1.0, 10.0, OrderType.BUY, OrderStatus.FILLED);
-        order.setOrderId(3);
-        when(accountService.getAccountById(1)).thenReturn(Optional.of(account(1, 1000.0)));
-        when(orderRepository.findById(3)).thenReturn(Optional.of(order));
-
-        BadRequestException ex = assertThrows(
-                BadRequestException.class,
-                () -> orderService.updateOrderStatus(1, 3, OrderStatus.CANCELED)
+    void fillOrder_throwsWhenOrderEventMissingRequiredFields() {
+        OrderEventDTO orderEvent = new OrderEventDTO(
+                "ORDER_PLACED",
+                LocalDateTime.now(),
+                3,
+                1,
+                2,
+                1.0,
+                null,
+                null,
+                null,
+                null,
+                null
         );
 
-        assertEquals("Cannot change status from final state FILLED.", ex.getMessage());
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> orderService.fillOrder(orderEvent));
+
+        assertEquals("Order event must include order, account, instrument, and order type.", ex.getMessage());
     }
 
     @Test
-    void updateOrderStatus_updatesAndTracksHistoryForValidTransition() {
+    void fillOrder_updatesOrderStatusThroughAcceptedAndFilledTransitions() {
         Order order = order(1, 2, 1.0, 10.0, OrderType.BUY, OrderStatus.PLACED);
         order.setOrderId(3);
-        when(accountService.getAccountById(1)).thenReturn(Optional.of(account(1, 1000.0)));
+        Account account = account(1, 1000.0);
+        Instrument instrument = instrument(2);
+        OrderEventDTO orderEvent = new OrderEventDTO(
+                "ORDER_PLACED",
+                LocalDateTime.now(),
+                3,
+                1,
+                2,
+                1.0,
+                null,
+                "BUY",
+                "PLACED",
+                null,
+                null
+        );
+
+        when(accountService.getAccountById(1)).thenReturn(Optional.of(account));
         when(orderRepository.findById(3)).thenReturn(Optional.of(order));
+        when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument));
+        when(pricingService.getRequestedQuotes(anyList(), anyMap())).thenReturn(List.of(
+                new PricingQuoteDTO(2, "AAPL", 100.0, null, 99.5, 100.0, null, null, "USD", null, false, "test", null, null)
+        ));
+        when(orderStatusHistoryService.getHistoryByOrderId(3)).thenReturn(List.of());
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Order updated = orderService.updateOrderStatus(1, 3, OrderStatus.ACCEPTED);
+        Order updated = orderService.fillOrder(orderEvent);
 
-        assertEquals(OrderStatus.ACCEPTED, updated.getStatus());
-        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
-        verify(orderEventPublisher).publish(eq("ORDER_STATUS_UPDATED"), eq(updated), any());
+        assertEquals(OrderStatus.FILLED, updated.getStatus());
+        assertEquals(900.0, account.getCashBalance());
+        verify(orderStatusHistoryService).switchStatus(updated, OrderStatus.PLACED, OrderStatus.ACCEPTED);
+        verify(orderStatusHistoryService).switchStatus(updated, OrderStatus.ACCEPTED, OrderStatus.FILLED);
+        verify(orderEventPublisher).publish(eq("ORDER_ACCEPTED"), eq(updated), any());
+        verify(orderEventPublisher).publish(eq("ORDER_FILLED"), eq(updated), any());
+    }
+
+    @Test
+    void fillOrder_floorsBuyCashBalanceToTwoDecimals() {
+        Order order = order(1, 2, 3.0, 10.0, OrderType.BUY, OrderStatus.PLACED);
+        order.setOrderId(4);
+        Account account = account(1, 100.01);
+        Instrument instrument = instrument(2);
+        OrderEventDTO orderEvent = new OrderEventDTO(
+                "ORDER_PLACED",
+                LocalDateTime.now(),
+                4,
+                1,
+                2,
+                3.0,
+                null,
+                "BUY",
+                "PLACED",
+                null,
+                null
+        );
+
+        when(accountService.getAccountById(1)).thenReturn(Optional.of(account));
+        when(orderRepository.findById(4)).thenReturn(Optional.of(order));
+        when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument));
+        when(pricingService.getRequestedQuotes(anyList(), anyMap())).thenReturn(List.of(
+                new PricingQuoteDTO(2, "AAPL", 33.336, null, 33.0, 33.336, null, null, "USD", null, false, "test", null, null)
+        ));
+        when(orderStatusHistoryService.getHistoryByOrderId(4)).thenReturn(List.of());
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.empty());
+
+        Order updated = orderService.fillOrder(orderEvent);
+
+        assertEquals(OrderStatus.FILLED, updated.getStatus());
+        assertEquals(0.01, account.getCashBalance());
+    }
+
+    @Test
+    void fillOrder_floorsSellCashBalanceToTwoDecimals() {
+        Order order = order(1, 2, 3.0, 10.0, OrderType.SELL, OrderStatus.PLACED);
+        order.setOrderId(5);
+        Account account = account(1, 10.01);
+        Instrument instrument = instrument(2);
+        AccountHolding holding = new AccountHolding();
+        holding.setHoldingId(7);
+        holding.setAccountId(1);
+        holding.setInstrumentId(2);
+        holding.setQuantity(3.0);
+        holding.setAmountInvested(50.0);
+        OrderEventDTO orderEvent = new OrderEventDTO(
+                "ORDER_PLACED",
+                LocalDateTime.now(),
+                5,
+                1,
+                2,
+                3.0,
+                null,
+                "SELL",
+                "PLACED",
+                null,
+                null
+        );
+
+        when(accountService.getAccountById(1)).thenReturn(Optional.of(account));
+        when(orderRepository.findById(5)).thenReturn(Optional.of(order));
+        when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument));
+        when(pricingService.getRequestedQuotes(anyList(), anyMap())).thenReturn(List.of(
+                new PricingQuoteDTO(2, "AAPL", 33.5, null, 33.336, 33.5, null, null, "USD", null, false, "test", null, null)
+        ));
+        when(orderStatusHistoryService.getHistoryByOrderId(5)).thenReturn(List.of());
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.of(holding));
+
+        Order updated = orderService.fillOrder(orderEvent);
+
+        assertEquals(OrderStatus.FILLED, updated.getStatus());
+        assertEquals(110.01, account.getCashBalance());
     }
 
     private Account account(Integer accountId, Double balance) {

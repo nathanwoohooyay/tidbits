@@ -1,0 +1,11 @@
+<section class="greeting-section" aria-label="Greeting">
+  <div class="greeting-text">
+    <h2>Hello {{ username }}!</h2>
+    <p class="greeting-sub">{{ accountNickname }} · {{ today | date:'EEEE, MMMM d, y' }}</p>
+  </div>
+  <div class="greeting-aside">
+    <div class="session-pill">{{ usingPlaceholderMarketData ? 'Placeholder Quotes' : 'Live Session' }}</div>
+    <div class="session-detail">{{ accountCount }} account{{ accountCount !== 1 ? 's' : '' }} connected</div>
+  </div>
+</section>
+

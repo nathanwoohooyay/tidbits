@@ -1,0 +1,44 @@
+<section class="section-card" aria-label="Portfolio growth chart">
+  <div class="section-header">
+    <span class="section-title">Portfolio Growth</span>
+    <div class="timeframe-tabs" role="group" aria-label="Chart timeframe">
+      @for (tf of timeframes; track tf) {
+        <button class="timeframe-tab" [class.active]="chartTimeframe === tf" (click)="chartTimeframeChange.emit(tf)">{{ tf }}</button>
+      }
+    </div>
+  </div>
+
+  <div class="section-body">
+    <div class="chart-container">
+      <svg class="chart-svg" viewBox="0 0 100 40" preserveAspectRatio="none" aria-label="Portfolio performance chart" role="img">
+        <defs>
+          <linearGradient id="portfolio-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" [attr.stop-color]="lineColor" stop-opacity="0.22"></stop>
+            <stop offset="100%" [attr.stop-color]="lineColor" stop-opacity="0"></stop>
+          </linearGradient>
+        </defs>
+        <polygon [attr.points]="fillPoints()" fill="url(#portfolio-fill)"></polygon>
+        <polyline [attr.points]="linePoints()" [attr.stroke]="lineColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      </svg>
+    </div>
+
+    @if (currentData.values.length > 0) {
+      <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:1rem">
+        <div>
+          <div class="metric-label">Start</div>
+          <div class="price-value">{{ formatCurrency(startValue) }}</div>
+        </div>
+        <div>
+          <div class="metric-label">Current</div>
+          <div class="price-value">{{ formatCurrency(endValue) }}</div>
+        </div>
+      </div>
+      <div class="chart-label-row">
+        @for (label of sampledLabels(); track label) {
+          <span>{{ label }}</span>
+        }
+      </div>
+    }
+  </div>
+</section>
+

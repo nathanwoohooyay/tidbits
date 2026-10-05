@@ -1,0 +1,32 @@
+<section class="hero-metrics" aria-label="Portfolio overview">
+  <div class="metric-card hero">
+    <div class="metric-label">Total Net Worth</div>
+    <div class="metric-value">{{ formatCurrency(totalNetWorth) }}</div>
+    @if (portfolioGainLoss !== 0) {
+      <div class="metric-change" [class.positive]="portfolioGainLoss >= 0" [class.negative]="portfolioGainLoss < 0">
+        {{ portfolioGainLoss >= 0 ? '▲' : '▼' }}
+        {{ formatCurrency(Math.abs(portfolioGainLoss)) }} unrealized
+      </div>
+    }
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-label">Cash Balance</div>
+    <div class="metric-value">{{ formatCurrency(cashBalance) }}</div>
+    <div class="metric-change positive" style="background:transparent;padding:0;margin-top:.25rem;font-size:.78rem;color:var(--clr-sienna)">
+      Available to invest
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-label">Portfolio Value</div>
+    <div class="metric-value">{{ formatCurrency(portfolioValue) }}</div>
+    @if (portfolioGainLoss !== 0) {
+      <div class="metric-change" [class.positive]="portfolioGainLoss >= 0" [class.negative]="portfolioGainLoss < 0">
+        {{ portfolioGainLoss >= 0 ? '▲' : '▼' }}
+        {{ formatPercent(portfolioGainPercent()) }}
+      </div>
+    }
+  </div>
+</section>
+

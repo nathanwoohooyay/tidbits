@@ -1,0 +1,33 @@
+<header class="app-header" role="banner">
+  <div class="header-brand">
+    <span class="brand-kicker">Private Client Desk</span>
+    <div class="brand-title"><span>Traders</span>, Tickers, and <span>Triumph</span></div>
+  </div>
+
+  <div class="header-right">
+    @if (accounts.length > 1) {
+      <div class="account-selector">
+        <select [value]="selectedAccountId" (change)="onAccountSelect($event)" aria-label="Select account">
+          @for (acc of accounts; track acc.account_id) {
+            <option [value]="acc.account_id">
+              {{ acc.nickname }} — {{ formatCurrency(acc.cash_balance) }}
+            </option>
+          }
+        </select>
+      </div>
+    } @else if (accounts.length === 1) {
+      <span style="color:var(--clr-tan);font-size:.85rem;opacity:.8">
+        {{ accounts[0].nickname }}
+      </span>
+    }
+
+    <button class="theme-toggle" type="button" (click)="toggleTheme.emit()"
+            [attr.aria-label]="themeMode === 'dark' ? 'Dark mode enabled' : 'Light mode enabled'"
+            [attr.title]="themeMode === 'dark' ? 'Dark mode enabled' : 'Light mode enabled'">
+      {{ themeMode === 'dark' ? '☾' : '☀' }}
+    </button>
+
+    <button class="btn-signout" type="button" (click)="signOut.emit()">Sign Out</button>
+  </div>
+</header>
+

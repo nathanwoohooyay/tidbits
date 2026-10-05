@@ -1,23 +1,67 @@
-<div class="dashboard-shell">
-  <header class="dashboard-header">
-    <h1>Dashboard</h1>
-    <p>Dashboard shell loaded successfully.</p>
-  </header>
+<div class="app-shell">
+  <app-dashboard-header
+    [accounts]="accounts()"
+    [selectedAccountId]="selectedAccountId()"
+    [themeMode]="themeMode()"
+    (accountChange)="onAccountChange($event)"
+    (toggleTheme)="toggleTheme()"
+    (signOut)="signOut()">
+  </app-dashboard-header>
 
-  <main class="dashboard-content">
-    <section class="card">
-      <h2>Overview</h2>
-      <p>This page is intentionally a skeleton for now.</p>
-    </section>
+  <main class="app-content" role="main">
+    <div class="dashboard-grid">
+      <app-dashboard-greeting
+        [username]="currentUser()?.username ?? ''"
+        [accountNickname]="selectedAccount()?.nickname ?? 'No account selected'"
+        [today]="today"
+        [usingPlaceholderMarketData]="usingPlaceholderMarketData()"
+        [accountCount]="accounts().length">
+      </app-dashboard-greeting>
 
-    <section class="card">
-      <h2>Next Steps</h2>
-      <ul>
-        <li>Add dashboard components</li>
-        <li>Wire in API-driven data</li>
-        <li>Render user-specific account information</li>
-      </ul>
-    </section>
+      <app-dashboard-notices [notices]="notices()"></app-dashboard-notices>
+
+      <app-dashboard-metrics
+        [totalNetWorth]="totalNetWorth()"
+        [cashBalance]="cashBalance()"
+        [portfolioValue]="portfolioValue()"
+        [portfolioGainLoss]="portfolioGainLoss()">
+      </app-dashboard-metrics>
+
+      <app-dashboard-insight-feed
+        [reportingOverview]="reportingOverview()"
+        [instrumentLabels]="instrumentLabels()">
+      </app-dashboard-insight-feed>
+
+      <app-dashboard-chart
+        [dataByTimeframe]="chartData()"
+        [chartTimeframe]="chartTimeframe()"
+        (chartTimeframeChange)="setChartTimeframe($event)">
+      </app-dashboard-chart>
+
+      <app-dashboard-market-snapshot
+        [instruments]="instruments()"
+        [trendFilter]="trendFilter()"
+        [usingPlaceholderMarketData]="usingPlaceholderMarketData()"
+        (trendFilterChange)="setTrendFilter($event)"
+        (quickTrade)="onQuickTrade($event)">
+      </app-dashboard-market-snapshot>
+
+      <app-dashboard-holdings
+        [holdings]="holdings()"
+        (quickTrade)="onQuickTrade($event)">
+      </app-dashboard-holdings>
+
+      <app-dashboard-trade-desk
+        [instruments]="instruments()"
+        [holdings]="holdings()"
+        [cashBalance]="cashBalance()"
+        [selectedMode]="quickTradeSelection()?.mode ?? 'buy'"
+        [selectedInstrumentId]="quickTradeSelection()?.instrumentId ?? null"
+        (tradeExecuted)="onTradeExecuted($event)">
+      </app-dashboard-trade-desk>
+
+      <app-dashboard-trade-history [orders]="orders()"></app-dashboard-trade-history>
+    </div>
   </main>
 </div>
 

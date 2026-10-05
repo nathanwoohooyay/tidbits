@@ -1,0 +1,51 @@
+<section class="section-card" aria-label="Current portfolio holdings">
+  <div class="section-header">
+    <span class="section-title">Your Holdings</span>
+    <span style="font-size:.82rem;color:var(--clr-sienna)">{{ holdings.length }} position{{ holdings.length !== 1 ? 's' : '' }}</span>
+  </div>
+
+  <div class="section-body" style="padding:0 1.5rem 1.5rem">
+    @if (holdings.length === 0) {
+      <div class="empty-state">No positions held in this account yet. Start trading below!</div>
+    } @else {
+      <table class="holdings-table" aria-label="Portfolio holdings">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Company</th>
+            <th class="right">Qty</th>
+            <th class="right">Avg Cost</th>
+            <th class="right">Price</th>
+            <th class="right">Market Value</th>
+            <th class="right">Gain / Loss</th>
+            <th class="right">G/L %</th>
+            <th class="right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (holding of holdings; track holding.instrument_id) {
+            <tr>
+              <td><span class="ticker-badge">{{ holding.ticker }}</span></td>
+              <td><span class="stock-name">{{ holding.name }}</span></td>
+              <td class="right">{{ holding.quantity | number:'1.0-4' }}</td>
+              <td class="right">{{ formatCurrency(holding.avgCost) }}</td>
+              <td class="right">{{ formatCurrency(holding.currentPrice) }}</td>
+              <td class="right" style="font-weight:700">{{ formatCurrency(holding.totalValue) }}</td>
+              <td class="right" [class.gain-text]="holding.unrealizedGain >= 0" [class.loss-text]="holding.unrealizedGain < 0">
+                {{ holding.unrealizedGain >= 0 ? '+' : '' }}{{ formatCurrency(holding.unrealizedGain) }}
+              </td>
+              <td class="right" [class.gain-text]="holding.unrealizedGainPct >= 0" [class.loss-text]="holding.unrealizedGainPct < 0">
+                {{ formatPercent(holding.unrealizedGainPct) }}
+              </td>
+              <td class="right">
+                <button class="btn-quick-trade btn-quick-buy" (click)="quickTrade.emit({ instrumentId: holding.instrument_id, mode: 'buy' })">Buy</button>
+                <button class="btn-quick-trade btn-quick-sell" (click)="quickTrade.emit({ instrumentId: holding.instrument_id, mode: 'sell' })">Sell</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</section>
+

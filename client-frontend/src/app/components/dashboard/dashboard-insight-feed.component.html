@@ -1,0 +1,76 @@
+<section class="section-card" aria-label="Internal business insight">
+  <div class="section-header">
+    <span class="section-title">Business Insight Feed</span>
+    @if (reportingOverview) {
+      <span class="insight-timestamp">Updated {{ reportingOverview.generatedAt | date:'MMM d, y · h:mm a' }}</span>
+    }
+  </div>
+
+  <div class="section-body">
+    @if (!reportingOverview) {
+      <div class="empty-state">Insight feed is loading or unavailable.</div>
+    } @else {
+      <div class="insight-grid">
+        <div class="insight-card">
+          <div class="insight-label">Total Orders</div>
+          <div class="insight-value">{{ reportingOverview.liveSummary.totalOrders }}</div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-label">Filled Orders</div>
+          <div class="insight-value">{{ reportingOverview.liveSummary.filledOrders }}</div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-label">Accepted Orders</div>
+          <div class="insight-value">{{ reportingOverview.liveSummary.acceptedOrders }}</div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-label">Total Notional</div>
+          <div class="insight-value">{{ formatCurrency(reportingOverview.liveSummary.totalNotional) }}</div>
+        </div>
+      </div>
+
+      @if (tradeVolumeBySide().length > 0) {
+        <div class="insight-subsection">
+          <h4>Volume by Side (Offline Pipeline)</h4>
+          <div class="insight-row-set">
+            @for (item of tradeVolumeBySide(); track item.side) {
+              <div class="insight-row">
+                <span>{{ item.side | titlecase }}</span>
+                <span>{{ formatCurrency(item.total_value) }} · {{ item.order_count }} orders</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (mostActiveMarkets().length > 0) {
+        <div class="insight-subsection">
+          <h4>Most Active Markets</h4>
+          <div class="insight-row-set">
+            @for (item of mostActiveMarkets(); track item.market) {
+              <div class="insight-row">
+                <span>{{ item.market }}</span>
+                <span>{{ formatCurrency(item.total_value) }} · {{ item.order_count }} orders</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (reportingOverview.topInstrumentNotional.length > 0) {
+        <div class="insight-subsection">
+          <h4>Top Instrument Notional (Live Path)</h4>
+          <div class="insight-row-set">
+            @for (item of reportingOverview.topInstrumentNotional; track item.instrumentId) {
+              <div class="insight-row">
+                <span>{{ instrumentLabel(item.instrumentId) }}</span>
+                <span>{{ formatCurrency(item.notional) }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+</section>
+

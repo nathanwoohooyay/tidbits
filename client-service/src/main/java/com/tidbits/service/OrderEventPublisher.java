@@ -44,7 +44,7 @@ public class OrderEventPublisher {
         );
 
         try {
-            kafkaTemplate.send(orderTopic, String.valueOf(order.getOrderId()), objectMapper.writeValueAsString(event));
+            kafkaTemplate.send(orderTopic, String.valueOf(order.getAccountId()), objectMapper.writeValueAsString(event));
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize order event.", ex);
         }

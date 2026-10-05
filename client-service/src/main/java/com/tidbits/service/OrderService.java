@@ -69,6 +69,24 @@ public class OrderService {
             OrderStatus.REJECTED
     );
 
+    public Order requestOrder(Order order) {
+        validateOrderRequest(order);
+
+        Account account = getAuthorizedAccount(order.getAccountId());
+
+        Instrument instrument = instrumentRepository.findById(order.getInstrumentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Instrument " + order.getInstrumentId() + " not found."));
+
+        order.setOrderId(null);
+        order.setStatus(OrderStatus.CREATED);
+        Order createdOrder = orderRepository.save(order);
+        createStatusHistory(createdOrder.getOrderId(), null, OrderStatus.CREATED);
+
+        publishOrderEvent("ORDER_CREATED", createdOrder);
+
+        return createdOrder;
+    }
+
     @Transactional
     public Order createOrder(Order order) {
         validateOrderRequest(order);

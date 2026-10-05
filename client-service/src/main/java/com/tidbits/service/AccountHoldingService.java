@@ -18,6 +18,12 @@ public class AccountHoldingService {
         return null;
     }
 
+    public double getStockHolding(Integer accountId, Integer instrumentId) {
+        return accountHoldingRepository.findByAccountIdAndInstrumentId(accountId, instrumentId)
+                .map(accountHolding -> accountHolding.getQuantity())
+                .orElse(0.0);
+    }
+
     public Optional<AccountHolding> getAccountHoldingById(Integer holdingId) {
         return Optional.empty();
     }

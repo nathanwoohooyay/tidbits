@@ -42,7 +42,7 @@ class OrderControllerTest {
     private OrderService orderService;
 
     @Test
-    void createOrder_setsAccountFromPathAndReturnsMappedResponse() throws Exception {
+    void requestOrder_setsAccountFromPathAndReturnsMappedResponse() throws Exception {
         Order saved = order(42, 2, 10.0, 100.0, OrderType.BUY, OrderStatus.PLACED);
         saved.setOrderId(501);
 
@@ -53,7 +53,7 @@ class OrderControllerTest {
         response.setOrderType("BUY");
         response.setStatus("PLACED");
 
-        when(orderService.createOrder(any(Order.class))).thenReturn(saved);
+        when(orderService.requestOrder(any(Order.class))).thenReturn(saved);
         when(orderService.toResponseDto(saved)).thenReturn(response);
 
         mockMvc.perform(post("/api/accounts/{accountId}/orders", 42)
@@ -66,12 +66,12 @@ class OrderControllerTest {
                                   "orderType": "BUY"
                                 }
                                 """))
-                .andExpect(status().isOk())
+                .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.orderId").value(501))
                 .andExpect(jsonPath("$.status").value("PLACED"));
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
-        verify(orderService).createOrder(orderCaptor.capture());
+        verify(orderService).requestOrder(orderCaptor.capture());
         assertEquals(42, orderCaptor.getValue().getAccountId());
     }
 

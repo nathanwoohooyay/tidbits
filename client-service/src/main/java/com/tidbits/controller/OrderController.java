@@ -23,7 +23,7 @@ public class OrderController {
     public ResponseEntity<OrderResponseDTO> requestOrder(@RequestBody Order order, @PathVariable Integer accountId) {
         order.setAccountId(accountId);
         Order requestedOrder = orderService.requestOrder(order);
-        return ResponseEntity.ok(orderService.toResponseDto(requestedOrder));
+        return ResponseEntity.accepted().body(orderService.toResponseDto(requestedOrder));
     }
 
     @GetMapping("/{orderId}")

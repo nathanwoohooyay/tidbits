@@ -3,6 +3,7 @@ package com.tidbits.service;
 import com.tidbits.exception.BadRequestException;
 import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.dto.InstrumentDTO;
+import com.tidbits.model.dto.OrderEventDTO;
 import com.tidbits.model.dto.PricingQuoteDTO;
 import com.tidbits.model.dto.OrderResponseDTO;
 import com.tidbits.model.dto.OrderStatusHistoryDTO;
@@ -43,6 +44,9 @@ public class OrderService {
     private OrderRepository orderRepository;
 
     @Autowired
+    private AccountService accountService;
+
+    @Autowired
     private AccountRepository accountRepository;
 
     @Autowired
@@ -78,60 +82,84 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Instrument " + order.getInstrumentId() + " not found."));
 
         order.setOrderId(null);
-        order.setStatus(OrderStatus.CREATED);
+        order.setStatus(OrderStatus.PLACED);
         Order createdOrder = orderRepository.save(order);
-        createStatusHistory(createdOrder.getOrderId(), null, OrderStatus.CREATED);
+        createStatusHistory(createdOrder.getOrderId(), null, OrderStatus.PLACED);
 
-        publishOrderEvent("ORDER_CREATED", createdOrder);
+        publishOrderEvent("ORDER_PLACED", createdOrder);
 
         return createdOrder;
     }
 
     @Transactional
-    public Order createOrder(Order order) {
-        validateOrderRequest(order);
+    public Order fillOrder(OrderEventDTO orderEvent) {
+        validateOrderEvent(orderEvent);
 
-        Account account = getAuthorizedAccount(order.getAccountId());
+        Account account = accountService.getAccountById(orderEvent.accountId()).orElseThrow(() -> new ResourceNotFoundException(
+                "Account " + orderEvent.accountId() + " not found."));
+        Order currOrder = getOrderByIdForAccount(orderEvent.accountId(), orderEvent.orderId(), false);
 
-        Instrument instrument = instrumentRepository.findById(order.getInstrumentId())
-                .orElseThrow(() -> new ResourceNotFoundException("Instrument " + order.getInstrumentId() + " not found."));
+        OrderType orderType = parseOrderType(orderEvent.orderType());
+        currOrder.setOrderType(orderType);
 
-        double quotePrice = resolveQuotePrice(instrument, order.getOrderType());
-        order.setStockPrice(quotePrice);
+        Instrument instrument = instrumentRepository.findById(orderEvent.instrumentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Instrument " + orderEvent.instrumentId() + " not found."));
 
-        double totalAmount = order.getQuantity() * order.getStockPrice();
-        if (order.getOrderType() == OrderType.BUY) {
-            processBuyOrder(account, order.getInstrumentId(), order.getQuantity(), totalAmount);
+        double quotePrice = resolveQuotePrice(instrument, orderType);
+        currOrder.setStockPrice(quotePrice);
+
+        double totalAmount = currOrder.getQuantity() * currOrder.getStockPrice();
+
+        boolean status = true;
+        if (orderType == OrderType.BUY) {
+            status = processBuyOrder(account, currOrder.getInstrumentId(), currOrder.getQuantity(), totalAmount);
         } else {
-            processSellOrder(account, order.getInstrumentId(), order.getQuantity(), totalAmount);
+            status = processSellOrder(account, currOrder.getInstrumentId(), currOrder.getQuantity(), totalAmount);
+        }
+
+        if (!status) {
+            currOrder.setStatus(OrderStatus.REJECTED);
+            orderRepository.save(currOrder);
+            createStatusHistory(currOrder.getOrderId(), OrderStatus.PLACED, OrderStatus.REJECTED);
+            
+            publishOrderEvent("ORDER_REJECTED", currOrder);
+            return currOrder;
         }
 
         accountRepository.save(account);
 
-        order.setOrderId(null);
-        order.setStatus(OrderStatus.CREATED);
-        Order createdOrder = orderRepository.save(order);
-        createStatusHistory(createdOrder.getOrderId(), null, OrderStatus.CREATED);
-
-        createdOrder.setStatus(OrderStatus.PLACED);
-        Order placedOrder = orderRepository.save(createdOrder);
-        createStatusHistory(placedOrder.getOrderId(), OrderStatus.CREATED, OrderStatus.PLACED);
-
         AccountTransaction transaction = new AccountTransaction();
         transaction.setAccountId(account.getAccountId());
-        transaction.setOrderId(placedOrder.getOrderId());
+        transaction.setOrderId(currOrder.getOrderId());
         transaction.setAmount(totalAmount);
-        transaction.setTransactionType(order.getOrderType() == OrderType.BUY ? TransactionType.BUY : TransactionType.SELL);
+        transaction.setTransactionType(orderType == OrderType.BUY ? TransactionType.BUY : TransactionType.SELL);
         transaction.setCreatedAt(LocalDateTime.now());
         accountTransactionRepository.save(transaction);
 
-        publishOrderEvent("ORDER_CREATED", placedOrder);
+        currOrder.setStatus(OrderStatus.ACCEPTED);
+        orderRepository.save(currOrder);
+        createStatusHistory(currOrder.getOrderId(), OrderStatus.PLACED, OrderStatus.ACCEPTED);
 
-        return placedOrder;
+        publishOrderEvent("ORDER_ACCEPTED", currOrder);
+
+        currOrder.setStatus(OrderStatus.FILLED);
+        orderRepository.save(currOrder);
+        createStatusHistory(currOrder.getOrderId(), OrderStatus.ACCEPTED, OrderStatus.FILLED);
+
+        publishOrderEvent("ORDER_FILLED", currOrder);
+
+        return currOrder;
     }
 
     public Order getOrderByIdForAccount(Integer accountId, Integer orderId) {
-        getAuthorizedAccount(accountId);
+        return getOrderByIdForAccount(accountId, orderId, true);
+    }
+
+    private Order getOrderByIdForAccount(Integer accountId, Integer orderId, boolean requireAuthorization) {
+        if (requireAuthorization) {
+            getAuthorizedAccount(accountId);
+        }
+
         return orderRepository.findById(orderId)
                 .filter(order -> order.getAccountId().equals(accountId))
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -198,8 +226,8 @@ public class OrderService {
     }
 
     private Account getAuthorizedAccount(Integer accountId) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Account " + accountId + " not found."));
+        Account account = accountService.getAccountById(accountId).orElseThrow(() -> new ResourceNotFoundException(
+                "Account " + accountId + " not found."));
 
         Integer authenticatedUserId = getAuthenticatedUserId();
         if (!authenticatedUserId.equals(account.getUserId())) {
@@ -207,6 +235,24 @@ public class OrderService {
         }
 
         return account;
+    }
+
+    private void validateOrderEvent(OrderEventDTO orderEvent) {
+        if (orderEvent == null) {
+            throw new BadRequestException("Order event payload is required.");
+        }
+
+        if (orderEvent.accountId() == null || orderEvent.instrumentId() == null || orderEvent.orderId() == null || orderEvent.orderType() == null) {
+            throw new BadRequestException("Order event must include order, account, instrument, and order type.");
+        }
+    }
+
+    private OrderType parseOrderType(String orderType) {
+        try {
+            return OrderType.valueOf(orderType.trim().toUpperCase(Locale.ROOT));
+        } catch (RuntimeException ex) {
+            throw new BadRequestException("Unsupported order type: " + orderType);
+        }
     }
 
     private Integer getAuthenticatedUserId() {
@@ -305,10 +351,10 @@ public class OrderService {
         return sidePrice;
     }
 
-    private void processBuyOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {
+    private boolean processBuyOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {
         double currentBalance = account.getCashBalance() == null ? 0.0 : account.getCashBalance();
         if (currentBalance < totalAmount) {
-            throw new BadRequestException("Insufficient cash balance for buy order.");
+            return false;
         }
 
         account.setCashBalance(currentBalance - totalAmount);
@@ -328,15 +374,16 @@ public class OrderService {
         holding.setAmountInvested(holding.getAmountInvested() + totalAmount);
         holding.setLastUpdated(LocalDateTime.now());
         accountHoldingRepository.save(holding);
+        return true;
     }
 
-    private void processSellOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {
+    private boolean processSellOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {
         AccountHolding holding = accountHoldingRepository
                 .findByAccountIdAndInstrumentId(account.getAccountId(), instrumentId)
                 .orElseThrow(() -> new BadRequestException("No holdings available to sell for instrument " + instrumentId + "."));
 
         if (holding.getQuantity() == null || holding.getQuantity() < quantity) {
-            throw new BadRequestException("Insufficient holdings quantity for sell order.");
+            return false;
         }
 
         double previousQuantity = holding.getQuantity();
@@ -354,6 +401,8 @@ public class OrderService {
 
         double currentBalance = account.getCashBalance() == null ? 0.0 : account.getCashBalance();
         account.setCashBalance(currentBalance + totalAmount);
+
+        return true;
     }
 
     private void createStatusHistory(Integer orderId, OrderStatus oldStatus, OrderStatus newStatus) {

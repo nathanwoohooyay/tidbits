@@ -57,7 +57,7 @@ CREATE TABLE orders (
     account_id INT NOT NULL REFERENCES accounts(account_id),
     instrument_id INT NOT NULL REFERENCES instruments(instrument_id),
     quantity NUMERIC(17, 4) NOT NULL CHECK (quantity > 0),
-    stock_price NUMERIC(15, 2) NOT NULL CHECK (stock_price > 0),
+    stock_price NUMERIC(15, 2) CHECK (stock_price > 0),
     order_type order_type_enum NOT NULL,
     status order_status_type DEFAULT 'created' NOT NULL
 );

@@ -40,6 +40,7 @@ class TransactionLogServiceTest {
             100,
             200,
             "TRANSFER_INITIATED",
+            2500.00,
             "192.168.1.1",
             500,
             LogStatus.SUCCESS,

@@ -56,6 +56,11 @@ public class UserController {
     @PatchMapping("/{userId}/change-password")
     @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> changePassword(@PathVariable Integer userId, @RequestBody ChangePasswordDTO changePasswordDTO) {
-        return ResponseEntity.ok(null);
+        return ResponseEntity.ok(UserMapper.toUserDTO(userService.changePassword(
+                userId,
+                changePasswordDTO.getNewPassword(),
+                changePasswordDTO.getCurrentPassword(),
+                changePasswordDTO.getConfirmPassword()
+        )));
     }
 }

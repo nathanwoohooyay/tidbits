@@ -29,24 +29,62 @@ public class OrderEventPublisher {
     }
 
     public void publish(String eventType, Order order, OrderResponseDTO orderResponse) {
+        publish(eventType, order, orderResponse, null);
+    }
+
+    public void publish(String eventType, Order order, OrderResponseDTO orderResponse, Integer transactionId) {
         OrderEventDTO event = new OrderEventDTO(
                 eventType,
                 LocalDateTime.now(),
                 order.getOrderId(),
                 order.getAccountId(),
+                transactionId,
                 order.getInstrumentId(),
                 order.getQuantity(),
                 order.getStockPrice(),
+            resolveOrderAmount(order),
                 order.getOrderType() == null ? null : order.getOrderType().name(),
                 order.getStatus() == null ? null : order.getStatus().name(),
                 orderResponse.getInstrument(),
                 orderResponse.getStatusHistory()
         );
 
+        send(event, String.valueOf(order.getAccountId()));
+    }
+
+    public void publishAccountTransactionEvent(String eventType, Integer accountId, Integer transactionId, Double amount) {
+        OrderEventDTO event = new OrderEventDTO(
+                eventType,
+                LocalDateTime.now(),
+                null,
+                accountId,
+                transactionId,
+                null,
+                null,
+                null,
+                amount,
+                null,
+                "SUCCESS",
+                null,
+                null
+        );
+
+        send(event, String.valueOf(accountId));
+    }
+
+    private void send(OrderEventDTO event, String key) {
         try {
-            kafkaTemplate.send(orderTopic, String.valueOf(order.getAccountId()), objectMapper.writeValueAsString(event));
+            kafkaTemplate.send(orderTopic, key, objectMapper.writeValueAsString(event));
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize order event.", ex);
         }
+    }
+
+    private Double resolveOrderAmount(Order order) {
+        if (order.getQuantity() == null || order.getStockPrice() == null) {
+            return null;
+        }
+
+        return order.getQuantity() * order.getStockPrice();
     }
 }

@@ -1,5 +1,6 @@
 package com.tidbits.audit.model.entity;
 
+import com.tidbits.audit.model.converter.LogStatusConverter;
 import jakarta.persistence.*;
 import com.tidbits.audit.model.enums.LogStatus;
 import java.time.LocalDateTime;
@@ -13,7 +14,7 @@ public class UserLog {
     @Column(name = "log_id")
     private Integer logId;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private Integer userId;
 
     @Column(name = "ip_address")
@@ -22,7 +23,7 @@ public class UserLog {
     @Column(name = "event")
     private String event;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = LogStatusConverter.class)
     @Column(name = "status")
     private LogStatus status;
 

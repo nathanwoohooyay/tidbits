@@ -27,6 +27,9 @@ public class AccountTransactionService {
     @Autowired
     private AccountTransactionRepository accountTransactionRepository;
 
+    @Autowired
+    private OrderEventPublisher orderEventPublisher;
+
     @Transactional
     public AccountTransaction depositCash(Integer accountId, Double amount) {
         double flooredAmount = floorToTwoDecimals(amount);
@@ -37,7 +40,16 @@ public class AccountTransactionService {
         double updatedBalance = floorToTwoDecimals(account.getCashBalance() + flooredAmount);
         account.setCashBalance(updatedBalance);
         AccountTransaction accountTransaction = new AccountTransaction(null, accountId, null, flooredAmount, TransactionType.DEPOSIT, LocalDateTime.now());
-        return accountTransactionRepository.save(accountTransaction);
+        AccountTransaction created = accountTransactionRepository.save(accountTransaction);
+
+        orderEventPublisher.publishAccountTransactionEvent(
+            "DEPOSIT",
+            accountId,
+            created.getTransactionId(),
+            created.getAmount()
+        );
+
+        return created;
     }
 
     @Transactional
@@ -53,7 +65,16 @@ public class AccountTransactionService {
         double updatedBalance = floorToTwoDecimals(account.getCashBalance() - flooredAmount);
         account.setCashBalance(updatedBalance);
         AccountTransaction accountTransaction = new AccountTransaction(null, accountId, null, flooredAmount, TransactionType.WITHDRAW, LocalDateTime.now());
-        return accountTransactionRepository.save(accountTransaction);
+        AccountTransaction created = accountTransactionRepository.save(accountTransaction);
+
+        orderEventPublisher.publishAccountTransactionEvent(
+            "WITHDRAW",
+            accountId,
+            created.getTransactionId(),
+            created.getAmount()
+        );
+
+        return created;
     }
 
     private double floorToTwoDecimals(Double value) {

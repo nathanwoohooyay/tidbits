@@ -1,5 +1,6 @@
 package com.tidbits.audit.model.entity;
 
+import com.tidbits.audit.model.converter.LogStatusConverter;
 import jakarta.persistence.*;
 import com.tidbits.audit.model.enums.LogStatus;
 import java.time.LocalDateTime;
@@ -22,13 +23,16 @@ public class TransactionLog {
     @Column(name = "event")
     private String event;
 
+    @Column(name = "amount")
+    private Double amount;
+
     @Column(name = "ip_address")
     private String ipAddress;
 
     @Column(name = "transaction_id")
     private Integer transactionId;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = LogStatusConverter.class)
     @Column(name = "status")
     private LogStatus status;
 
@@ -38,12 +42,13 @@ public class TransactionLog {
     public TransactionLog() {
     }
 
-    public TransactionLog(Integer logId, Integer userId, Integer accountId, String event,
+    public TransactionLog(Integer logId, Integer userId, Integer accountId, String event, Double amount,
                           String ipAddress, Integer transactionId, LogStatus status, LocalDateTime happenedAt) {
         this.logId = logId;
         this.userId = userId;
         this.accountId = accountId;
         this.event = event;
+        this.amount = amount;
         this.ipAddress = ipAddress;
         this.transactionId = transactionId;
         this.status = status;
@@ -61,6 +66,9 @@ public class TransactionLog {
 
     public String getEvent() { return event; }
     public void setEvent(String event) { this.event = event; }
+
+    public Double getAmount() { return amount; }
+    public void setAmount(Double amount) { this.amount = amount; }
 
     public String getIpAddress() { return ipAddress; }
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }

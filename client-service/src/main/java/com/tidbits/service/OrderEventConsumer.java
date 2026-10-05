@@ -22,7 +22,11 @@ public class OrderEventConsumer {
             groupId = "${app.kafka.order-consumer-group:client-service-order-create}"
     )
     public void consumeOrderEvent(String payload) {
-        OrderEventDTO orderEvent = readOrderEvent(payload);
+        OrderEventDTO orderEvent = tryReadOrderEvent(payload);
+        if (orderEvent == null || orderEvent.eventType() == null) {
+            return;
+        }
+
         System.out.println("READING order event: " + orderEvent.eventType());
 
         switch (orderEvent.eventType()) {
@@ -32,14 +36,16 @@ public class OrderEventConsumer {
             case "ORDER_ACCEPTED":
             case "ORDER_FILLED":
                 break;
+            default:
+                break;
         }
     }
 
-    private OrderEventDTO readOrderEvent(String payload) {
+    private OrderEventDTO tryReadOrderEvent(String payload) {
         try {
             return objectMapper.readValue(payload, OrderEventDTO.class);
         } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("Failed to deserialize order event.", ex);
+            return null;
         }
     }
 }

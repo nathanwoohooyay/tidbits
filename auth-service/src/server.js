@@ -10,6 +10,10 @@ const {
   validateLoginInput,
   getSignupConflictError,
 } = require('./validation/authValidation');
+const {
+  publishUserAuditEvent,
+  resolveIpAddress,
+} = require('./audit/userAuditPublisher');
 
 const app = express();
 app.use(express.json());
@@ -34,6 +38,13 @@ const pool = new Pool({
 app.post('/api/auth/signup', async (req, res) => {
   const validation = validateSignupInput(req.body);
   if (!validation.ok) {
+    await publishUserAuditEvent({
+      eventType: 'SIGNUP',
+      userId: null,
+      status: 'FAILURE',
+      ipAddress: resolveIpAddress(req),
+      details: validation.errorCode,
+    });
     return sendError(res, req, validation.status, validation.errorCode, validation.message);
   }
 
@@ -57,6 +68,14 @@ app.post('/api/auth/signup', async (req, res) => {
       [DEFAULT_SIGNUP_ROLE, normalizedUsername, normalizedEmail, passwordHash, normalizedPhoneNumber]
     );
 
+    await publishUserAuditEvent({
+      eventType: 'SIGNUP',
+      userId: result.rows[0].user_id,
+      status: 'SUCCESS',
+      ipAddress: resolveIpAddress(req),
+      details: null,
+    });
+
     return res.status(201).json({
       message: 'user created',
       user: result.rows[0],
@@ -64,12 +83,33 @@ app.post('/api/auth/signup', async (req, res) => {
   } catch (error) {
     if (error.code === '23505') {
       const conflict = getSignupConflictError(error);
+      await publishUserAuditEvent({
+        eventType: 'SIGNUP',
+        userId: null,
+        status: 'FAILURE',
+        ipAddress: resolveIpAddress(req),
+        details: conflict.errorCode,
+      });
       return sendError(res, req, 409, conflict.errorCode, conflict.message);
     }
     if (error.code === '23502') {
+      await publishUserAuditEvent({
+        eventType: 'SIGNUP',
+        userId: null,
+        status: 'FAILURE',
+        ipAddress: resolveIpAddress(req),
+        details: 'ROLE_NOT_CONFIGURED',
+      });
       return sendError(res, req, 500, 'ROLE_NOT_CONFIGURED', 'default signup role is not configured in roles table');
     }
     console.error('signup failed', error);
+    await publishUserAuditEvent({
+      eventType: 'SIGNUP',
+      userId: null,
+      status: 'FAILURE',
+      ipAddress: resolveIpAddress(req),
+      details: 'INTERNAL_SERVER_ERROR',
+    });
     return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
   }
 });
@@ -77,6 +117,13 @@ app.post('/api/auth/signup', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const validation = validateLoginInput(req.body);
   if (!validation.ok) {
+    await publishUserAuditEvent({
+      eventType: 'LOGIN',
+      userId: null,
+      status: 'FAILURE',
+      ipAddress: resolveIpAddress(req),
+      details: validation.errorCode,
+    });
     return sendError(res, req, validation.status, validation.errorCode, validation.message);
   }
 
@@ -94,12 +141,26 @@ app.post('/api/auth/login', async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      await publishUserAuditEvent({
+        eventType: 'LOGIN',
+        userId: null,
+        status: 'FAILURE',
+        ipAddress: resolveIpAddress(req),
+        details: 'INVALID_LOGIN',
+      });
       return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
     }
 
     const user = result.rows[0];
     const passwordMatches = await bcrypt.compare(password || '', user.password_hash);
     if (!passwordMatches) {
+      await publishUserAuditEvent({
+        eventType: 'LOGIN',
+        userId: user.user_id,
+        status: 'FAILURE',
+        ipAddress: resolveIpAddress(req),
+        details: 'INVALID_LOGIN',
+      });
       return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
     }
 
@@ -108,9 +169,25 @@ app.post('/api/auth/login', async (req, res) => {
       SECRET,
       { algorithm: 'HS256', expiresIn: '15m' }
     );
+
+    await publishUserAuditEvent({
+      eventType: 'LOGIN',
+      userId: user.user_id,
+      status: 'SUCCESS',
+      ipAddress: resolveIpAddress(req),
+      details: null,
+    });
+
     return res.json({ token });
   } catch (error) {
     console.error('login failed', error);
+    await publishUserAuditEvent({
+      eventType: 'LOGIN',
+      userId: null,
+      status: 'FAILURE',
+      ipAddress: resolveIpAddress(req),
+      details: 'INTERNAL_SERVER_ERROR',
+    });
     return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
   }
 });

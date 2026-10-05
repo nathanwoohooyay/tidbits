@@ -1,9 +1,8 @@
-package com.tidbits.model.dto;
+package com.tidbits.audit.model.dto;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-public record OrderEventDTO(
+public record OrderAuditEventDTO(
         String eventType,
         LocalDateTime occurredAt,
         Integer orderId,
@@ -14,8 +13,6 @@ public record OrderEventDTO(
         Double stockPrice,
         Double amount,
         String orderType,
-        String status,
-        InstrumentDTO instrument,
-        List<OrderStatusHistoryDTO> statusHistory
+        String status
 ) {
 }

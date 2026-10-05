@@ -13,6 +13,7 @@ services:
       - ./db/create.sql:/docker-entrypoint-initdb.d/01-create.sql
       - ./db/instruments_inserts.sql:/docker-entrypoint-initdb.d/02-inserts.sql
       - ./db/roles_insert.sql:/docker-entrypoint-initdb.d/03-role_insert.sql
+      - ./db/04_audit_nullable_columns.sql:/docker-entrypoint-initdb.d/04-audit-nullable-columns.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
@@ -60,6 +61,13 @@ services:
         --topic "orders" \
         --partitions "3" \
         --replication-factor "1";
+      echo "Creating topic user-audit-events if needed...";
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server "kafka:9092" \
+        --create \
+        --if-not-exists \
+        --topic "user-audit-events" \
+        --partitions "3" \
+        --replication-factor "1";
       echo "Kafka topic initialization complete.";
       '
     restart: "no"
@@ -77,11 +85,17 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_USER_AUDIT_TOPIC: ${KAFKA_USER_AUDIT_TOPIC:-user-audit-events}
     ports:
       - "4000:4000"
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
 
   client-service:
     build:
@@ -98,6 +112,7 @@ services:
       FAUXNANCE_API_KEY: ${FAUXNANCE_API_KEY}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_ORDER_TOPIC: ${KAFKA_ORDER_TOPIC:-orders}
+      KAFKA_USER_AUDIT_TOPIC: ${KAFKA_USER_AUDIT_TOPIC:-user-audit-events}
     ports:
       - "8082:8082"
     depends_on:
@@ -119,13 +134,19 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      SPRING_SECURITY_USER_NAME: devuser
-      SPRING_SECURITY_USER_PASSWORD: devpass
+      JWT_SECRET: ${JWT_SECRET}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_ORDER_TOPIC: ${KAFKA_ORDER_TOPIC:-orders}
+      KAFKA_USER_AUDIT_TOPIC: ${KAFKA_USER_AUDIT_TOPIC:-user-audit-events}
     ports:
       - "8083:8083"
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:

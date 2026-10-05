@@ -109,6 +109,8 @@ public class OrderService {
 
         double totalAmount = floorToTwoDecimals(currOrder.getQuantity() * currOrder.getStockPrice());
 
+        currOrder.setTotalAmount(totalAmount);
+
         boolean status = true;
         if (orderType == OrderType.BUY) {
             status = processBuyOrder(account, currOrder.getInstrumentId(), currOrder.getQuantity(), totalAmount);
@@ -134,7 +136,6 @@ public class OrderService {
         orderStatusEvent(currOrder, OrderStatus.PLACED, OrderStatus.ACCEPTED);
 
         orderStatusEvent(currOrder, OrderStatus.ACCEPTED, OrderStatus.FILLED);
-
 
         return currOrder;
     }
@@ -169,6 +170,10 @@ public class OrderService {
 
     private void publishOrderEvent(String eventType, Order order) {
         orderEventPublisher.publish(eventType, order, toResponseDto(order));
+    }
+
+    private void publishOrderEvent(String eventType, Order order, Integer transactionId) {
+        orderEventPublisher.publish(eventType, order, toResponseDto(order), transactionId);
     }
 
     private Account getAuthorizedAccount(Integer accountId) {

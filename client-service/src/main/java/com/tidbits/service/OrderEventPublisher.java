@@ -85,6 +85,10 @@ public class OrderEventPublisher {
             return null;
         }
 
-        return order.getQuantity() * order.getStockPrice();
+        return floorToTwoDecimals(order.getQuantity() * order.getStockPrice());
+    }
+
+    private double floorToTwoDecimals(double value) {
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.FLOOR).doubleValue();
     }
 }

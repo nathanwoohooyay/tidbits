@@ -88,7 +88,7 @@ CREATE TABLE user_logs (
     happened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-CREATE TABLE transaction_log(
+CREATE TABLE transaction_logs(
     log_id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(user_id),
     account_id INT NOT NULL REFERENCES accounts(account_id),

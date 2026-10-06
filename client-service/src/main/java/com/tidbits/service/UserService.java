@@ -20,10 +20,6 @@ public class UserService {
     @Autowired
     private UserAuditEventPublisher userAuditEventPublisher;
 
-    public User createUser(User user) {
-        return null;
-    }
-
     public Optional<User> getUserById(Integer userId) {
         return userRepository.findById(userId);
     }
@@ -82,8 +78,5 @@ public class UserService {
             userAuditEventPublisher.publish("CHANGE_PASSWORD", userId, "FAILURE", ex.getMessage());
             throw ex;
         }
-    }
-
-    public void deleteUser(Integer userId) {
     }
 }

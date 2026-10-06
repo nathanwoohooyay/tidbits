@@ -14,10 +14,6 @@ public class AccountHoldingService {
     @Autowired
     private AccountHoldingRepository accountHoldingRepository;
 
-    public AccountHolding createAccountHolding(AccountHolding accountHolding) {
-        return null;
-    }
-
     public double getStockHolding(Integer accountId, Integer instrumentId) {
         return accountHoldingRepository.findByAccountIdAndInstrumentId(accountId, instrumentId)
                 .map(accountHolding -> accountHolding.getQuantity())
@@ -25,25 +21,14 @@ public class AccountHoldingService {
     }
 
     public Optional<AccountHolding> getAccountHoldingById(Integer holdingId) {
-        return Optional.empty();
+        return accountHoldingRepository.findById(holdingId);
     }
 
-    public List<AccountHolding> getHoldingsByAccountId(Integer accountId) {
-        return List.of();
+    public List<AccountHolding> getAllAccountHoldingsByAccountId(Integer accountId) {
+        return accountHoldingRepository.findByAccountId(accountId);
     }
 
     public Optional<AccountHolding> getHoldingByAccountAndInstrument(Integer accountId, Integer instrumentId) {
-        return Optional.empty();
-    }
-
-    public List<AccountHolding> getAllAccountHoldings() {
-        return List.of();
-    }
-
-    public AccountHolding updateAccountHolding(Integer holdingId, AccountHolding accountHolding) {
-        return null;
-    }
-
-    public void deleteAccountHolding(Integer holdingId) {
+        return accountHoldingRepository.findByAccountIdAndInstrumentId(accountId, instrumentId);
     }
 }

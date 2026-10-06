@@ -216,6 +216,15 @@ app.post('/api/auth/login', async (req, res) => {
       [user.user_id, refreshTokenHash, refreshTokenExpiresAt]
     );
 
+    await pool.query(
+      `
+      UPDATE users
+      SET last_login = CURRENT_TIMESTAMP
+      WHERE user_id = $1
+      `,
+      [user.user_id]
+    );
+
     await publishUserAuditEvent({
       eventType: 'LOGIN',
       userId: user.user_id,

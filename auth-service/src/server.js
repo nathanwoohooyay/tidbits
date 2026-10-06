@@ -2,7 +2,9 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const { Pool } = require('pg');
 const { sendError } = require('./utils/errorResponse');
 const {
@@ -17,6 +19,7 @@ const {
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 // Shared secret - the mission service (Java) validates tokens signed with
 // this exact string. In a real system this would come from a secrets
@@ -26,6 +29,8 @@ app.use(express.json());
 const SECRET = process.env.JWT_SECRET;
 const SALT_ROUNDS = 10;
 const DEFAULT_SIGNUP_ROLE = 'client';
+const REFRESH_COOKIE_NAME = 'refreshToken';
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -34,6 +39,24 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 });
+
+function hashRefreshToken(refreshToken) {
+  return crypto.createHash('sha256').update(refreshToken).digest('hex');
+}
+
+function generateRefreshToken() {
+  return crypto.randomBytes(48).toString('hex');
+}
+
+function getRefreshCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: false, // Needs to be set to false to use over http
+    maxAge: REFRESH_TOKEN_TTL_MS,
+    path: '/api/auth',
+  };
+}
 
 app.post('/api/auth/signup', async (req, res) => {
   const validation = validateSignupInput(req.body);
@@ -169,6 +192,21 @@ app.post('/api/auth/login', async (req, res) => {
       SECRET,
       { algorithm: 'HS256', expiresIn: '15m' }
     );
+    const refreshToken = generateRefreshToken();
+    const refreshTokenHash = hashRefreshToken(refreshToken);
+    const refreshTokenExpiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+
+    await pool.query(
+      `
+      INSERT INTO refresh_tokens (user_id, refresh_token, expires_at)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        refresh_token = EXCLUDED.refresh_token,
+        expires_at = EXCLUDED.expires_at
+      `,
+      [user.user_id, refreshTokenHash, refreshTokenExpiresAt]
+    );
 
     await publishUserAuditEvent({
       eventType: 'LOGIN',
@@ -178,6 +216,7 @@ app.post('/api/auth/login', async (req, res) => {
       details: null,
     });
 
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, getRefreshCookieOptions());
     return res.json({ token });
   } catch (error) {
     console.error('login failed', error);
@@ -188,6 +227,74 @@ app.post('/api/auth/login', async (req, res) => {
       ipAddress: resolveIpAddress(req),
       details: 'INTERNAL_SERVER_ERROR',
     });
+    return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+  }
+});
+
+app.post('/api/auth/refresh', async (req, res) => {
+  const { [REFRESH_COOKIE_NAME]: refreshToken } = req.cookies;
+  if (!refreshToken) {
+    return sendError(res, req, 401, 'MISSING_REFRESH_TOKEN', 'refresh token is required');
+  }
+
+  try {
+    const refreshTokenHash = hashRefreshToken(refreshToken);
+    const result = await pool.query(
+      `
+      SELECT r.user_id, r.expires_at, role.name AS role_name
+      FROM refresh_tokens r
+      JOIN users u ON r.user_id = u.user_id
+      JOIN roles role ON role.role_id = u.role_id
+      WHERE r.refresh_token = $1
+      `,
+      [refreshTokenHash]
+    );
+
+    if (result.rows.length === 0) {
+      return sendError(res, req, 401, 'INVALID_REFRESH_TOKEN', 'invalid refresh token');
+    }
+
+    const {user_id: userId, expires_at: tokenExpiresAt, role_name: roleName} = result.rows[0];
+    if (new Date(tokenExpiresAt) < new Date()) {
+      return sendError(res, req, 401, 'EXPIRED_REFRESH_TOKEN', 'refresh token has expired');
+    }
+
+    const newToken = jwt.sign(
+      { sub: userId, roles: [String(roleName).toUpperCase()] },
+      SECRET,
+      { algorithm: 'HS256', expiresIn: '15m' }
+    );
+
+    return res.json({ accessToken: newToken });
+  } catch (error) {
+    console.error('refresh token failed', error);
+    return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+  }
+});
+
+app.post('/api/auth/logout', async (req, res) => {
+  const { [REFRESH_COOKIE_NAME]: refreshToken } = req.cookies;
+
+  if (!refreshToken) {
+    res.clearCookie(REFRESH_COOKIE_NAME, getRefreshCookieOptions());
+    return res.status(204).send();
+  }
+
+  try {
+    const refreshTokenHash = hashRefreshToken(refreshToken);
+
+    await pool.query(
+      `
+      DELETE FROM refresh_tokens
+      WHERE refresh_token = $1
+      `,
+      [refreshTokenHash]
+    );
+
+    res.clearCookie(REFRESH_COOKIE_NAME, getRefreshCookieOptions());
+    return res.status(204).send();
+  } catch (error) {
+    console.error('logout failed', error);
     return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
   }
 });

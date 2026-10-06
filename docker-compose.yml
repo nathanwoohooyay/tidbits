@@ -13,7 +13,6 @@ services:
       - ./db/create.sql:/docker-entrypoint-initdb.d/01-create.sql
       - ./db/instruments_inserts.sql:/docker-entrypoint-initdb.d/02-inserts.sql
       - ./db/roles_insert.sql:/docker-entrypoint-initdb.d/03-role_insert.sql
-      - ./db/04_audit_nullable_columns.sql:/docker-entrypoint-initdb.d/04-audit-nullable-columns.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s

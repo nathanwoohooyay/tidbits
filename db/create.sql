@@ -19,6 +19,7 @@ CREATE TABLE users (
     phone_number TEXT UNIQUE,
     last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     reward_points INT DEFAULT 0 NOT NULL,
+    date_of_birth DATE NOT NULL,
     token_version INT DEFAULT 0 NOT NULL
 );
 

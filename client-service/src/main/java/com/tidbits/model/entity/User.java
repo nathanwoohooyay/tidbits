@@ -2,6 +2,7 @@ package com.tidbits.model.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "users")
@@ -39,11 +40,14 @@ public class User {
     @Column(name = "token_version", nullable = false)
     private Integer tokenVersion;
 
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
     public User() {
     }
 
     public User(Integer userId, Integer roleId, String username, String email, String passwordHash,
-                LocalDateTime createdAt, String phoneNumber, LocalDateTime lastLogin, Integer rewardPoints) {
+                LocalDateTime createdAt, String phoneNumber, LocalDateTime lastLogin, Integer rewardPoints, Integer tokenVersion, LocalDate dateOfBirth) {
         this.userId = userId;
         this.roleId = roleId;
         this.username = username;
@@ -53,6 +57,8 @@ public class User {
         this.phoneNumber = phoneNumber;
         this.lastLogin = lastLogin;
         this.rewardPoints = rewardPoints;
+        this.tokenVersion = tokenVersion;
+        this.dateOfBirth = dateOfBirth;
     }
 
     public Integer getUserId() { return userId; }
@@ -84,4 +90,7 @@ public class User {
 
     public Integer getTokenVersion() { return tokenVersion; }
     public void setTokenVersion(Integer tokenVersion) { this.tokenVersion = tokenVersion; }
+
+    public LocalDate getDateOfBirth() { return dateOfBirth; }
+    public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
 }

@@ -83,24 +83,25 @@ app.post('/api/auth/signup', async (req, res) => {
     return sendError(res, req, validation.status, validation.errorCode, validation.message);
   }
 
-  const { normalizedUsername, normalizedEmail, normalizedPhoneNumber, password } = validation.data;
+  const { normalizedUsername, normalizedEmail, normalizedPhoneNumber, password, dateOfBirth } = validation.data;
 
   try {
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     
     const result = await pool.query(
       `
-      INSERT INTO users (role_id, username, email, password_hash, phone_number)
+      INSERT INTO users (role_id, username, email, password_hash, phone_number, date_of_birth)
       VALUES (
         (SELECT role_id FROM roles WHERE name = $1),
         $2,
         $3,
         $4,
-        $5
+        $5,
+        $6
       )
       RETURNING user_id, username, email, phone_number AS "phoneNumber", created_at
       `,
-      [DEFAULT_SIGNUP_ROLE, normalizedUsername, normalizedEmail, passwordHash, normalizedPhoneNumber]
+      [DEFAULT_SIGNUP_ROLE, normalizedUsername, normalizedEmail, passwordHash, normalizedPhoneNumber, dateOfBirth]
     );
 
     await publishUserAuditEvent({
@@ -133,9 +134,9 @@ app.post('/api/auth/signup', async (req, res) => {
         userId: null,
         status: 'FAILURE',
         ipAddress: resolveIpAddress(req),
-        details: 'ROLE_NOT_CONFIGURED',
+        details: 'DATABASE_CONSTRAINT_VIOLATION',
       });
-      return sendError(res, req, 500, 'ROLE_NOT_CONFIGURED', 'default signup role is not configured in roles table');
+      return sendError(res, req, 400, 'DATABASE_CONSTRAINT_VIOLATION', 'a required database constraint was violated');
     }
     console.error('signup failed', error);
     await publishUserAuditEvent({

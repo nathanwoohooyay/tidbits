@@ -1,0 +1,21 @@
+meta {
+  name: Deposit Cash
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{client_base_url}}/api/accounts/{{account_id}}/deposit
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{client_token}}
+}
+
+body:json {
+  {{deposit_amount}}
+}

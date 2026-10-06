@@ -1,0 +1,16 @@
+meta {
+  name: Get User By ID
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{client_base_url}}/api/users/{{user_id}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Authorization: Bearer {{client_token}}
+}

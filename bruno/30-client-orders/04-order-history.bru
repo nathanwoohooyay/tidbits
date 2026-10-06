@@ -1,0 +1,16 @@
+meta {
+  name: Get Order History
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{client_base_url}}/api/orders/{{order_id}}/history
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Authorization: Bearer {{client_token}}
+}

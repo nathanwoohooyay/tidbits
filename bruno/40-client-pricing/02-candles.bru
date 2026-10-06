@@ -1,0 +1,16 @@
+meta {
+  name: Get Candles
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{client_base_url}}/api/pricing/candles/{{candle_symbol}}?from={{candle_from}}&to={{candle_to}}&interval={{candle_interval}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Authorization: Bearer {{client_token}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Refresh Token
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{auth_base_url}}/api/auth/refresh
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

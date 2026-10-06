@@ -3,6 +3,7 @@ package com.tidbits.audit.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
@@ -36,7 +37,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> req
-                        .requestMatchers("/api/**").hasAnyRole("ADMIN", "AUDITOR")
+                    .requestMatchers(HttpMethod.PUT, "/api/roles/users/*").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "AUDITOR")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer((OAuth2ResourceServerConfigurer<HttpSecurity> oauth2) ->
                         oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(authenticationConverter)));

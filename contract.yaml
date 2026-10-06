@@ -1216,19 +1216,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponseDTO'
 
+  /api/roles/users/{userId}:
     put:
       tags:
         - Roles
-      summary: Update role
-      description: Replace all role information
-      operationId: updateRole
+      summary: Update a user's role
+      description: Assign a new role to a user. This operation is intended for admin users.
+      operationId: updateUserRole
       security:
         - BearerAuth: []
       parameters:
-        - name: id
+        - name: userId
           in: path
           required: true
-          description: Unique role identifier
+          description: Unique user identifier
           schema:
             type: integer
             format: int32
@@ -1237,16 +1238,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Role'
+              type: object
+              properties:
+                roleId:
+                  type: integer
+                  format: int32
+                roleName:
+                  $ref: '#/components/schemas/RoleType'
       responses:
         '200':
-          description: Role updated successfully
+          description: User role updated successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Role'
         '400':
-          description: Invalid input
+          description: Invalid request payload
           content:
             application/json:
               schema:
@@ -1258,39 +1265,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponseDTO'
         '404':
-          description: Role not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    delete:
-      tags:
-        - Roles
-      summary: Delete role
-      description: Remove a role from the system
-      operationId: deleteRole
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: Unique role identifier
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '204':
-          description: Role deleted successfully
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Role not found
+          description: User or role not found
           content:
             application/json:
               schema:

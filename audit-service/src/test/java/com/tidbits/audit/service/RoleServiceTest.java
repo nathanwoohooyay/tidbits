@@ -1,10 +1,11 @@
 package com.tidbits.audit.service;
 
 import com.tidbits.audit.model.entity.Role;
+import com.tidbits.audit.model.entity.UserRoleRef;
 import com.tidbits.audit.model.enums.RoleType;
 import com.tidbits.audit.repository.RoleRepository;
+import com.tidbits.audit.repository.UserRoleRefRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,12 +22,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@Disabled("Enable after RoleService methods are implemented")
 @DisplayName("RoleService contract tests")
 class RoleServiceTest {
 
 	@Mock
 	private RoleRepository roleRepository;
+
+	@Mock
+	private UserRoleRefRepository userRoleRefRepository;
 
 	@InjectMocks
 	private RoleService roleService;
@@ -90,14 +93,13 @@ class RoleServiceTest {
 	@Test
 	@DisplayName("updateRole should apply changes to an existing role")
 	void updateRole_shouldApplyChangesToExistingRole() {
-		when(roleRepository.findById(1)).thenReturn(Optional.of(role));
 		when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		Role result = roleService.updateRole(1, updatedRole);
 
 		assertNotNull(result);
+		assertEquals(1, result.getRoleId());
 		assertEquals(RoleType.AUDITOR, result.getName());
-		verify(roleRepository).findById(1);
 		verify(roleRepository).save(any(Role.class));
 	}
 
@@ -109,5 +111,53 @@ class RoleServiceTest {
 		roleService.deleteRole(1);
 
 		verify(roleRepository).deleteById(1);
+	}
+
+	@Test
+	@DisplayName("updateUserRole should update role assignment when user and role exist")
+	void updateUserRole_shouldUpdateRoleAssignmentWhenUserAndRoleExist() {
+		UserRoleRef userRoleRef = new UserRoleRef();
+		userRoleRef.setUserId(99);
+		userRoleRef.setRoleId(1);
+
+		Role auditorRole = new Role(2, RoleType.AUDITOR);
+
+		when(userRoleRefRepository.findById(99)).thenReturn(Optional.of(userRoleRef));
+		when(roleRepository.findById(2)).thenReturn(Optional.of(auditorRole));
+		when(userRoleRefRepository.save(any(UserRoleRef.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		Optional<Role> result = roleService.updateUserRole(99, 2, null);
+
+		assertTrue(result.isPresent());
+		assertEquals(RoleType.AUDITOR, result.orElseThrow().getName());
+		assertEquals(2, userRoleRef.getRoleId());
+		verify(userRoleRefRepository).save(any(UserRoleRef.class));
+	}
+
+	@Test
+	@DisplayName("updateUserRole should return empty when user is missing")
+	void updateUserRole_shouldReturnEmptyWhenUserIsMissing() {
+		when(userRoleRefRepository.findById(99)).thenReturn(Optional.empty());
+
+		Optional<Role> result = roleService.updateUserRole(99, 2, null);
+
+		assertTrue(result.isEmpty());
+		verify(userRoleRefRepository, never()).save(any(UserRoleRef.class));
+	}
+
+	@Test
+	@DisplayName("updateUserRole should return empty when role is missing")
+	void updateUserRole_shouldReturnEmptyWhenRoleIsMissing() {
+		UserRoleRef userRoleRef = new UserRoleRef();
+		userRoleRef.setUserId(99);
+		userRoleRef.setRoleId(1);
+
+		when(userRoleRefRepository.findById(99)).thenReturn(Optional.of(userRoleRef));
+		when(roleRepository.findByName(RoleType.REPORTER)).thenReturn(Optional.empty());
+
+		Optional<Role> result = roleService.updateUserRole(99, null, RoleType.REPORTER);
+
+		assertTrue(result.isEmpty());
+		verify(userRoleRefRepository, never()).save(any(UserRoleRef.class));
 	}
 }

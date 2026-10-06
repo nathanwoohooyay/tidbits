@@ -109,8 +109,6 @@ public class OrderService {
 
         double totalAmount = floorToTwoDecimals(currOrder.getQuantity() * currOrder.getStockPrice());
 
-        currOrder.setTotalAmount(totalAmount);
-
         boolean status = true;
         if (orderType == OrderType.BUY) {
             status = processBuyOrder(account, currOrder.getInstrumentId(), currOrder.getQuantity(), totalAmount);

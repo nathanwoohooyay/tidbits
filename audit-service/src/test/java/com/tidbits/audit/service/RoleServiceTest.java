@@ -5,6 +5,7 @@ import com.tidbits.audit.model.entity.UserRoleRef;
 import com.tidbits.audit.model.enums.RoleType;
 import com.tidbits.audit.repository.RoleRepository;
 import com.tidbits.audit.repository.UserRoleRefRepository;
+import com.tidbits.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -139,7 +140,7 @@ class RoleServiceTest {
 	void updateUserRole_shouldThrowWhenUserIsMissing() {
 		when(userRoleRefRepository.findById(99)).thenReturn(Optional.empty());
 
-		assertThrows(RuntimeException.class, () -> roleService.updateUserRole(99, 2, null));
+		assertThrows(ResourceNotFoundException.class, () -> roleService.updateUserRole(99, 2, null));
 
 		verify(userRoleRefRepository, never()).save(any(UserRoleRef.class));
 	}
@@ -154,7 +155,7 @@ class RoleServiceTest {
 		when(userRoleRefRepository.findById(99)).thenReturn(Optional.of(userRoleRef));
 		when(roleRepository.findByName(RoleType.REPORTER)).thenReturn(Optional.empty());
 
-		assertThrows(RuntimeException.class, () -> roleService.updateUserRole(99, null, RoleType.REPORTER));
+		assertThrows(ResourceNotFoundException.class, () -> roleService.updateUserRole(99, null, RoleType.REPORTER));
 
 		verify(userRoleRefRepository, never()).save(any(UserRoleRef.class));
 	}

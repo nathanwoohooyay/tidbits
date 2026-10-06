@@ -2,6 +2,7 @@ package com.tidbits.audit.controller;
 
 import com.tidbits.audit.model.dto.UserLogDTO;
 import com.tidbits.audit.model.entity.UserLog;
+import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.audit.service.UserLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -25,9 +26,9 @@ public class UserLogController {
 
     @GetMapping("/{id}")
     public ResponseEntity<UserLogDTO> getUserLogById(@PathVariable Integer id) {
-        return userLogService.getUserLogById(id)
-                .map(log -> ResponseEntity.ok(toDto(log)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        UserLog log = userLogService.getUserLogById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User log not found for id: " + id));
+        return ResponseEntity.ok(toDto(log));
     }
 
     @GetMapping

@@ -2,6 +2,7 @@ package com.tidbits.audit.controller;
 
 import com.tidbits.audit.model.dto.TransactionLogDTO;
 import com.tidbits.audit.model.entity.TransactionLog;
+import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.audit.service.TransactionLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -24,9 +25,9 @@ public class TransactionLogController {
 
     @GetMapping("/{transactionId}")
     public ResponseEntity<TransactionLogDTO> getTransactionLogById(@PathVariable Integer transactionId) {
-        return transactionLogService.getTransactionLogById(transactionId)
-                .map(log -> ResponseEntity.ok(toDto(log)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        TransactionLog log = transactionLogService.getTransactionLogById(transactionId)
+            .orElseThrow(() -> new ResourceNotFoundException("Transaction log not found for id: " + transactionId));
+        return ResponseEntity.ok(toDto(log));
     }
 
     @GetMapping("/users/{userId}")

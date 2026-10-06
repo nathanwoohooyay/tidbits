@@ -1,5 +1,6 @@
 package com.tidbits.audit.model.entity;
 
+import com.tidbits.audit.model.converter.RoleTypeConverter;
 import jakarta.persistence.*;
 import com.tidbits.audit.model.enums.RoleType;
 
@@ -12,7 +13,7 @@ public class Role {
     @Column(name = "role_id")
     private Integer roleId;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = RoleTypeConverter.class)
     @Column(name = "name", nullable = false, unique = true)
     private RoleType name;
 

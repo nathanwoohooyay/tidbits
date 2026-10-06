@@ -33,6 +33,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.tidbits</groupId>
+            <artifactId>shared-exceptions</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>

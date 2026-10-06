@@ -95,7 +95,6 @@ CREATE TABLE transaction_logs(
     account_id INT NOT NULL REFERENCES accounts(account_id),
     event TEXT NOT NULL,
     amount NUMERIC(15, 2),
-    ip_address TEXT,
     transaction_id INT REFERENCES account_transactions(transaction_id),
     status log_status_type,
     happened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL

@@ -39,7 +39,6 @@ class TransactionLogServiceTest {
             200,
             "TRANSFER_INITIATED",
             2500.00,
-            "192.168.1.1",
             500,
             LogStatus.SUCCESS,
             LocalDateTime.now()

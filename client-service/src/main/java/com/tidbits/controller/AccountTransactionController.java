@@ -28,12 +28,15 @@ public class AccountTransactionController {
 
     @GetMapping("/transactions/{transactionId}")
     public ResponseEntity<AccountTransactionDTO> getAccountTransactionById(@PathVariable Integer transactionId, @PathVariable Integer accountId) {
-        return ResponseEntity.ok(null);
+        return ResponseEntity.ok(AccountTransactionMapper.toDto(accountTransactionService.getAccountTransactionById(accountId, transactionId)));
     }
 
     @GetMapping("/transactions")
     public ResponseEntity<List<AccountTransactionDTO>> getAccountTransactions(@PathVariable Integer accountId) {
-        return ResponseEntity.ok(List.of());
+        return ResponseEntity.ok(accountTransactionService.getAccountTransactions(accountId)
+                .stream()
+                .map(AccountTransactionMapper::toDto)
+                .toList());
     }
 
     // @PostMapping("/account/{accountId}/transactions")

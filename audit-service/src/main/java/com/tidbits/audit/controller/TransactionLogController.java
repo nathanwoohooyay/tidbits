@@ -52,7 +52,6 @@ public class TransactionLogController {
                 log.getAccountId(),
                 log.getEvent(),
             log.getAmount(),
-                log.getIpAddress(),
                 log.getTransactionId(),
                 log.getStatus(),
                 log.getHappenedAt()

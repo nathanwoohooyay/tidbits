@@ -26,9 +26,6 @@ public class TransactionLog {
     @Column(name = "amount")
     private Double amount;
 
-    @Column(name = "ip_address")
-    private String ipAddress;
-
     @Column(name = "transaction_id")
     private Integer transactionId;
 
@@ -43,13 +40,12 @@ public class TransactionLog {
     }
 
     public TransactionLog(Integer logId, Integer userId, Integer accountId, String event, Double amount,
-                          String ipAddress, Integer transactionId, LogStatus status, LocalDateTime happenedAt) {
+                          Integer transactionId, LogStatus status, LocalDateTime happenedAt) {
         this.logId = logId;
         this.userId = userId;
         this.accountId = accountId;
         this.event = event;
         this.amount = amount;
-        this.ipAddress = ipAddress;
         this.transactionId = transactionId;
         this.status = status;
         this.happenedAt = happenedAt;
@@ -69,9 +65,6 @@ public class TransactionLog {
 
     public Double getAmount() { return amount; }
     public void setAmount(Double amount) { this.amount = amount; }
-
-    public String getIpAddress() { return ipAddress; }
-    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
 
     public Integer getTransactionId() { return transactionId; }
     public void setTransactionId(Integer transactionId) { this.transactionId = transactionId; }

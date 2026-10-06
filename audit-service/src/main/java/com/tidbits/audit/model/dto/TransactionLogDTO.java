@@ -9,7 +9,6 @@ public class TransactionLogDTO {
     private Integer accountId;
     private String event;
     private Double amount;
-    private String ipAddress;
     private Integer transactionId;
     private LogStatus status;
     private LocalDateTime happenedAt;
@@ -17,14 +16,13 @@ public class TransactionLogDTO {
     public TransactionLogDTO() {
     }
 
-    public TransactionLogDTO(Integer logId, Integer userId, Integer accountId, String event, Double amount, String ipAddress,
+    public TransactionLogDTO(Integer logId, Integer userId, Integer accountId, String event, Double amount,
                              Integer transactionId, LogStatus status, LocalDateTime happenedAt) {
         this.logId = logId;
         this.userId = userId;
         this.accountId = accountId;
         this.event = event;
         this.amount = amount;
-        this.ipAddress = ipAddress;
         this.transactionId = transactionId;
         this.status = status;
         this.happenedAt = happenedAt;
@@ -40,8 +38,6 @@ public class TransactionLogDTO {
     public void setEvent(String event) { this.event = event; }
     public Double getAmount() { return amount; }
     public void setAmount(Double amount) { this.amount = amount; }
-    public String getIpAddress() { return ipAddress; }
-    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
     public Integer getTransactionId() { return transactionId; }
     public void setTransactionId(Integer transactionId) { this.transactionId = transactionId; }
     public LogStatus getStatus() { return status; }

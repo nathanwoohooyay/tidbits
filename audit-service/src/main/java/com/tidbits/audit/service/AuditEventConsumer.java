@@ -79,7 +79,6 @@ public class AuditEventConsumer {
         log.setAccountId(event.accountId());
         log.setEvent(event.eventType());
         log.setAmount(resolveAmount(event));
-        log.setIpAddress(null);
         log.setTransactionId(transactionId);
         log.setStatus(resolveTransactionStatus(event));
         log.setHappenedAt(event.occurredAt() == null ? LocalDateTime.now() : event.occurredAt());

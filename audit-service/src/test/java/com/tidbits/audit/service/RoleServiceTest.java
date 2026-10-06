@@ -126,28 +126,27 @@ class RoleServiceTest {
 		when(roleRepository.findById(2)).thenReturn(Optional.of(auditorRole));
 		when(userRoleRefRepository.save(any(UserRoleRef.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		Optional<Role> result = roleService.updateUserRole(99, 2, null);
+		Role result = roleService.updateUserRole(99, 2, null);
 
-		assertTrue(result.isPresent());
-		assertEquals(RoleType.AUDITOR, result.orElseThrow().getName());
+		assertNotNull(result);
+		assertEquals(RoleType.AUDITOR, result.getName());
 		assertEquals(2, userRoleRef.getRoleId());
 		verify(userRoleRefRepository).save(any(UserRoleRef.class));
 	}
 
 	@Test
-	@DisplayName("updateUserRole should return empty when user is missing")
-	void updateUserRole_shouldReturnEmptyWhenUserIsMissing() {
+	@DisplayName("updateUserRole should throw when user is missing")
+	void updateUserRole_shouldThrowWhenUserIsMissing() {
 		when(userRoleRefRepository.findById(99)).thenReturn(Optional.empty());
 
-		Optional<Role> result = roleService.updateUserRole(99, 2, null);
+		assertThrows(RuntimeException.class, () -> roleService.updateUserRole(99, 2, null));
 
-		assertTrue(result.isEmpty());
 		verify(userRoleRefRepository, never()).save(any(UserRoleRef.class));
 	}
 
 	@Test
-	@DisplayName("updateUserRole should return empty when role is missing")
-	void updateUserRole_shouldReturnEmptyWhenRoleIsMissing() {
+	@DisplayName("updateUserRole should throw when role is missing")
+	void updateUserRole_shouldThrowWhenRoleIsMissing() {
 		UserRoleRef userRoleRef = new UserRoleRef();
 		userRoleRef.setUserId(99);
 		userRoleRef.setRoleId(1);
@@ -155,9 +154,8 @@ class RoleServiceTest {
 		when(userRoleRefRepository.findById(99)).thenReturn(Optional.of(userRoleRef));
 		when(roleRepository.findByName(RoleType.REPORTER)).thenReturn(Optional.empty());
 
-		Optional<Role> result = roleService.updateUserRole(99, null, RoleType.REPORTER);
+		assertThrows(RuntimeException.class, () -> roleService.updateUserRole(99, null, RoleType.REPORTER));
 
-		assertTrue(result.isEmpty());
 		verify(userRoleRefRepository, never()).save(any(UserRoleRef.class));
 	}
 }

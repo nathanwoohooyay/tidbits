@@ -2,6 +2,7 @@ package com.tidbits.audit.model.entity;
 
 import com.tidbits.audit.model.converter.LogStatusConverter;
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 import com.tidbits.audit.model.enums.LogStatus;
 import java.time.LocalDateTime;
 
@@ -27,6 +28,7 @@ public class UserLog {
     @Column(name = "status")
     private LogStatus status;
 
+    @CreationTimestamp
     @Column(name = "happened_at")
     private LocalDateTime happenedAt;
 

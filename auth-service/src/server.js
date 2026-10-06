@@ -48,6 +48,18 @@ function generateRefreshToken() {
   return crypto.randomBytes(48).toString('hex');
 }
 
+function createAccessToken(userId, roleName, tokenVersion) {
+  return jwt.sign(
+    {
+      sub: userId,
+      roles: [String(roleName).toUpperCase()],
+      tokenVersion,
+    },
+    SECRET,
+    { algorithm: 'HS256', expiresIn: '15m' }
+  );
+}
+
 function getRefreshCookieOptions() {
   return {
     httpOnly: true,
@@ -155,7 +167,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT u.user_id, u.password_hash, r.name AS role_name
+      SELECT u.user_id, u.password_hash, u.token_version, r.name AS role_name
       FROM users u
       JOIN roles r ON r.role_id = u.role_id
       WHERE u.username = $1
@@ -187,11 +199,7 @@ app.post('/api/auth/login', async (req, res) => {
       return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
     }
 
-    const token = jwt.sign(
-      { sub: user.user_id, roles: [String(user.role_name).toUpperCase()] },
-      SECRET,
-      { algorithm: 'HS256', expiresIn: '15m' }
-    );
+    const token = createAccessToken(user.user_id, user.role_name, user.token_version);
     const refreshToken = generateRefreshToken();
     const refreshTokenHash = hashRefreshToken(refreshToken);
     const refreshTokenExpiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
@@ -241,7 +249,7 @@ app.post('/api/auth/refresh', async (req, res) => {
     const refreshTokenHash = hashRefreshToken(refreshToken);
     const result = await pool.query(
       `
-      SELECT r.user_id, r.expires_at, role.name AS role_name
+      SELECT r.user_id, r.expires_at, u.token_version, role.name AS role_name
       FROM refresh_tokens r
       JOIN users u ON r.user_id = u.user_id
       JOIN roles role ON role.role_id = u.role_id
@@ -259,11 +267,8 @@ app.post('/api/auth/refresh', async (req, res) => {
       return sendError(res, req, 401, 'EXPIRED_REFRESH_TOKEN', 'refresh token has expired');
     }
 
-    const newToken = jwt.sign(
-      { sub: userId, roles: [String(roleName).toUpperCase()] },
-      SECRET,
-      { algorithm: 'HS256', expiresIn: '15m' }
-    );
+    const { token_version: tokenVersion } = result.rows[0];
+    const newToken = createAccessToken(userId, roleName, tokenVersion);
 
     return res.json({ accessToken: newToken });
   } catch (error) {

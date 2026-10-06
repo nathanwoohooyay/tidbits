@@ -18,7 +18,8 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     phone_number TEXT UNIQUE,
     last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    reward_points INT DEFAULT 0 NOT NULL
+    reward_points INT DEFAULT 0 NOT NULL,
+    token_version INT DEFAULT 0 NOT NULL
 );
 
 CREATE TABLE accounts (

@@ -36,6 +36,9 @@ public class User {
     @Column(name = "reward_points")
     private Integer rewardPoints;
 
+    @Column(name = "token_version", nullable = false)
+    private Integer tokenVersion;
+
     public User() {
     }
 
@@ -78,4 +81,7 @@ public class User {
 
     public Integer getRewardPoints() { return rewardPoints; }
     public void setRewardPoints(Integer rewardPoints) { this.rewardPoints = rewardPoints; }
+
+    public Integer getTokenVersion() { return tokenVersion; }
+    public void setTokenVersion(Integer tokenVersion) { this.tokenVersion = tokenVersion; }
 }

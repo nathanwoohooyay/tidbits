@@ -16,6 +16,9 @@ public class UserRoleRef {
     @Column(name = "role_id", nullable = false)
     private Integer roleId;
 
+    @Column(name = "token_version", nullable = false)
+    private Integer tokenVersion;
+
     public Integer getUserId() {
         return userId;
     }
@@ -30,5 +33,13 @@ public class UserRoleRef {
 
     public void setRoleId(Integer roleId) {
         this.roleId = roleId;
+    }
+
+    public Integer getTokenVersion() {
+        return tokenVersion;
+    }
+
+    public void setTokenVersion(Integer tokenVersion) {
+        this.tokenVersion = tokenVersion;
     }
 }

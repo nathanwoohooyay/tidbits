@@ -1,5 +1,6 @@
 package com.tidbits.config;
 
+import com.tidbits.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,12 @@ public class SecurityConfig {
 
     @Value("${security.jwt.shared-secret}")
     private String sharedSecret;
+
+    private final UserRepository userRepository;
+
+    public SecurityConfig(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -49,6 +56,7 @@ public class SecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         SecretKeySpec key = new SecretKeySpec(sharedSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(key).build();
+        JwtDecoder delegate = NimbusJwtDecoder.withSecretKey(key).build();
+        return new TokenVersionJwtDecoder(delegate, userRepository);
     }
 }

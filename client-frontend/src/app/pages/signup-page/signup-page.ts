@@ -25,7 +25,11 @@ export class SignupPageComponent {
   signupSuccess = '';
 
   signup() {
-    if (!this.signupUsername.trim() || !this.signupEmail.trim() || !this.signupPhoneNumber.trim()) {
+    const username = this.signupUsername.trim();
+    const email = this.signupEmail.trim();
+    const phoneNumber = this.signupPhoneNumber.trim();
+
+    if (!username || !email || !phoneNumber) {
       this.signupError = 'Username, email, and phone number are required.';
       return;
     }
@@ -45,9 +49,9 @@ export class SignupPageComponent {
     this.signupSuccess = '';
 
     this.authService.signup({
-      username: this.signupUsername.trim(),
-      email: this.signupEmail.trim(),
-      phoneNumber: this.signupPhoneNumber.trim(),
+      username,
+      email,
+      phoneNumber,
       password: this.signupPassword
     }).subscribe({
       next: async () => {
@@ -57,7 +61,7 @@ export class SignupPageComponent {
       },
       error: err => {
         this.signupLoading = false;
-        this.signupError = err?.error?.error ?? err?.error?.message ?? 'Registration failed. Please review your details and try again.';
+        this.signupError = this.authService.getSignupErrorMessage(err);
       }
     });
   }

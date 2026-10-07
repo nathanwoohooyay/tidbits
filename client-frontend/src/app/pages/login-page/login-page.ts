@@ -23,7 +23,10 @@ export class LoginPageComponent {
   loginLoading = false;
 
   login() {
-    if (!this.loginUsername.trim() || !this.loginPassword.trim()) {
+    const username = this.loginUsername.trim();
+    const password = this.loginPassword.trim();
+
+    if (!username || !password) {
       this.loginError = 'Please enter username and password.';
       return;
     }
@@ -31,7 +34,7 @@ export class LoginPageComponent {
     this.loginLoading = true;
     this.loginError = '';
 
-    this.authService.login(this.loginUsername.trim(), this.loginPassword.trim()).subscribe({
+    this.authService.login(username, password).subscribe({
       next: async res => {
         if (!res?.token) {
           this.loginLoading = false;
@@ -45,7 +48,7 @@ export class LoginPageComponent {
       },
       error: err => {
         this.loginLoading = false;
-        this.loginError = err?.error?.error ?? err?.error?.message ?? 'Login failed. Check credentials.';
+        this.loginError = this.authService.getLoginErrorMessage(err);
       }
     });
   }

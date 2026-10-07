@@ -23,7 +23,31 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Simple NestJS gateway that proxies requests to downstream services.
+
+## Routing
+
+- `/` proxies to the client service root.
+- `/client/*` proxies to the client service, preserving the remaining path and query string.
+- `/audit/*` proxies to the audit service, preserving the remaining path and query string.
+
+The gateway forwards the incoming request method, headers, body, and query string so the downstream services remain private behind the gateway.
+
+## Configuration
+
+Set downstream service base URLs with environment variables:
+
+```bash
+CLIENT_SERVICE_URL=http://localhost:3001
+AUDIT_SERVICE_URL=http://localhost:3002
+```
+
+Defaults:
+
+- client service: `http://localhost:3001`
+- audit service: `http://localhost:3002`
+
+In Docker, set these to the internal service names on the container network, for example `http://client-service:3001` and `http://audit-service:3002`.
 
 ## Project setup
 

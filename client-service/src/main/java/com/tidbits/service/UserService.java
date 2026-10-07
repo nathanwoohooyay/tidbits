@@ -36,12 +36,44 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User updateUser(Integer userId, User user) {
-        return null;
+    public User changeEmail(Integer userId, String newEmail) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found."));
+
+        try {
+            if (newEmail == null || newEmail.isBlank()) {
+                throw new BadRequestException("New email is required.");
+            }
+
+            user.setEmail(newEmail);
+            User saved = userRepository.save(user);
+
+            userAuditEventPublisher.publish("CHANGE_EMAIL", userId, "SUCCESS", "Email changed");
+            return saved;
+        } catch (RuntimeException ex) {
+            userAuditEventPublisher.publish("CHANGE_EMAIL", userId, "FAILURE", ex.getMessage());
+            throw ex;
+        }
     }
 
-    public User partiallyUpdateUser(Integer userId, User user) {
-        return null;
+    public User changePhoneNumber(Integer userId, String newPhoneNumber) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found."));
+
+        try {
+            if (newPhoneNumber == null || newPhoneNumber.isBlank()) {
+                throw new BadRequestException("New phone number is required.");
+            }
+
+            user.setPhoneNumber(newPhoneNumber);
+            User saved = userRepository.save(user);
+
+            userAuditEventPublisher.publish("CHANGE_PHONE_NUMBER", userId, "SUCCESS", "Phone number changed");
+            return saved;
+        } catch (RuntimeException ex) {
+            userAuditEventPublisher.publish("CHANGE_PHONE_NUMBER", userId, "FAILURE", ex.getMessage());
+            throw ex;
+        }
     }
 
     public User changePassword(Integer userId, String newPassword, String currentPassword, String confirmPassword) {

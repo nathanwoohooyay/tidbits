@@ -1,6 +1,7 @@
 package com.tidbits.audit.controller;
 
 import com.tidbits.audit.service.AccessRevocationService;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,7 +19,7 @@ public class AdminController {
     @PostMapping("/users/{userId}/revoke")
     public ResponseEntity<String> revokeAccess(@PathVariable int userId) {
         accessRevocationService.revokeUserAccess(userId);
-        return ResponseEntity.ok("User access revoked");
+        return ResponseEntity.ok(Map.of("success", "User access revoked"));
     }
 
 }

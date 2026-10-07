@@ -27,6 +27,12 @@
       {{ themeMode === 'dark' ? '☾' : '☀' }}
     </button>
 
+    <button class="theme-toggle" type="button" (click)="goToAccount.emit()"
+            aria-label="Account settings"
+            title="Account settings">
+      ⚙
+    </button>
+
     <button class="btn-signout" type="button" (click)="signOut.emit()">Sign Out</button>
   </div>
 </header>

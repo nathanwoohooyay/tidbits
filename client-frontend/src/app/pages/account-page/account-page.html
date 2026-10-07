@@ -1,0 +1,166 @@
+<div class="account-page">
+  <header class="account-header">
+    <div>
+      <h1>Account Settings</h1>
+      <p class="subtitle">Manage your account, password, and preferences</p>
+    </div>
+    <button type="button" class="btn-back" (click)="goBack()">← Back to Dashboard</button>
+  </header>
+
+  <main class="account-content">
+    <!-- Update Account Section -->
+    <section class="account-card">
+      <h2>Update Account Information</h2>
+      <p class="section-subtitle">Change your username or email address</p>
+
+      @if (updateError) {
+        <div class="error-message" role="alert">{{ updateError }}</div>
+      }
+      @if (updateSuccess) {
+        <div class="success-message" role="status">{{ updateSuccess }}</div>
+      }
+
+      <form (ngSubmit)="updateAccount()" class="form-grid">
+        <div class="form-group">
+          <label for="update-username">Username</label>
+          <input
+            id="update-username"
+            type="text"
+            [(ngModel)]="updateUsername"
+            name="updateUsername"
+            placeholder="Enter new username"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="update-email">Email</label>
+          <input
+            id="update-email"
+            type="email"
+            [(ngModel)]="updateEmail"
+            name="updateEmail"
+            placeholder="Enter new email"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn-primary"
+          [disabled]="updateLoading"
+        >
+          {{ updateLoading ? 'Updating…' : 'Update Account' }}
+        </button>
+      </form>
+    </section>
+
+    <!-- Change Password Section -->
+    <section class="account-card">
+      <h2>Change Password</h2>
+      <p class="section-subtitle">Update your password to keep your account secure</p>
+
+      @if (passwordError) {
+        <div class="error-message" role="alert">{{ passwordError }}</div>
+      }
+      @if (passwordSuccess) {
+        <div class="success-message" role="status">{{ passwordSuccess }}</div>
+      }
+
+      <form (ngSubmit)="changePassword()" class="form-grid">
+        <div class="form-group">
+          <label for="old-password">Current Password</label>
+          <input
+            id="old-password"
+            type="password"
+            [(ngModel)]="oldPassword"
+            name="oldPassword"
+            placeholder="Enter current password"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="new-password">New Password</label>
+          <input
+            id="new-password"
+            type="password"
+            [(ngModel)]="newPassword"
+            name="newPassword"
+            placeholder="Enter new password (min 8 characters)"
+            autocomplete="new-password"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="confirm-password">Confirm New Password</label>
+          <input
+            id="confirm-password"
+            type="password"
+            [(ngModel)]="confirmPassword"
+            name="confirmPassword"
+            placeholder="Confirm new password"
+            autocomplete="new-password"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn-primary"
+          [disabled]="passwordLoading"
+        >
+          {{ passwordLoading ? 'Changing…' : 'Change Password' }}
+        </button>
+      </form>
+    </section>
+
+    <!-- Delete Account Section -->
+    <section class="account-card danger">
+      <h2>Danger Zone</h2>
+      <p class="section-subtitle">Permanently delete your account and all associated data</p>
+
+      @if (deleteError) {
+        <div class="error-message" role="alert">{{ deleteError }}</div>
+      }
+
+      @if (!showDeleteConfirm) {
+        <button
+          type="button"
+          class="btn-danger"
+          (click)="toggleDeleteConfirm()"
+        >
+          Delete My Account
+        </button>
+      } @else {
+        <div class="delete-confirmation">
+          <p class="warning-text">
+            ⚠️ This action cannot be undone. All your data will be permanently deleted.
+          </p>
+          <p>Please type your username to confirm:</p>
+          <input
+            type="text"
+            [(ngModel)]="deleteConfirmation"
+            placeholder="Type your username"
+            class="delete-confirm-input"
+          />
+          <div class="delete-actions">
+            <button
+              type="button"
+              class="btn-danger-confirm"
+              [disabled]="deleteLoading || deleteConfirmation !== currentUsername"
+              (click)="deleteAccount()"
+            >
+              {{ deleteLoading ? 'Deleting…' : 'Permanently Delete Account' }}
+            </button>
+            <button
+              type="button"
+              class="btn-cancel"
+              (click)="toggleDeleteConfirm()"
+              [disabled]="deleteLoading"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      }
+    </section>
+  </main>
+</div>

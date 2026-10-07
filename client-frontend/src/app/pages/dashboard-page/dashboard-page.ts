@@ -131,6 +131,10 @@ export class DashboardPageComponent implements OnInit {
     this.session.setAccounts(this.accounts());
   }
 
+  goToAccount() {
+    void this.router.navigateByUrl('/account');
+  }
+
   signOut() {
     this.session.clearSession();
     void this.router.navigateByUrl('/login');

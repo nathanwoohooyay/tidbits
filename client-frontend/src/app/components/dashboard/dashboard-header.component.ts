@@ -19,6 +19,7 @@ export class DashboardHeaderComponent {
   @Output() signOut = new EventEmitter<void>();
 
   readonly formatCurrency = formatCurrency;
+  @Output() goToAccount = new EventEmitter<void>();
 
   onAccountSelect(event: Event) {
     const value = Number((event.target as HTMLSelectElement).value);

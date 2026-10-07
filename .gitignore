@@ -84,5 +84,5 @@ application-*.properties.local
 .cache/
 .code-workspace
 *.lock
-package-lock.json
 yarn.lock
+*package-lock.json

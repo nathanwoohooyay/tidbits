@@ -18,6 +18,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 8
+    networks:
+      - tidbits-network
 
   kafka:
     image: apache/kafka:latest
@@ -37,8 +39,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       CLUSTER_ID: abcdefghijklmnopqrstuv
-    ports:
-      - "9092:9092"
+    networks:
+      - tidbits-network
 
   kafka-init:
     image: apache/kafka:latest
@@ -70,6 +72,8 @@ services:
       echo "Kafka topic initialization complete.";
       '
     restart: "no"
+    networks:
+      - tidbits-network
 
   auth-service:
     build:
@@ -95,6 +99,8 @@ services:
         condition: service_started
       kafka-init:
         condition: service_completed_successfully
+    networks:
+      - tidbits-network
 
   client-service:
     build:
@@ -112,8 +118,6 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_ORDER_TOPIC: ${KAFKA_ORDER_TOPIC:-orders}
       KAFKA_USER_AUDIT_TOPIC: ${KAFKA_USER_AUDIT_TOPIC:-user-audit-events}
-    ports:
-      - "8082:8082"
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,6 +125,8 @@ services:
         condition: service_started
       kafka-init:
         condition: service_completed_successfully
+    networks:
+      - tidbits-network
 
   audit-service:
     build:
@@ -137,8 +143,6 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_ORDER_TOPIC: ${KAFKA_ORDER_TOPIC:-orders}
       KAFKA_USER_AUDIT_TOPIC: ${KAFKA_USER_AUDIT_TOPIC:-user-audit-events}
-    ports:
-      - "8083:8083"
     depends_on:
       postgres:
         condition: service_healthy
@@ -146,6 +150,35 @@ services:
         condition: service_started
       kafka-init:
         condition: service_completed_successfully
+    networks:
+      - tidbits-network
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: tidbits-gateway
+    environment:
+      PORT: 3000
+      CLIENT_SERVICE_URL: http://client-service:8082
+      AUDIT_SERVICE_URL: http://audit-service:8083
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      client-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
+    networks:
+      - tidbits-network
 
   metrics-service:
     build:
@@ -177,3 +210,7 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  tidbits-network:
+    driver: bridge

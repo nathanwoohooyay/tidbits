@@ -38,7 +38,7 @@ export class GatewayAuthService implements OnModuleDestroy {
 
     const persistedTokenVersion = await this.lookupTokenVersion(userId);
     if (persistedTokenVersion !== tokenVersion) {
-      throw new GatewayAuthError(403, 'JWT tokenVersion no longer matches the stored user token version');
+      throw new GatewayAuthError(403, 'Forbidden');
     }
   }
 
@@ -48,12 +48,12 @@ export class GatewayAuthService implements OnModuleDestroy {
 
   private extractBearerToken(headerValue: string | undefined): string {
     if (!headerValue) {
-      throw new GatewayAuthError(401, 'Authorization header is required');
+      throw new GatewayAuthError(401, 'Unauthorized');
     }
 
     const [scheme, token] = headerValue.split(' ', 2);
     if (scheme !== 'Bearer' || !token) {
-      throw new GatewayAuthError(401, 'Authorization header must use the Bearer scheme');
+      throw new GatewayAuthError(401, 'Unauthorized');
     }
 
     return token;
@@ -70,7 +70,7 @@ export class GatewayAuthService implements OnModuleDestroy {
       });
 
       if (typeof payload === 'string') {
-        throw new GatewayAuthError(401, 'JWT payload is invalid');
+        throw new GatewayAuthError(401, 'Unauthorized');
       }
 
       return payload as JwtPayload;
@@ -79,7 +79,7 @@ export class GatewayAuthService implements OnModuleDestroy {
         throw error;
       }
 
-      throw new GatewayAuthError(401, 'JWT is invalid or expired');
+      throw new GatewayAuthError(401, 'Unauthorized');
     }
   }
 
@@ -95,7 +95,7 @@ export class GatewayAuthService implements OnModuleDestroy {
       }
     }
 
-    throw new GatewayAuthError(statusCode, `JWT ${claimName} claim is missing or invalid`);
+    throw new GatewayAuthError(statusCode, 'Unauthorized');
   }
 
   private async lookupTokenVersion(userId: number): Promise<number> {
@@ -106,7 +106,7 @@ export class GatewayAuthService implements OnModuleDestroy {
       );
 
       if (result.rows.length === 0) {
-        throw new GatewayAuthError(401, 'JWT subject no longer maps to an active user');
+        throw new GatewayAuthError(401, 'Unauthorized');
       }
 
       return result.rows[0]?.token_version ?? 0;

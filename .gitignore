@@ -85,3 +85,4 @@ application-*.properties.local
 .code-workspace
 *.lock
 yarn.lock
+*package-lock.json

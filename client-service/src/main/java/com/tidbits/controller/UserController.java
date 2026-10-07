@@ -23,36 +23,12 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-//    @PostMapping
-//    public ResponseEntity<UserDTO> createUser(@RequestBody UserCreateRequestDTO request) {
-//        return ResponseEntity.ok(UserMapper.toUserDTO(userService.createUser(UserMapper.toCreateEntity(request))));
-//    }
-
     @GetMapping("/{userId}")
     @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Integer userId) {
         return ResponseEntity.ok(UserMapper.toUserDTO(userService.getUserById(userId).orElse(null)));
     }
-
-    @PutMapping("/{userId}")
-    @PreAuthorize("#userId.toString().equals(authentication.name)")
-    public ResponseEntity<UserDTO> updateUser(@PathVariable Integer userId, @RequestBody UserUpdateDTO request) {
-        return ResponseEntity.ok(UserMapper.toUserDTO(userService.updateUser(userId, UserMapper.toUpdateEntity(request))));
-    }
-
-    @PatchMapping("/{userId}")
-    @PreAuthorize("#userId.toString().equals(authentication.name)")
-    public ResponseEntity<UserDTO> partiallyUpdateUser(@PathVariable Integer userId, @RequestBody UserDTO userDTO) {
-        return ResponseEntity.ok(null);
-    }
-
-    @DeleteMapping("/{userId}")
-    @PreAuthorize("#userId.toString().equals(authentication.name)")
-    public ResponseEntity<Void> deleteUser(@PathVariable Integer userId) {
-        userService.deleteUser(userId);
-        return ResponseEntity.noContent().build();
-    }
-
+    
     @PatchMapping("/{userId}/change-password")
     @PreAuthorize("#userId.toString().equals(authentication.name)")
     public ResponseEntity<UserDTO> changePassword(@PathVariable Integer userId, @RequestBody ChangePasswordDTO changePasswordDTO) {
@@ -62,5 +38,17 @@ public class UserController {
                 changePasswordDTO.getCurrentPassword(),
                 changePasswordDTO.getConfirmPassword()
         )));
+    }
+
+    @PatchMapping("/{userId}/change-email")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
+    public ResponseEntity<UserDTO> changeEmail(@PathVariable Integer userId, @RequestBody String newEmail) {
+        return ResponseEntity.ok(UserMapper.toUserDTO(userService.changeEmail(userId, newEmail)));
+    }
+
+    @PatchMapping("/{userId}/change-phone-number")
+    @PreAuthorize("#userId.toString().equals(authentication.name)")
+    public ResponseEntity<UserDTO> changePhoneNumber(@PathVariable Integer userId, @RequestBody String newPhoneNumber) {
+        return ResponseEntity.ok(UserMapper.toUserDTO(userService.changePhoneNumber(userId, newPhoneNumber)));
     }
 }

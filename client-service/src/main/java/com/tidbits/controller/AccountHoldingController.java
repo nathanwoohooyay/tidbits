@@ -17,11 +17,6 @@ public class AccountHoldingController {
     @Autowired
     private AccountHoldingService accountHoldingService;
 
-    // @PostMapping
-    // public ResponseEntity<AccountHoldingDTO> createAccountHolding(@RequestBody AccountHolding accountHolding) {
-    //     return ResponseEntity.ok(null);
-    // }
-
     @GetMapping("/{holdingId}")
     public ResponseEntity<AccountHoldingDTO> getAccountHoldingById(@PathVariable Integer holdingId, @PathVariable Integer accountId) {
         return ResponseEntity.ok(AccountHoldingMapper.toDto(accountHoldingService.getAccountHoldingById(holdingId)

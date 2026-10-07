@@ -47,9 +47,4 @@ public class AccountTransactionController {
                 .map(AccountTransactionMapper::toDto)
                 .toList());
     }
-
-    // @PostMapping("/account/{accountId}/transactions")
-    // public ResponseEntity<AccountTransactionDTO> createAccountTransactionForAccount(@RequestBody AccountTransaction accountTransaction) {
-    //     return ResponseEntity.ok(null);
-    // }
 }

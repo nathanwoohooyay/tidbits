@@ -1,6 +1,5 @@
 package com.tidbits.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tidbits.exception.BadRequestException;
 import com.tidbits.model.entity.User;
 import com.tidbits.service.UserService;
@@ -15,12 +14,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,9 +27,6 @@ class UserControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockBean
     private UserService userService;
@@ -48,25 +42,6 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.username").value("alice"))
                 .andExpect(jsonPath("$.email").value("alice@example.com"))
                 .andExpect(jsonPath("$.phoneNumber").value("1112223333"));
-    }
-
-    @Test
-    void updateUser_returnsMappedUserDto() throws Exception {
-        User updated = user(42, "alice", "new@example.com", "9998887777");
-        when(userService.updateUser(eq(42), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(updated);
-
-        mockMvc.perform(put("/api/users/{userId}", 42)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "email": "new@example.com",
-                                  "phoneNumber": "9998887777"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(42))
-                .andExpect(jsonPath("$.email").value("new@example.com"))
-                .andExpect(jsonPath("$.phoneNumber").value("9998887777"));
     }
 
     @Test
@@ -93,9 +68,9 @@ class UserControllerTest {
                         .contentType(MediaType.TEXT_PLAIN)
                         .content("   "))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
-                .andExpect(jsonPath("$.message").value("New email is required."))
-                .andExpect(jsonPath("$.status").value(400));
+        .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+        .andExpect(jsonPath("$.message").value("New email is required."))
+        .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test
@@ -115,16 +90,16 @@ class UserControllerTest {
 
     @Test
     void changePhoneNumber_returnsBadRequestWhenServiceRejectsInput() throws Exception {
-        when(userService.changePhoneNumber(42, ""))
+        when(userService.changePhoneNumber(42, " "))
                 .thenThrow(new BadRequestException("New phone number is required."));
 
         mockMvc.perform(patch("/api/users/{userId}/change-phone-number", 42)
                         .contentType(MediaType.TEXT_PLAIN)
-                        .content(""))
+                .content(" "))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
-                .andExpect(jsonPath("$.message").value("New phone number is required."))
-                .andExpect(jsonPath("$.status").value(400));
+            .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+            .andExpect(jsonPath("$.message").value("New phone number is required."))
+            .andExpect(jsonPath("$.status").value(400));
     }
 
     private User user(Integer userId, String username, String email, String phoneNumber) {

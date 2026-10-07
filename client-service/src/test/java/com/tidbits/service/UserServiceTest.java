@@ -4,11 +4,12 @@ import com.tidbits.exception.BadRequestException;
 import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.entity.User;
 import com.tidbits.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,11 +28,17 @@ class UserServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @Mock
-    private UserAuditEventPublisher userAuditEventPublisher;
-
-    @InjectMocks
     private UserService userService;
+
+    private RecordingUserAuditEventPublisher userAuditEventPublisher;
+
+    @BeforeEach
+    void setUp() {
+        userService = new UserService();
+        userAuditEventPublisher = new RecordingUserAuditEventPublisher();
+        ReflectionTestUtils.setField(userService, "userRepository", userRepository);
+        ReflectionTestUtils.setField(userService, "userAuditEventPublisher", userAuditEventPublisher);
+    }
 
     @Test
     void changeEmail_updatesEmailAndPublishesSuccessEvent() {
@@ -44,7 +51,11 @@ class UserServiceTest {
         assertSame(user, result);
         assertEquals("new@example.com", user.getEmail());
         verify(userRepository).save(user);
-        verify(userAuditEventPublisher).publish("CHANGE_EMAIL", 42, "SUCCESS", "Email changed");
+        assertEquals("CHANGE_EMAIL", userAuditEventPublisher.eventType);
+        assertEquals(42, userAuditEventPublisher.userId);
+        assertEquals("SUCCESS", userAuditEventPublisher.status);
+        assertEquals("Email changed", userAuditEventPublisher.details);
+        assertEquals(1, userAuditEventPublisher.publishCount);
     }
 
     @Test
@@ -56,7 +67,11 @@ class UserServiceTest {
 
         assertEquals("New email is required.", ex.getMessage());
         verify(userRepository, never()).save(user);
-        verify(userAuditEventPublisher).publish("CHANGE_EMAIL", 42, "FAILURE", "New email is required.");
+        assertEquals("CHANGE_EMAIL", userAuditEventPublisher.eventType);
+        assertEquals(42, userAuditEventPublisher.userId);
+        assertEquals("FAILURE", userAuditEventPublisher.status);
+        assertEquals("New email is required.", userAuditEventPublisher.details);
+        assertEquals(1, userAuditEventPublisher.publishCount);
     }
 
     @Test
@@ -69,7 +84,7 @@ class UserServiceTest {
         );
 
         assertEquals("User 42 not found.", ex.getMessage());
-        verify(userAuditEventPublisher, never()).publish(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+        assertEquals(0, userAuditEventPublisher.publishCount);
     }
 
     @Test
@@ -83,7 +98,11 @@ class UserServiceTest {
         assertSame(user, result);
         assertEquals("9998887777", user.getPhoneNumber());
         verify(userRepository).save(user);
-        verify(userAuditEventPublisher).publish("CHANGE_PHONE_NUMBER", 42, "SUCCESS", "Phone number changed");
+        assertEquals("CHANGE_PHONE_NUMBER", userAuditEventPublisher.eventType);
+        assertEquals(42, userAuditEventPublisher.userId);
+        assertEquals("SUCCESS", userAuditEventPublisher.status);
+        assertEquals("Phone number changed", userAuditEventPublisher.details);
+        assertEquals(1, userAuditEventPublisher.publishCount);
     }
 
     @Test
@@ -95,7 +114,11 @@ class UserServiceTest {
 
         assertEquals("New phone number is required.", ex.getMessage());
         verify(userRepository, never()).save(user);
-        verify(userAuditEventPublisher).publish("CHANGE_PHONE_NUMBER", 42, "FAILURE", "New phone number is required.");
+        assertEquals("CHANGE_PHONE_NUMBER", userAuditEventPublisher.eventType);
+        assertEquals(42, userAuditEventPublisher.userId);
+        assertEquals("FAILURE", userAuditEventPublisher.status);
+        assertEquals("New phone number is required.", userAuditEventPublisher.details);
+        assertEquals(1, userAuditEventPublisher.publishCount);
     }
 
     @Test
@@ -108,7 +131,28 @@ class UserServiceTest {
         );
 
         assertEquals("User 42 not found.", ex.getMessage());
-        verify(userAuditEventPublisher, never()).publish(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+        assertEquals(0, userAuditEventPublisher.publishCount);
+    }
+
+    private static class RecordingUserAuditEventPublisher extends UserAuditEventPublisher {
+        private String eventType;
+        private Integer userId;
+        private String status;
+        private String details;
+        private int publishCount;
+
+        RecordingUserAuditEventPublisher() {
+            super(null, null, "test-topic");
+        }
+
+        @Override
+        public void publish(String eventType, Integer userId, String status, String details) {
+            this.eventType = eventType;
+            this.userId = userId;
+            this.status = status;
+            this.details = details;
+            this.publishCount++;
+        }
     }
 
     private User user(Integer userId, String email, String phoneNumber) {

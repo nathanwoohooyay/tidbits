@@ -57,7 +57,6 @@ public class SecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         SecretKeySpec key = new SecretKeySpec(sharedSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        JwtDecoder delegate = NimbusJwtDecoder.withSecretKey(key).build();
-        return new TokenVersionJwtDecoder(delegate, userRepository);
+        return NimbusJwtDecoder.withSecretKey(key).build();
     }
 }

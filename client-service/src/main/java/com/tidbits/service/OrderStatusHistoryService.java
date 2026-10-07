@@ -1,5 +1,6 @@
 package com.tidbits.service;
 
+import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.entity.OrderStatusHistory;
 import com.tidbits.repository.OrderStatusHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,25 +16,32 @@ public class OrderStatusHistoryService {
     private OrderStatusHistoryRepository orderStatusHistoryRepository;
 
     public OrderStatusHistory createOrderStatusHistory(OrderStatusHistory orderStatusHistory) {
-        return null;
+        return orderStatusHistoryRepository.save(orderStatusHistory);
     }
 
     public Optional<OrderStatusHistory> getOrderStatusHistoryById(Integer historyId) {
-        return Optional.empty();
+        return orderStatusHistoryRepository.findById(historyId);
     }
 
     public List<OrderStatusHistory> getHistoryByOrderId(Integer orderId) {
-        return List.of();
+        return orderStatusHistoryRepository.findByOrderId(orderId);
     }
 
     public List<OrderStatusHistory> getAllOrderStatusHistories() {
-        return List.of();
+        return orderStatusHistoryRepository.findAll();
     }
 
     public OrderStatusHistory updateOrderStatusHistory(Integer historyId, OrderStatusHistory orderStatusHistory) {
-        return null;
+        OrderStatusHistory existing = orderStatusHistoryRepository.findById(historyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order status history " + historyId + " not found."));
+
+        existing.setChangedAt(orderStatusHistory.getChangedAt());
+        existing.setOldStatus(orderStatusHistory.getOldStatus());
+        existing.setNewStatus(orderStatusHistory.getNewStatus());
+        return orderStatusHistoryRepository.save(existing);
     }
 
     public void deleteOrderStatusHistory(Integer historyId) {
+        orderStatusHistoryRepository.deleteById(historyId);
     }
 }

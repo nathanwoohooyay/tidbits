@@ -1,5 +1,4 @@
 CREATE TYPE role_type AS ENUM('client', 'auditor', 'reporter', 'admin');
-CREATE TYPE instrument_type AS ENUM('stock', 'bond', 'mutual_fund', 'etf');
 CREATE TYPE order_type_enum AS ENUM('buy', 'sell');
 CREATE TYPE order_status_type AS ENUM('created', 'pending', 'placed', 'accepted', 'filled', 'canceled', 'rejected');
 CREATE TYPE transaction_type AS ENUM('buy', 'sell', 'deposit', 'withdraw');
@@ -34,8 +33,14 @@ CREATE TABLE instruments(
     instrument_id SERIAL PRIMARY KEY,
     ticker TEXT NOT NULL UNIQUE CHECK (length(ticker) BETWEEN 1 AND 8),
     name TEXT NOT NULL UNIQUE,
-    type instrument_type NOT NULL,
-    market TEXT NOT NULL
+    type TEXT NOT NULL,
+    exchange TEXT NOT NULL,
+    last_price NUMERIC(15, 2) CHECK (last_price > 0),
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    currency TEXT NOT NULL CHECK (length(currency) = 3),
+    change NUMERIC(15, 2),
+    change_percent NUMERIC(5, 2),
+    prev_close NUMERIC(15, 2)
 );
 
 CREATE TABLE account_holdings (

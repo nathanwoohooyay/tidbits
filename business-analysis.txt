@@ -1,0 +1,14 @@
+1. Trade Volume
+    - By instrument type
+    - By market
+    - By side
+    - Amount of money
+    - By time
+2. Outliers
+    - won/lost a lot of money
+    - trade amount (if normally 100 and make a trade with 10000)
+3. Revenue
+    - From fees
+    - Assests under management
+4. Rewards
+    - Does winning tickets affect trade volume per client

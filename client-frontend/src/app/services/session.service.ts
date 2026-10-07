@@ -25,6 +25,8 @@ export class SessionService {
   accounts = signal<SessionAccount[]>([]);
   selectedAccountId = signal<number>(0);
 
+  readonly isAuthenticated = computed(() => this.authToken() !== null);
+
   selectedAccount = computed(() =>
     this.accounts().find(a => a.account_id === this.selectedAccountId()) ?? null
   );
@@ -32,6 +34,10 @@ export class SessionService {
   setAuthToken(token: string) {
     this.authToken.set(token);
     localStorage.setItem(this.tokenStorageKey, token);
+  }
+
+  getAuthToken() {
+    return this.authToken();
   }
 
   clearAuthToken() {

@@ -41,13 +41,16 @@ public class SecurityConfig {
         authenticationConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
 
         http
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> req
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     .requestMatchers(HttpMethod.PUT, "/api/roles/users/*").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/api/users/*/revoke").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/admin/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "AUDITOR")
-                        .anyRequest().denyAll())
+                    .anyRequest().denyAll())
                 .oauth2ResourceServer((OAuth2ResourceServerConfigurer<HttpSecurity> oauth2) ->
                         oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(authenticationConverter)));
 

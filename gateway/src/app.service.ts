@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { GatewayAuthError, GatewayAuthService } from './gateway-auth.service.js';
 
 @Injectable()
 export class AppService {
+  constructor(private readonly gatewayAuthService: GatewayAuthService) {}
+
   private readonly clientServiceUrl = this.normalizeBaseUrl(
     process.env.CLIENT_SERVICE_URL ?? 'http://localhost:9875',
   );
@@ -25,9 +28,10 @@ export class AppService {
     baseUrl: string,
     routePrefix: string
   ): Promise<void> {
-    const targetUrl = this.buildTargetUrl(baseUrl, routePrefix, request.originalUrl);
-
     try {
+      await this.gatewayAuthService.authorizeRequest(request, routePrefix);
+
+      const targetUrl = this.buildTargetUrl(baseUrl, routePrefix, request.originalUrl);
       const upstreamResponse = await fetch(targetUrl, {
         method: request.method,
         headers: this.buildRequestHeaders(request),
@@ -40,7 +44,15 @@ export class AppService {
 
       const responseBuffer = Buffer.from(await upstreamResponse.arrayBuffer());
       response.send(responseBuffer);
-    } catch {
+    } catch (error) {
+      if (error instanceof GatewayAuthError) {
+        response.status(error.statusCode).json({
+          statusCode: error.statusCode,
+          message: error.message,
+        });
+        return;
+      }
+
       response.status(502).json({
         statusCode: 502,
         message: 'Bad Gateway',
@@ -62,7 +74,7 @@ export class AppService {
     const headers = new Headers();
 
     for (const [key, value] of Object.entries(request.headers)) {
-      if (value === undefined || this.isHopByHopHeader(key) || key === 'host') {
+      if (value === undefined || value === null || this.isHopByHopHeader(key) || key === 'host') {
         continue;
       }
 
@@ -73,7 +85,7 @@ export class AppService {
         continue;
       }
 
-      headers.set(key, value);
+      headers.set(key, String(value));
     }
 
     return headers;

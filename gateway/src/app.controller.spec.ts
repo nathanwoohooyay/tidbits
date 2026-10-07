@@ -8,7 +8,6 @@ describe('AppController', () => {
 
   beforeEach(async () => {
     const service = {
-      proxyRootToClient: vi.fn().mockResolvedValue(undefined),
       proxyToClient: vi.fn().mockResolvedValue(undefined),
       proxyToAudit: vi.fn().mockResolvedValue(undefined),
     };
@@ -28,15 +27,6 @@ describe('AppController', () => {
   });
 
   describe('proxy routes', () => {
-    it('forwards the root path to the client service', async () => {
-      const request = { originalUrl: '/', method: 'GET' } as never;
-      const response = {} as never;
-
-      await appController.proxyRoot(request, response);
-
-      expect(appService.proxyRootToClient).toHaveBeenCalledWith(request, response);
-    });
-
     it('forwards client routes to the client service', async () => {
       const request = { originalUrl: '/client/orders?status=open', method: 'GET' } as never;
       const response = {} as never;

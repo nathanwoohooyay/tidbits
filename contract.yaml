@@ -29,15 +29,13 @@ info:
     - Use `http://localhost:8082` for client-service trading paths.
     - Use `http://localhost:8083` for audit-service admin, roles, and audit-log paths.
     - If you go through the gateway at `http://localhost:3000`, prepend `/client` to every client-service path and `/audit` to every audit-service path.
-servers:
-  - url: http://localhost:4000
-    description: Auth service. Valid for `/api/auth/*`.
-  - url: http://localhost:8082
-    description: Client service. Valid for user, account, order, holding, transaction, and pricing paths.
-  - url: http://localhost:8083
-    description: Audit service. Valid for admin, role, and audit-log paths.
-  - url: http://localhost:3000
-    description: Gateway proxy. Prepend `/client` or `/audit` to downstream paths; auth routes are not proxied here.
+x-service-base-urls:
+  auth: http://localhost:4000
+  # client: http://localhost:8082
+  # audit: http://localhost:8083
+  gateway:
+    client: http://localhost:3000/client
+    audit: http://localhost:3000/audit
 tags:
   - name: Authentication
     description: Auth-service routes for registration, login, refresh-token exchange, logout, and health checks.
@@ -1217,6 +1215,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserLogDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
         '403':
           $ref: '#/components/responses/ServiceForbidden'
         '500':
@@ -1246,56 +1246,6 @@ paths:
           $ref: '#/components/responses/ServiceForbidden'
         '404':
           $ref: '#/components/responses/ServiceNotFound'
-        '500':
-          $ref: '#/components/responses/ServiceInternalServerError'
-    put:
-      tags:
-        - User Logs
-      summary: Update a user audit log entry
-      description: |
-        Controller-level write operation for user logs.
-
-        Important: the controller implements this route, but the current audit-service security rules deny it for all callers.
-      operationId: updateUserLog
-      security:
-        - BearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserLogId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserLogWriteRequest'
-      responses:
-        '200':
-          description: User log updated successfully when security permits the request.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserLogDTO'
-        '403':
-          $ref: '#/components/responses/ServiceForbidden'
-        '500':
-          $ref: '#/components/responses/ServiceInternalServerError'
-    delete:
-      tags:
-        - User Logs
-      summary: Delete a user audit log entry
-      description: |
-        Controller-level delete operation for user logs.
-
-        Important: the controller implements this route, but the current audit-service security rules deny it for all callers.
-      operationId: deleteUserLog
-      security:
-        - BearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserLogId'
-      responses:
-        '204':
-          description: User log deleted successfully when security permits the request.
-        '403':
-          $ref: '#/components/responses/ServiceForbidden'
         '500':
           $ref: '#/components/responses/ServiceInternalServerError'
 
@@ -1350,6 +1300,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransactionLogDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
         '403':
           $ref: '#/components/responses/ServiceForbidden'
         '500':
@@ -2274,15 +2226,19 @@ components:
         userId:
           type: integer
           format: int32
+          nullable: true
           example: 1
         username:
           type: string
+          nullable: true
           example: john_doe
         ipAddress:
           type: string
+          nullable: true
           example: 203.0.113.10
         event:
           type: string
+          nullable: true
           example: LOGIN
         status:
           $ref: '#/components/schemas/LogStatus'

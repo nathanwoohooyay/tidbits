@@ -38,7 +38,23 @@ test('validateSignupInput returns 422 for invalid email', () => {
     ok: false,
     status: 422,
     errorCode: 'INVALID_EMAIL',
-    message: 'email not valid',
+    message: 'enter a valid email address',
+  });
+});
+
+test('validateSignupInput returns 422 for invalid username', () => {
+  const result = validateSignupInput({
+    username: 'a',
+    password: 'Password1',
+    email: 'alice@example.com',
+    phoneNumber: '5555555555',
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    status: 422,
+    errorCode: 'INVALID_USERNAME',
+    message: 'username must be 3-30 characters and use only letters, numbers, periods, underscores, or hyphens',
   });
 });
 
@@ -54,7 +70,7 @@ test('validateSignupInput returns 422 for invalid phone number', () => {
     ok: false,
     status: 422,
     errorCode: 'INVALID_PHONE_NUMBER',
-    message: 'phone number not valid',
+    message: 'enter a valid 10-digit US phone number',
   });
 });
 
@@ -70,7 +86,7 @@ test('validateSignupInput returns 422 for invalid password', () => {
     ok: false,
     status: 422,
     errorCode: 'INVALID_PASSWORD',
-    message: 'password not valid',
+    message: 'password must be 8-20 characters and include uppercase, lowercase, and a number',
   });
 });
 

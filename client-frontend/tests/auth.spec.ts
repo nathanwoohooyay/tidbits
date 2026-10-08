@@ -26,6 +26,31 @@ test.describe('authentication flows', () => {
     await expect(page).toHaveURL(/\/signup$/);
   });
 
+  test('signup does not submit when email or phone number is invalid', async ({ page }) => {
+    let signupRequests = 0;
+    page.on('request', request => {
+      if (request.url().includes('/api/auth/signup')) {
+        signupRequests += 1;
+      }
+    });
+
+    await page.goto('/signup');
+
+    await page.getByLabel('Username').fill(signupDetails.username);
+    await page.getByLabel('Email').fill('invalid-email');
+    await page.getByLabel('Phone Number').fill('12345');
+    await page.getByLabel('Password', { exact: true }).fill(signupDetails.password);
+    await page.getByLabel('Confirm Password').fill(signupDetails.password);
+    await page.getByRole('button', { name: 'Create Account' }).click();
+
+    await expect(page.getByRole('alert')).toHaveText('Enter a valid email address.');
+    await expect(page.getByText('Enter a valid email address.')).toBeVisible();
+    await expect(page.getByText('Enter a valid 10-digit US phone number.')).toBeVisible();
+    await page.waitForTimeout(150);
+    expect(signupRequests).toBe(0);
+    await expect(page).toHaveURL(/\/signup$/);
+  });
+
   test('signup submits the expected payload and returns to sign in', async ({ page }) => {
     await page.route('**/api/auth/signup', async route => {
       await route.fulfill({
@@ -57,6 +82,25 @@ test.describe('authentication flows', () => {
     await page.getByRole('button', { name: 'Sign In' }).click();
 
     await expect(page.getByRole('alert')).toHaveText('Please enter username and password.');
+    await expect(page).toHaveURL(/\/login$/);
+  });
+
+  test('login shows an invalid credentials error when the server rejects the login', async ({ page }) => {
+    await page.route('**/api/auth/login', async route => {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'invalid username or password' }),
+      });
+    });
+
+    await page.goto('/login');
+
+    await page.getByLabel('Username').fill('playwright_user');
+    await page.getByLabel('Password', { exact: true }).fill('wrong-password');
+    await page.getByRole('button', { name: 'Sign In' }).click();
+
+    await expect(page.getByRole('alert')).toHaveText('Invalid username or password.');
     await expect(page).toHaveURL(/\/login$/);
   });
 

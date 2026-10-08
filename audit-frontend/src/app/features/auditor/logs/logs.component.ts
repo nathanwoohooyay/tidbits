@@ -185,7 +185,7 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
                 <td class="mono-font text-muted">{{ (txn.timestamp || txn.happenedAt) | date:'short' }}</td>
                 <td class="mono-font">Acc #{{ txn.accountId }}</td>
                 <td>
-                  <span class="ticker-pill">{{ txn.instrumentId ? ('Inst #' + txn.instrumentId) : '-' }}</span>
+                  <span class="ticker-pill">{{ txn.ticker || (txn.instrumentId ? ('Inst #' + txn.instrumentId) : '-') }}</span>
                 </td>
                 <td>
                   <span class="badge" [ngClass]="getTransactionTypeBadgeClass(txn)">
@@ -237,7 +237,7 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
                 <td class="mono-font text-muted">{{ (orderLog.timestamp || orderLog.happenedAt) | date:'short' }}</td>
                 <td class="mono-font">Acc #{{ orderLog.accountId }}</td>
                 <td>
-                  <span class="ticker-pill">{{ orderLog.instrumentId ? ('Inst #' + orderLog.instrumentId) : '-' }}</span>
+                  <span class="ticker-pill">{{ orderLog.ticker || (orderLog.instrumentId ? ('Inst #' + orderLog.instrumentId) : '-') }}</span>
                 </td>
                 <td>
                   <span class="badge" [ngClass]="getTransactionTypeBadgeClass(orderLog)">
@@ -631,6 +631,7 @@ export class LogsComponent implements OnInit {
     }
 
     const searchValues = [
+      log.ticker,
       log.event,
       log.orderType,
       log.status,

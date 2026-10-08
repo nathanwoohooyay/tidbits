@@ -373,15 +373,15 @@ import { AdminDashboardStats } from '../../../core/models/models';
 })
 export class AdminDashboardComponent implements OnInit {
   stats = signal<AdminDashboardStats>({
-    totalUsers: 148,
-    totalAccounts: 215,
-    totalUserLogs: 8420,
-    totalTransactionLogs: 24900
+    totalUsers: 0,
+    totalAccounts: 0,
+    totalUserLogs: 0,
+    totalTransactionLogs: 0
   });
 
   constructor(private adminService: AdminService) {}
 
   ngOnInit() {
-    this.adminService.getDashboardStats().subscribe(s => this.stats.set(s));
+    this.adminService.getDashboardStats().subscribe((s: AdminDashboardStats) => this.stats.set(s));
   }
 }

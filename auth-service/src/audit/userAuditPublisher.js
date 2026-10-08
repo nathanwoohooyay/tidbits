@@ -56,7 +56,7 @@ function resolveIpAddress(req) {
   return req.ip || null;
 }
 
-async function publishUserAuditEvent({ eventType, userId, status, ipAddress, details }) {
+async function publishUserAuditEvent({ eventType, userId, username, status, ipAddress, details }) {
   try {
     const currentProducer = await getProducer();
     if (!currentProducer) {
@@ -68,7 +68,8 @@ async function publishUserAuditEvent({ eventType, userId, status, ipAddress, det
       occurredAt: new Date().toISOString(),
       userId: Number.isInteger(userId) ? userId : null,
       ipAddress: ipAddress || null,
-      status,
+      username: username || null,
+      status: status || null,
       details: details || null,
     };
 

@@ -119,7 +119,7 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
                 <td class="mono-font">#{{ log.userLogId }}</td>
                 <td class="mono-font text-muted">{{ log.timestamp | date:'short' }}</td>
                 <td>
-                  <span class="user-pill">{{ log.username || ('User #' + log.userId) }}</span>
+                  <span class="user-pill">{{ log.username }}</span>
                 </td>
                 <td>
                   <span class="action-tag">{{ log.action || log.event || 'UNKNOWN' }}</span>
@@ -147,6 +147,8 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
             <thead>
               <tr>
                 <th>Log ID</th>
+                <th>Order ID</th>
+                <th>Transaction ID</th>
                 <th>Timestamp</th>
                 <th>Account</th>
                 <th>Instrument</th>
@@ -160,19 +162,21 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
             <tbody>
               <tr *ngFor="let txn of filteredTxnLogs()">
                 <td class="mono-font">#{{ txn.logId }}</td>
-                <td class="mono-font text-muted">{{ txn.timestamp | date:'short' }}</td>
+                <td class="mono-font">{{ txn.orderId ? ('#' + txn.orderId) : '-' }}</td>
+                <td class="mono-font">{{ txn.transactionId ? ('#' + txn.transactionId) : '-' }}</td>
+                <td class="mono-font text-muted">{{ (txn.timestamp || txn.happenedAt) | date:'short' }}</td>
                 <td class="mono-font">Acc #{{ txn.accountId }}</td>
                 <td>
-                  <span class="ticker-pill">{{ txn.ticker || ('Inst #' + txn.instrumentId) }}</span>
+                  <span class="ticker-pill">{{ txn.instrumentId ? ('Inst #' + txn.instrumentId) : '-' }}</span>
                 </td>
                 <td>
                   <span class="badge" [ngClass]="txn.orderType === 'BUY' ? 'badge-success' : 'badge-warning'">
-                    {{ txn.orderType }}
+                    {{ txn.orderType || txn.event || '-' }}
                   </span>
                 </td>
-                <td class="mono-font">{{ txn.quantity | number }}</td>
-                <td class="mono-font">\${{ txn.price | number:'1.2-2' }}</td>
-                <td class="mono-font font-bold">\${{ (txn.quantity * txn.price) | number:'1.2-2' }}</td>
+                <td class="mono-font">{{ txn.quantity ? (txn.quantity | number) : '-' }}</td>
+                <td class="mono-font">{{ txn.price ? ('$' + (txn.price | number:'1.2-2')) : '-' }}</td>
+                <td class="mono-font font-bold">{{ formatTransactionTotal(txn) }}</td>
                 <td>
                   <span class="badge" [ngClass]="txn.status === 'FILLED' ? 'badge-success' : 'badge-warning'">
                     {{ txn.status }}
@@ -180,7 +184,7 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
                 </td>
               </tr>
               <tr *ngIf="filteredTxnLogs().length === 0">
-                <td colspan="9" class="empty-cell">No matching transaction logs found.</td>
+                <td colspan="11" class="empty-cell">No matching transaction logs found.</td>
               </tr>
             </tbody>
           </table>
@@ -424,17 +428,17 @@ export class LogsComponent implements OnInit {
     const status = this.statusFilter();
 
     if (query) {
-      logs = logs.filter(l =>
-        (l.ticker && l.ticker.toLowerCase().includes(query)) ||
+      logs = logs.filter((l: TransactionLog) =>
         (l.orderType && l.orderType.toLowerCase().includes(query)) ||
+        l.instrumentId.toString().includes(query) ||
         l.accountId.toString().includes(query)
       );
     }
 
     if (status === 'SUCCESS') {
-      logs = logs.filter(l => l.status === 'FILLED');
+      logs = logs.filter((l: TransactionLog) => l.status === 'FILLED');
     } else if (status === 'FAILURE') {
-      logs = logs.filter(l => l.status !== 'FILLED');
+      logs = logs.filter((l: TransactionLog) => l.status !== 'FILLED');
     }
 
     return logs;
@@ -450,8 +454,8 @@ export class LogsComponent implements OnInit {
   }
 
   loadLogs() {
-    this.auditLogService.getUserLogs().subscribe(logs => this.userLogs.set(logs));
-    this.auditLogService.getTransactionLogs().subscribe(txns => this.txnLogs.set(txns));
+    this.auditLogService.getUserLogs().subscribe((logs: UserLog[]) => this.userLogs.set(logs));
+    this.auditLogService.getTransactionLogs().subscribe((txns: TransactionLog[]) => this.txnLogs.set(txns));
   }
 
   exportLogsCsv() {
@@ -460,5 +464,18 @@ export class LogsComponent implements OnInit {
     } else {
       this.reportService.exportToCsv('tidbits_transaction_logs', this.filteredTxnLogs());
     }
+  }
+
+  formatTransactionTotal(txn: TransactionLog): string {
+    if (txn.amount !== undefined && txn.amount !== null) {
+      return '$' + txn.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    if (txn.quantity && txn.price) {
+      const computed = txn.quantity * txn.price;
+      return '$' + computed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    return '-';
   }
 }

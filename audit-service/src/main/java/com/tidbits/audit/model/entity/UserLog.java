@@ -18,6 +18,9 @@ public class UserLog {
     @Column(name = "user_id")
     private Integer userId;
 
+    @Column(name = "username")
+    private String username;
+
     @Column(name = "ip_address")
     private String ipAddress;
 
@@ -35,10 +38,11 @@ public class UserLog {
     public UserLog() {
     }
 
-    public UserLog(Integer logId, Integer userId, String ipAddress, String event,
+    public UserLog(Integer logId, Integer userId, String username, String ipAddress, String event,
                    LogStatus status, LocalDateTime happenedAt) {
         this.logId = logId;
         this.userId = userId;
+        this.username = username;
         this.ipAddress = ipAddress;
         this.event = event;
         this.status = status;
@@ -50,6 +54,9 @@ public class UserLog {
 
     public Integer getUserId() { return userId; }
     public void setUserId(Integer userId) { this.userId = userId; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
     public String getIpAddress() { return ipAddress; }
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }

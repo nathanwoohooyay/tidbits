@@ -59,12 +59,17 @@ export interface TransactionLog {
   logId: number;
   accountId: number;
   instrumentId: number;
-  ticker?: string;
+  transactionId?: number;
+  orderId?: number;
   orderType: string;
+  event?: string;
   quantity: number;
   price: number;
+  stockPrice?: number;
+  amount?: number;
   status: string;
   timestamp: string;
+  happenedAt?: string;
 }
 
 // Metrics Models

@@ -426,7 +426,7 @@ export class ReportsComponent implements OnInit {
 
   totalSampledVolumeFormatted(): string {
     const total = this.volumeSummary().reduce((sum, item) => sum + item.total_value, 0);
-    return (total || 20700000).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    return total.toLocaleString(undefined, { maximumFractionDigits: 0 });
   }
 
   generatePdfDossier() {
@@ -439,7 +439,7 @@ export class ReportsComponent implements OnInit {
         auditorName,
         dateRange: `${this.startDate} to ${this.endDate}`,
         summaryStats: [
-          { label: 'Sampled Volume', value: '\$' + (total || 20700000).toLocaleString() },
+          { label: 'Sampled Volume', value: '\$' + total.toLocaleString() },
           { label: 'Outlier Trades', value: this.outliers().length },
           { label: 'Z-Score Sensitivity', value: `${this.zScoreThreshold}σ` },
           { label: 'Regulatory Status', value: 'VERIFIED' }

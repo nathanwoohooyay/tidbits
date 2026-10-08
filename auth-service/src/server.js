@@ -99,6 +99,7 @@ app.post('/api/auth/signup', async (req, res) => {
     await publishUserAuditEvent({
       eventType: 'SIGNUP',
       userId: null,
+      username: req.body.username,
       status: 'FAILURE',
       ipAddress: resolveIpAddress(req),
       details: validation.errorCode,
@@ -130,6 +131,7 @@ app.post('/api/auth/signup', async (req, res) => {
     await publishUserAuditEvent({
       eventType: 'SIGNUP',
       userId: result.rows[0].user_id,
+      username: result.rows[0].username,
       status: 'SUCCESS',
       ipAddress: resolveIpAddress(req),
       details: null,
@@ -145,6 +147,7 @@ app.post('/api/auth/signup', async (req, res) => {
       await publishUserAuditEvent({
         eventType: 'SIGNUP',
         userId: null,
+        username: req.body.username,
         status: 'FAILURE',
         ipAddress: resolveIpAddress(req),
         details: conflict.errorCode,
@@ -155,6 +158,7 @@ app.post('/api/auth/signup', async (req, res) => {
       await publishUserAuditEvent({
         eventType: 'SIGNUP',
         userId: null,
+        username: req.body.username,
         status: 'FAILURE',
         ipAddress: resolveIpAddress(req),
         details: 'DATABASE_CONSTRAINT_VIOLATION',
@@ -165,6 +169,7 @@ app.post('/api/auth/signup', async (req, res) => {
     await publishUserAuditEvent({
       eventType: 'SIGNUP',
       userId: null,
+      username: req.body.username,
       status: 'FAILURE',
       ipAddress: resolveIpAddress(req),
       details: 'INTERNAL_SERVER_ERROR',
@@ -179,6 +184,7 @@ app.post('/api/auth/login', async (req, res) => {
     await publishUserAuditEvent({
       eventType: 'LOGIN',
       userId: null,
+      username: req.body.username,
       status: 'FAILURE',
       ipAddress: resolveIpAddress(req),
       details: validation.errorCode,
@@ -203,6 +209,7 @@ app.post('/api/auth/login', async (req, res) => {
       await publishUserAuditEvent({
         eventType: 'LOGIN',
         userId: null,
+        username: req.body.username,
         status: 'FAILURE',
         ipAddress: resolveIpAddress(req),
         details: 'INVALID_LOGIN',
@@ -216,6 +223,7 @@ app.post('/api/auth/login', async (req, res) => {
       await publishUserAuditEvent({
         eventType: 'LOGIN',
         userId: user.user_id,
+        username: req.body.username,
         status: 'FAILURE',
         ipAddress: resolveIpAddress(req),
         details: 'INVALID_LOGIN',
@@ -252,6 +260,7 @@ app.post('/api/auth/login', async (req, res) => {
     await publishUserAuditEvent({
       eventType: 'LOGIN',
       userId: user.user_id,
+      username: req.body.username,
       status: 'SUCCESS',
       ipAddress: resolveIpAddress(req),
       details: null,
@@ -264,6 +273,7 @@ app.post('/api/auth/login', async (req, res) => {
     await publishUserAuditEvent({
       eventType: 'LOGIN',
       userId: null,
+      username: req.body.username,
       status: 'FAILURE',
       ipAddress: resolveIpAddress(req),
       details: 'INTERNAL_SERVER_ERROR',

@@ -1,8 +1,12 @@
 import { NestFactory } from '@nestjs/core';
+import express from 'express';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Allow JSON primitives (e.g. 25.25) for proxied APIs that accept raw numeric bodies.
+  app.use(express.json({ strict: false }));
 
   const corsOrigins = (process.env.GATEWAY_CORS_ORIGINS || 'http://localhost:8084,http://localhost:4200,http://localhost:8080,http://localhost:9875')
     .split(',')

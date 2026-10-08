@@ -422,7 +422,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   outlierList = signal<OutlierTrade[]>([]);
   totalVolume = signal(0);
   totalOrders = signal(0);
-  aumValue = signal(28400000);
+  aumValue = signal(0);
 
   private charts: Chart[] = [];
 
@@ -436,7 +436,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit() {
-    // Initial chart rendering with loaded or fallback data
+    // Initial chart rendering once canvas elements are present
     this.renderCharts();
   }
 
@@ -447,34 +447,39 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   loadMetrics() {
     this.loading.set(true);
 
-    this.metricsService.getOutlierTrades().subscribe(outliers => {
+    this.metricsService.getOutlierTrades().subscribe((outliers: OutlierTrade[]) => {
       this.outlierList.set(outliers);
     });
 
-    this.metricsService.getTradeVolumeOverTime().subscribe(timeData => {
-      const vol = timeData.reduce((acc, curr) => acc + curr.total_value, 0);
-      const orders = timeData.reduce((acc, curr) => acc + curr.order_count, 0);
-      this.totalVolume.set(vol || 20700000);
-      this.totalOrders.set(orders || 2600);
+    this.metricsService.getTradeVolumeOverTime().subscribe((timeData: TradeVolumeOverTime[]) => {
+      const vol = timeData.reduce((acc: number, curr: TradeVolumeOverTime) => acc + curr.total_value, 0);
+      const orders = timeData.reduce((acc: number, curr: TradeVolumeOverTime) => acc + curr.order_count, 0);
+      this.totalVolume.set(vol);
+      this.totalOrders.set(orders);
       this.updateLineChart(timeData);
     });
 
-    this.metricsService.getTradeVolumeByType().subscribe(types => {
+    this.metricsService.getAum().subscribe((aum: AumMetric[]) => {
+      const totalAum = aum.reduce((acc: number, item: AumMetric) => acc + (item.total_value || 0), 0);
+      this.aumValue.set(totalAum);
+    });
+
+    this.metricsService.getTradeVolumeByType().subscribe((types: TradeVolumeByType[]) => {
       this.updateDoughnutChart(types);
     });
 
-    this.metricsService.getTradeVolumeByMarket().subscribe(markets => {
+    this.metricsService.getTradeVolumeByMarket().subscribe((markets: TradeVolumeByMarket[]) => {
       this.updateBarChart(markets);
       this.loading.set(false);
     });
   }
 
   totalVolumeFormatted(): string {
-    return (this.totalVolume() || 20700000).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    return this.totalVolume().toLocaleString(undefined, { maximumFractionDigits: 0 });
   }
 
   totalOrdersCount(): string {
-    return (this.totalOrders() || 2600).toLocaleString();
+    return this.totalOrders().toLocaleString();
   }
 
   aumFormatted(): string {

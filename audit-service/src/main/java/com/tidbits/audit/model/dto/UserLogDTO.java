@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public class UserLogDTO {
     private Integer logId;
     private Integer userId;
+    private String username;
     private String ipAddress;
     private String event;
     private LogStatus status;
@@ -14,10 +15,11 @@ public class UserLogDTO {
     public UserLogDTO() {
     }
 
-    public UserLogDTO(Integer logId, Integer userId, String ipAddress, String event,
+    public UserLogDTO(Integer logId, Integer userId, String username, String ipAddress, String event,
                       LogStatus status, LocalDateTime happenedAt) {
         this.logId = logId;
         this.userId = userId;
+        this.username = username;
         this.ipAddress = ipAddress;
         this.event = event;
         this.status = status;
@@ -34,6 +36,9 @@ public class UserLogDTO {
     public void setEvent(String event) { this.event = event; }
     public LogStatus getStatus() { return status; }
     public void setStatus(LogStatus status) { this.status = status; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
     public LocalDateTime getHappenedAt() { return happenedAt; }
     public void setHappenedAt(LocalDateTime happenedAt) { this.happenedAt = happenedAt; }
 }

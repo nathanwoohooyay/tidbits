@@ -39,7 +39,7 @@ import { AuthService } from '../../core/services/auth.service';
                 id="username"
                 type="text"
                 class="input-control"
-                placeholder="e.g. auditor_sarah or admin_sys"
+                placeholder="Enter your username"
                 [(ngModel)]="username"
                 name="username"
                 required

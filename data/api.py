@@ -1,5 +1,6 @@
 """FastAPI metrics service wrapping the existing data pipeline"""
 import logging
+import os
 import sys
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
@@ -24,10 +25,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS – allow Angular dev server and production origins
+# CORS – allow frontend origins in local/dev and tunnelled environments
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "METRICS_CORS_ORIGINS",
+        "http://localhost:4200,http://localhost:8084,http://localhost:9875"
+    ).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200", "http://localhost:8084"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

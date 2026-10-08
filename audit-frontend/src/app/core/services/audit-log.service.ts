@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, of } from 'rxjs';
+import { Observable, catchError, map, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { UserLog, TransactionLog } from '../models/models';
 
@@ -13,7 +13,8 @@ export class AuditLogService {
   constructor(private http: HttpClient) {}
 
   getUserLogs(): Observable<UserLog[]> {
-    return this.http.get<UserLog[]>(`${this.baseUrl}/users`).pipe(
+    return this.http.get<any[]>(`${this.baseUrl}/users`).pipe(
+      map((logs: any[]) => this.normalizeUserLogs(logs)),
       catchError(() => of(this.getMockUserLogs()))
     );
   }
@@ -33,6 +34,32 @@ export class AuditLogService {
       { userLogId: 105, userId: 14, username: 'hedge_fund_llc', action: 'LARGE_ORDER_PLACED', status: 'SUCCESS', ipAddress: '172.16.2.99', deviceInfo: 'Tidbits FIX Gateway', timestamp: new Date(Date.now() - 1000 * 60 * 130).toISOString() },
       { userLogId: 106, userId: 22, username: 'guest_user', action: 'UNAUTHORIZED_ACCESS_REVOKED', status: 'FAILURE', ipAddress: '45.142.122.9', deviceInfo: 'Curl / Linux', timestamp: new Date(Date.now() - 1000 * 60 * 180).toISOString() }
     ];
+  }
+
+  private normalizeUserLogs(logs: any[]): UserLog[] {
+    if (!Array.isArray(logs)) {
+      return [];
+    }
+
+    return logs
+      .map((log) => {
+        const timestamp = log.timestamp || log.happenedAt || '';
+        return {
+          userLogId: Number(log.userLogId ?? log.logId ?? 0),
+          userId: Number(log.userId ?? 0),
+          username: log.username,
+          action: String(log.action ?? log.event ?? ''),
+          status: String(log.status ?? 'UNKNOWN'),
+          ipAddress: log.ipAddress,
+          deviceInfo: log.deviceInfo,
+          timestamp
+        };
+      })
+      .sort((a, b) => {
+        const left = Date.parse(a.timestamp || '');
+        const right = Date.parse(b.timestamp || '');
+        return (Number.isNaN(right) ? 0 : right) - (Number.isNaN(left) ? 0 : left);
+      });
   }
 
   private getMockTransactionLogs(): TransactionLog[] {

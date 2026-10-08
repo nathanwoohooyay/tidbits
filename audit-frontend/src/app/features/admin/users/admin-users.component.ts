@@ -662,11 +662,8 @@ export class AdminUsersComponent implements OnInit {
         this.closeRoleModal();
       },
       error: () => {
-        // Optimistically update in local state for UI demonstration
         this.updatingRole.set(false);
-        user.role = this.newRoleSelection;
-        this.showToast(`Assigned role ${this.newRoleSelection} to user #${user.userId} (${user.username}).`, 'success');
-        this.closeRoleModal();
+        this.showToast(`Failed to assign role ${this.newRoleSelection} to user #${user.userId} (${user.username}). Please try again.`, 'danger');
       }
     });
   }
@@ -692,10 +689,8 @@ export class AdminUsersComponent implements OnInit {
         this.closeRevokeModal();
       },
       error: () => {
-        // Handled or demo response
         this.revoking.set(false);
-        this.showToast(`Access revoked for ${user.username}. Active sessions terminated.`, 'danger');
-        this.closeRevokeModal();
+        this.showToast(`Failed to revoke access for ${user.username}. Please try again.`, 'danger');
       }
     });
   }

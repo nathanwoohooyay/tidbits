@@ -1,6 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -35,32 +35,10 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
 
         <div class="header-right">
-          <!-- Role Switcher Shortcut for pair testing -->
-          <div class="role-switcher">
-            <button
-              id="btn-switch-auditor"
-              class="role-pill"
-              [class.active]="authService.userRole() === 'AUDITOR'"
-              (click)="switchRole('AUDITOR')"
-              title="Switch session to Auditor"
-            >
-              Auditor
-            </button>
-            <button
-              id="btn-switch-admin"
-              class="role-pill"
-              [class.active]="authService.userRole() === 'ADMIN'"
-              (click)="switchRole('ADMIN')"
-              title="Switch session to Administrator"
-            >
-              Admin
-            </button>
-          </div>
-
           <!-- User Profile Chip -->
           <div class="user-chip">
             <div class="user-avatar">
-              {{ (authService.currentUser()?.username || 'U')[0].toUpperCase() }}
+              {{ ('' + (authService.currentUser()?.username || 'U')).charAt(0).toUpperCase() }}
             </div>
             <div class="user-details">
               <div class="user-name">{{ authService.currentUser()?.username || 'Examiner' }}</div>
@@ -263,32 +241,6 @@ import { AuthService } from '../../core/services/auth.service';
       gap: 14px;
     }
 
-    .role-switcher {
-      display: flex;
-      background: #ece3d2;
-      border: 1px solid var(--border-subtle);
-      border-radius: 9999px;
-      padding: 3px;
-    }
-
-    .role-pill {
-      background: transparent;
-      border: none;
-      color: var(--text-secondary);
-      font-size: 11.5px;
-      font-weight: 600;
-      padding: 4px 12px;
-      border-radius: 9999px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .role-pill.active {
-      background: #331b0e;
-      color: #f7f2e8;
-      box-shadow: 0 2px 6px rgba(51, 27, 14, 0.3);
-    }
-
     .user-chip {
       display: flex;
       align-items: center;
@@ -413,13 +365,8 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class ShellComponent {
   constructor(
-    public authService: AuthService,
-    private router: Router
+    public authService: AuthService
   ) {}
-
-  switchRole(role: 'ADMIN' | 'AUDITOR') {
-    this.authService.demoLogin(role);
-  }
 
   logout() {
     this.authService.logout();

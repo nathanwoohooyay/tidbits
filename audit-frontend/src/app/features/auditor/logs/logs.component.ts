@@ -122,7 +122,7 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
                   <span class="user-pill">{{ log.username || ('User #' + log.userId) }}</span>
                 </td>
                 <td>
-                  <span class="action-tag">{{ log.action }}</span>
+                  <span class="action-tag">{{ log.action || log.event || 'UNKNOWN' }}</span>
                 </td>
                 <td>
                   <span class="badge" [ngClass]="log.status === 'SUCCESS' ? 'badge-success' : 'badge-danger'">
@@ -390,21 +390,30 @@ export class LogsComponent implements OnInit {
   txnLogs = signal<TransactionLog[]>([]);
 
   filteredUserLogs = computed(() => {
-    let logs = this.userLogs();
+    let logs = [...this.userLogs()];
     const query = this.searchQuery.toLowerCase();
     const status = this.statusFilter();
 
     if (query) {
-      logs = logs.filter(l =>
-        (l.username && l.username.toLowerCase().includes(query)) ||
-        (l.action && l.action.toLowerCase().includes(query)) ||
-        (l.ipAddress && l.ipAddress.toLowerCase().includes(query))
-      );
+      logs = logs.filter(l => {
+        const actionOrEvent = (l.action || l.event || '').toLowerCase();
+        return (
+          (l.username && l.username.toLowerCase().includes(query)) ||
+          actionOrEvent.includes(query) ||
+          (l.ipAddress && l.ipAddress.toLowerCase().includes(query))
+        );
+      });
     }
 
     if (status !== 'ALL') {
       logs = logs.filter(l => l.status === status);
     }
+
+    logs.sort((a, b) => {
+      const left = Date.parse(a.timestamp || a.happenedAt || '');
+      const right = Date.parse(b.timestamp || b.happenedAt || '');
+      return (Number.isNaN(right) ? 0 : right) - (Number.isNaN(left) ? 0 : left);
+    });
 
     return logs;
   });

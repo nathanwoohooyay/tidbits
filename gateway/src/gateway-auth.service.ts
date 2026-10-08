@@ -30,6 +30,9 @@ export class GatewayAuthService implements OnModuleDestroy {
   });
 
   async authorizeRequest(request: Request, routePrefix: string): Promise<void> {
+    if (request.method === 'OPTIONS') {
+      return;
+    }
 
     const token = this.extractBearerToken(request.headers.authorization);
     const payload = this.verifyToken(token);
@@ -38,7 +41,7 @@ export class GatewayAuthService implements OnModuleDestroy {
 
     const persistedTokenVersion = await this.lookupTokenVersion(userId);
     if (persistedTokenVersion !== tokenVersion) {
-      throw new GatewayAuthError(403, 'Forbidden');
+      throw new GatewayAuthError(401, 'Unauthorized');
     }
   }
 

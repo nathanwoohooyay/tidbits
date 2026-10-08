@@ -40,7 +40,8 @@ export class AdminService {
   }
 
   updateUserRole(userId: number, role: string): Observable<any> {
-    return this.http.put(`${this.baseUrl}/roles/users/${userId}`, { role });
+    const roleName = role === 'USER' ? 'CLIENT' : role;
+    return this.http.put(`${this.baseUrl}/roles/users/${userId}`, { roleName });
   }
 
   revokeUserAccess(userId: number): Observable<any> {

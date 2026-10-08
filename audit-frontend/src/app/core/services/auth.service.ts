@@ -1,7 +1,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap, catchError, throwError, of } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthUser, LoginResponse, UserRole } from '../models/models';
 
@@ -28,33 +28,12 @@ export class AuthService {
     const url = `${environment.authApiUrl}/auth/login`;
     return this.http.post<LoginResponse>(url, credentials).pipe(
       tap(res => {
-        if (res && res.accessToken) {
-          this.handleAuthSuccess(res.accessToken, credentials.username);
+        const token = res?.accessToken || res?.token;
+        if (token) {
+          this.handleAuthSuccess(token, credentials.username);
         }
-      }),
-      catchError(err => {
-        // Fallback demo mock if auth-service is unreachable during offline dev
-        console.warn('Backend login error, checking fallback demo credentials:', err);
-        return throwError(() => err);
       })
     );
-  }
-
-  /**
-   * Fast Demo Login to quickly switch or test roles in development
-   */
-  demoLogin(role: UserRole) {
-    const username = role === 'ADMIN' ? 'admin_demo' : 'auditor_demo';
-    // Create simulated JWT token with valid header.payload.sig
-    const payload = {
-      sub: username,
-      roles: [role],
-      exp: Math.floor(Date.now() / 1000) + (3600 * 24),
-      iat: Math.floor(Date.now() / 1000)
-    };
-    const mockToken = `mock.${btoa(JSON.stringify(payload))}.signature`;
-    this.handleAuthSuccess(mockToken, username, role);
-    this.redirectByRole(role);
   }
 
   logout() {
@@ -72,6 +51,7 @@ export class AuthService {
     localStorage.setItem(this.TOKEN_KEY, token);
 
     let parsedRole: UserRole = explicitRole || 'AUDITOR';
+    let userId: number | undefined;
     let username = usernameFallback || 'user';
     let expiresAt: number | undefined;
 
@@ -79,6 +59,12 @@ export class AuthService {
       const parts = token.split('.');
       if (parts.length >= 2) {
         const decoded = JSON.parse(atob(parts[1]));
+        if (decoded.sub !== undefined && decoded.sub !== null) {
+          const parsedUserId = Number(decoded.sub);
+          if (Number.isInteger(parsedUserId) && parsedUserId > 0) {
+            userId = parsedUserId;
+          }
+        }
         if (decoded.roles && Array.isArray(decoded.roles)) {
           if (decoded.roles.includes('ADMIN') || decoded.roles.includes('ROLE_ADMIN')) {
             parsedRole = 'ADMIN';
@@ -86,7 +72,7 @@ export class AuthService {
             parsedRole = 'AUDITOR';
           }
         }
-        username = decoded.sub || usernameFallback || 'user';
+        username = usernameFallback || username;
         expiresAt = decoded.exp ? decoded.exp * 1000 : undefined;
       }
     } catch (e) {
@@ -94,6 +80,7 @@ export class AuthService {
     }
 
     const authUser: AuthUser = {
+      userId,
       username,
       role: parsedRole,
       token,

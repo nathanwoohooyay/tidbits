@@ -12,7 +12,8 @@ export interface AuthUser {
 
 export interface LoginResponse {
   message?: string;
-  accessToken: string;
+  accessToken?: string;
+  token?: string;
   refreshToken?: string;
 }
 
@@ -46,10 +47,12 @@ export interface UserLog {
   userId: number;
   username?: string;
   action: string;
+  event?: string;
   status: 'SUCCESS' | 'FAILURE' | string;
   ipAddress?: string;
   deviceInfo?: string;
   timestamp: string;
+  happenedAt?: string;
 }
 
 export interface TransactionLog {

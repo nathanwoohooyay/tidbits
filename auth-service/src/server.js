@@ -21,6 +21,29 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
+const allowedOrigins = (process.env.AUTH_CORS_ORIGINS || 'http://localhost:8084,http://localhost:4200,http://localhost:8080')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  return next();
+});
+
 // Shared secret - the mission service (Java) validates tokens signed with
 // this exact string. In a real system this would come from a secrets
 // manager, never be hardcoded, and never be the same value in two

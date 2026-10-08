@@ -58,6 +58,9 @@ export class AuditLogService {
     return logs
       .map((log) => {
         const timestamp = log.timestamp || log.happenedAt || '';
+        const event = String(log.event ?? '').toUpperCase();
+        const orderType = String(log.orderType ?? '').toUpperCase();
+        const status = String(log.status ?? 'UNKNOWN').toUpperCase();
         const price = Number(log.price ?? log.stockPrice ?? 0);
         const quantity = Number(log.quantity ?? 0);
         const amount = log.amount == null ? undefined : Number(log.amount);
@@ -68,13 +71,13 @@ export class AuditLogService {
           instrumentId: Number(log.instrumentId ?? 0),
           transactionId: log.transactionId == null ? undefined : Number(log.transactionId),
           orderId: log.orderId == null ? undefined : Number(log.orderId),
-          orderType: String(log.orderType ?? log.event ?? ''),
-          event: log.event,
+          orderType: orderType || event,
+          event: event || undefined,
           quantity,
           price,
           stockPrice: log.stockPrice == null ? undefined : Number(log.stockPrice),
           amount,
-          status: String(log.status ?? 'UNKNOWN'),
+          status,
           timestamp,
           happenedAt: log.happenedAt
         } as TransactionLog;

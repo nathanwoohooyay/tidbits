@@ -26,11 +26,12 @@ public class UserAuditEventPublisher {
         this.userAuditTopic = userAuditTopic;
     }
 
-    public void publish(String eventType, Integer userId, String status, String details) {
+    public void publish(String eventType, Integer userId, String username, String status, String details) {
         UserAuditEventDTO event = new UserAuditEventDTO(
                 eventType,
                 LocalDateTime.now(),
                 userId,
+                username,
                 null,
                 status,
                 details

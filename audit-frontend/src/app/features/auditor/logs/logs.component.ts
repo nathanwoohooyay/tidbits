@@ -5,6 +5,14 @@ import { AuditLogService } from '../../../core/services/audit-log.service';
 import { ReportService } from '../../../core/services/report.service';
 import { UserLog, TransactionLog } from '../../../core/models/models';
 
+type LogsTab = 'USER' | 'TXN' | 'ORDERS';
+type StatusFilter = 'ALL' | 'SUCCESS' | 'FAILURE';
+
+const ACCOUNT_TRANSACTION_EVENTS = new Set(['DEPOSIT', 'WITHDRAW']);
+const ORDER_LIFECYCLE_EVENTS = new Set(['ORDER_PLACED', 'ORDER_ACCEPTED', 'ORDER_FILLED', 'ORDER_REJECTED']);
+const ACCOUNT_ORDER_EVENTS = new Set(['ORDER_ACCEPTED', 'ORDER_FILLED']);
+const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
+
 @Component({
   selector: 'app-logs',
   standalone: true,
@@ -14,7 +22,7 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
       <div class="page-header">
         <div>
           <h1 class="page-title">Audit Event Logs</h1>
-          <p class="page-subtitle">Immutable event streaming from Kafka: user identity events and order settlement transactions</p>
+          <p class="page-subtitle">Immutable event streaming from Kafka: user identity events, account transactions, and order lifecycle activity</p>
         </div>
         <div class="header-actions">
           <button id="btn-export-logs" class="btn btn-secondary btn-sm" (click)="exportLogsCsv()">
@@ -54,8 +62,17 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
             [class.active]="activeTab() === 'TXN'"
             (click)="activeTab.set('TXN')"
           >
-            <span>Transaction Logs</span>
-            <span class="tab-badge">{{ filteredTxnLogs().length }}</span>
+            <span>Account Transactions</span>
+            <span class="tab-badge">{{ filteredAccountTxnLogs().length }}</span>
+          </button>
+          <button
+            id="tab-order-logs"
+            class="tab-btn"
+            [class.active]="activeTab() === 'ORDERS'"
+            (click)="activeTab.set('ORDERS')"
+          >
+            <span>Orders</span>
+            <span class="tab-badge">{{ filteredOrderLogs().length }}</span>
           </button>
         </div>
 
@@ -68,8 +85,9 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
             <input
               type="text"
               class="input-control search-input"
-              placeholder="Filter by action, user, ticker..."
-              [(ngModel)]="searchQuery"
+              placeholder="Filter by user, event, account, order..."
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event ?? '')"
             />
           </div>
 
@@ -86,7 +104,7 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
               [class.active]="statusFilter() === 'SUCCESS'"
               (click)="statusFilter.set('SUCCESS')"
             >
-              Success / Filled
+              Success / Accepted / Filled
             </button>
             <button
               class="status-pill failure"
@@ -140,7 +158,7 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
         </div>
       </div>
 
-      <!-- Transaction Logs Table -->
+      <!-- Account Transactions Table -->
       <div *ngIf="activeTab() === 'TXN'" class="glass-panel table-panel animate-fade-in">
         <div class="table-container">
           <table class="data-table">
@@ -152,15 +170,15 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
                 <th>Timestamp</th>
                 <th>Account</th>
                 <th>Instrument</th>
-                <th>Side</th>
+                <th>Type</th>
                 <th>Quantity</th>
                 <th>Price</th>
                 <th>Total Value</th>
-                <th>Execution Status</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let txn of filteredTxnLogs()">
+              <tr *ngFor="let txn of filteredAccountTxnLogs()">
                 <td class="mono-font">#{{ txn.logId }}</td>
                 <td class="mono-font">{{ txn.orderId ? ('#' + txn.orderId) : '-' }}</td>
                 <td class="mono-font">{{ txn.transactionId ? ('#' + txn.transactionId) : '-' }}</td>
@@ -170,21 +188,76 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
                   <span class="ticker-pill">{{ txn.instrumentId ? ('Inst #' + txn.instrumentId) : '-' }}</span>
                 </td>
                 <td>
-                  <span class="badge" [ngClass]="txn.orderType === 'BUY' ? 'badge-success' : 'badge-warning'">
-                    {{ txn.orderType || txn.event || '-' }}
+                  <span class="badge" [ngClass]="getTransactionTypeBadgeClass(txn)">
+                    {{ formatTransactionType(txn) }}
                   </span>
                 </td>
                 <td class="mono-font">{{ txn.quantity ? (txn.quantity | number) : '-' }}</td>
                 <td class="mono-font">{{ txn.price ? ('$' + (txn.price | number:'1.2-2')) : '-' }}</td>
                 <td class="mono-font font-bold">{{ formatTransactionTotal(txn) }}</td>
                 <td>
-                  <span class="badge" [ngClass]="txn.status === 'FILLED' ? 'badge-success' : 'badge-warning'">
-                    {{ txn.status }}
+                  <span class="badge" [ngClass]="getStatusBadgeClass(txn.status)">
+                    {{ txn.status || 'UNKNOWN' }}
                   </span>
                 </td>
               </tr>
-              <tr *ngIf="filteredTxnLogs().length === 0">
-                <td colspan="11" class="empty-cell">No matching transaction logs found.</td>
+              <tr *ngIf="filteredAccountTxnLogs().length === 0">
+                <td colspan="11" class="empty-cell">No matching account transactions found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Orders Table -->
+      <div *ngIf="activeTab() === 'ORDERS'" class="glass-panel table-panel animate-fade-in">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Log ID</th>
+                <th>Order ID</th>
+                <th>Transaction ID</th>
+                <th>Timestamp</th>
+                <th>Account</th>
+                <th>Instrument</th>
+                <th>Side</th>
+                <th>Lifecycle Event</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total Value</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let orderLog of filteredOrderLogs()">
+                <td class="mono-font">#{{ orderLog.logId }}</td>
+                <td class="mono-font">{{ orderLog.orderId ? ('#' + orderLog.orderId) : '-' }}</td>
+                <td class="mono-font">{{ orderLog.transactionId ? ('#' + orderLog.transactionId) : '-' }}</td>
+                <td class="mono-font text-muted">{{ (orderLog.timestamp || orderLog.happenedAt) | date:'short' }}</td>
+                <td class="mono-font">Acc #{{ orderLog.accountId }}</td>
+                <td>
+                  <span class="ticker-pill">{{ orderLog.instrumentId ? ('Inst #' + orderLog.instrumentId) : '-' }}</span>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="getTransactionTypeBadgeClass(orderLog)">
+                    {{ orderLog.orderType || '-' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="action-tag">{{ formatOrderEvent(orderLog.event) }}</span>
+                </td>
+                <td class="mono-font">{{ orderLog.quantity ? (orderLog.quantity | number) : '-' }}</td>
+                <td class="mono-font">{{ orderLog.price ? ('$' + (orderLog.price | number:'1.2-2')) : '-' }}</td>
+                <td class="mono-font font-bold">{{ formatTransactionTotal(orderLog) }}</td>
+                <td>
+                  <span class="badge" [ngClass]="getStatusBadgeClass(orderLog.status)">
+                    {{ orderLog.status || 'UNKNOWN' }}
+                  </span>
+                </td>
+              </tr>
+              <tr *ngIf="filteredOrderLogs().length === 0">
+                <td colspan="12" class="empty-cell">No matching order lifecycle events found.</td>
               </tr>
             </tbody>
           </table>
@@ -386,16 +459,16 @@ import { UserLog, TransactionLog } from '../../../core/models/models';
   `]
 })
 export class LogsComponent implements OnInit {
-  activeTab = signal<'USER' | 'TXN'>('USER');
-  statusFilter = signal<'ALL' | 'SUCCESS' | 'FAILURE'>('ALL');
-  searchQuery = '';
+  activeTab = signal<LogsTab>('USER');
+  statusFilter = signal<StatusFilter>('ALL');
+  searchQuery = signal('');
 
   userLogs = signal<UserLog[]>([]);
   txnLogs = signal<TransactionLog[]>([]);
 
   filteredUserLogs = computed(() => {
     let logs = [...this.userLogs()];
-    const query = this.searchQuery.toLowerCase();
+    const query = this.searchQuery().trim().toLowerCase();
     const status = this.statusFilter();
 
     if (query) {
@@ -422,26 +495,18 @@ export class LogsComponent implements OnInit {
     return logs;
   });
 
-  filteredTxnLogs = computed(() => {
-    let logs = this.txnLogs();
-    const query = this.searchQuery.toLowerCase();
+  filteredAccountTxnLogs = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
     const status = this.statusFilter();
 
-    if (query) {
-      logs = logs.filter((l: TransactionLog) =>
-        (l.orderType && l.orderType.toLowerCase().includes(query)) ||
-        l.instrumentId.toString().includes(query) ||
-        l.accountId.toString().includes(query)
-      );
-    }
+    return this.filterAccountTransactions(this.txnLogs(), query, status);
+  });
 
-    if (status === 'SUCCESS') {
-      logs = logs.filter((l: TransactionLog) => l.status === 'FILLED');
-    } else if (status === 'FAILURE') {
-      logs = logs.filter((l: TransactionLog) => l.status !== 'FILLED');
-    }
+  filteredOrderLogs = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const status = this.statusFilter();
 
-    return logs;
+    return this.filterOrderLifecycleLogs(this.txnLogs(), query, status);
   });
 
   constructor(
@@ -461,8 +526,10 @@ export class LogsComponent implements OnInit {
   exportLogsCsv() {
     if (this.activeTab() === 'USER') {
       this.reportService.exportToCsv('tidbits_user_audit_logs', this.filteredUserLogs());
+    } else if (this.activeTab() === 'TXN') {
+      this.reportService.exportToCsv('tidbits_account_transaction_logs', this.filteredAccountTxnLogs());
     } else {
-      this.reportService.exportToCsv('tidbits_transaction_logs', this.filteredTxnLogs());
+      this.reportService.exportToCsv('tidbits_order_lifecycle_logs', this.filteredOrderLogs());
     }
   }
 
@@ -477,5 +544,172 @@ export class LogsComponent implements OnInit {
     }
 
     return '-';
+  }
+
+  formatTransactionType(txn: TransactionLog): string {
+    if (this.isCashTransaction(txn)) {
+      return txn.event || txn.orderType || '-';
+    }
+
+    return txn.orderType || txn.event || '-';
+  }
+
+  formatOrderEvent(event?: string): string {
+    return (event || 'UNKNOWN').replace(/^ORDER_/, '');
+  }
+
+  getTransactionTypeBadgeClass(txn: TransactionLog): string {
+    const type = this.formatTransactionType(txn);
+
+    if (type === 'BUY' || type === 'DEPOSIT') {
+      return 'badge-success';
+    }
+
+    if (type === 'SELL' || type === 'WITHDRAW') {
+      return 'badge-warning';
+    }
+
+    return 'badge-danger';
+  }
+
+  getStatusBadgeClass(status?: string): string {
+    switch (status) {
+      case 'SUCCESS':
+      case 'ACCEPTED':
+      case 'FILLED':
+        return 'badge-success';
+      case 'REJECTED':
+      case 'FAILURE':
+        return 'badge-danger';
+      default:
+        return 'badge-warning';
+    }
+  }
+
+  private filterAccountTransactions(logs: TransactionLog[], query: string, status: StatusFilter): TransactionLog[] {
+    const accountTransactions = this.buildAccountTransactions(logs);
+
+    return accountTransactions.filter((log) => {
+      if (!this.matchesSearch(log, query, 'TXN')) {
+        return false;
+      }
+
+      return this.matchesAccountTransactionStatus(log, status);
+    });
+  }
+
+  private filterOrderLifecycleLogs(logs: TransactionLog[], query: string, status: StatusFilter): TransactionLog[] {
+    return [...logs]
+      .filter((log) => this.isOrderLifecycleEvent(log))
+      .filter((log) => this.matchesSearch(log, query, 'ORDERS'))
+      .filter((log) => this.matchesOrderStatus(log, status))
+      .sort((left, right) => this.compareByTimestamp(right, left));
+  }
+
+  private buildAccountTransactions(logs: TransactionLog[]): TransactionLog[] {
+    const cashTransactions = logs.filter((log) => this.isCashTransaction(log));
+    const dedupedOrderTransactions = new Map<string, TransactionLog>();
+
+    logs
+      .filter((log) => this.isEligibleOrderTransaction(log))
+      .forEach((log) => {
+        const key = this.getAccountTransactionKey(log);
+        const existing = dedupedOrderTransactions.get(key);
+
+        if (!existing || this.compareByTimestamp(log, existing) > 0) {
+          dedupedOrderTransactions.set(key, log);
+        }
+      });
+
+    return [...cashTransactions, ...dedupedOrderTransactions.values()]
+      .sort((left, right) => this.compareByTimestamp(right, left));
+  }
+
+  private matchesSearch(log: TransactionLog, query: string, tab: Exclude<LogsTab, 'USER'>): boolean {
+    if (!query) {
+      return true;
+    }
+
+    const searchValues = [
+      log.event,
+      log.orderType,
+      log.status,
+      log.orderId,
+      log.transactionId,
+      log.accountId,
+      log.instrumentId
+    ].filter((value) => value !== undefined && value !== null);
+
+    if (tab === 'ORDERS') {
+      searchValues.push(this.formatOrderEvent(log.event));
+    }
+
+    return searchValues.some((value) => String(value).toLowerCase().includes(query));
+  }
+
+  private matchesAccountTransactionStatus(log: TransactionLog, status: StatusFilter): boolean {
+    if (status === 'ALL') {
+      return true;
+    }
+
+    if (status === 'SUCCESS') {
+      return !this.isFailureStatus(log.status);
+    }
+
+    return this.isFailureStatus(log.status);
+  }
+
+  private matchesOrderStatus(log: TransactionLog, status: StatusFilter): boolean {
+    if (status === 'ALL') {
+      return true;
+    }
+
+    if (status === 'SUCCESS') {
+      return (log.event === 'ORDER_ACCEPTED' || log.event === 'ORDER_FILLED') && !this.isFailureStatus(log.status);
+    }
+
+    return log.event === 'ORDER_REJECTED' || this.isFailureStatus(log.status);
+  }
+
+  private isEligibleOrderTransaction(log: TransactionLog): boolean {
+    return Boolean(
+      log.transactionId &&
+      log.orderId &&
+      ORDER_SIDE_TYPES.has(log.orderType) &&
+      ACCOUNT_ORDER_EVENTS.has(log.event || '')
+    );
+  }
+
+  private isCashTransaction(log: TransactionLog): boolean {
+    return ACCOUNT_TRANSACTION_EVENTS.has(log.event || '');
+  }
+
+  private isOrderLifecycleEvent(log: TransactionLog): boolean {
+    return Boolean(log.orderId && ORDER_LIFECYCLE_EVENTS.has(log.event || ''));
+  }
+
+  private getAccountTransactionKey(log: TransactionLog): string {
+    if (log.orderId != null) {
+      return `order:${log.orderId}`;
+    }
+
+    if (log.transactionId != null) {
+      return `transaction:${log.transactionId}`;
+    }
+
+    return `log:${log.logId}`;
+  }
+
+  private isFailureStatus(status?: string): boolean {
+    return status === 'FAILURE' || status === 'REJECTED';
+  }
+
+  private compareByTimestamp(left: TransactionLog, right: TransactionLog): number {
+    const leftTime = Date.parse(left.timestamp || left.happenedAt || '');
+    const rightTime = Date.parse(right.timestamp || right.happenedAt || '');
+    const safeLeft = Number.isNaN(leftTime) ? 0 : leftTime;
+    const safeRight = Number.isNaN(rightTime) ? 0 : rightTime;
+
+    return safeLeft - safeRight;
   }
 }

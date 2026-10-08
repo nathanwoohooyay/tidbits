@@ -38,7 +38,7 @@ export class GatewayAuthService implements OnModuleDestroy {
 
     const persistedTokenVersion = await this.lookupTokenVersion(userId);
     if (persistedTokenVersion !== tokenVersion) {
-      throw new GatewayAuthError(403, 'Forbidden');
+      throw new GatewayAuthError(401, 'Unauthorized');
     }
   }
 

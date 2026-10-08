@@ -8,6 +8,7 @@ public class TransactionLogDTO {
     private Integer userId;
     private Integer accountId;
     private Integer instrumentId;
+    private String ticker;
     private String orderType;
     private Double quantity;
     private String event;
@@ -22,12 +23,13 @@ public class TransactionLogDTO {
     }
 
     public TransactionLogDTO(Integer logId, Integer userId, Integer accountId, Integer instrumentId,
-                             String orderType, Double quantity, String event, Double amount,
+                             String ticker, String orderType, Double quantity, String event, Double amount,
                              Integer orderId, Double stockPrice, Integer transactionId, LogStatus status, LocalDateTime happenedAt) {
         this.logId = logId;
         this.userId = userId;
         this.accountId = accountId;
         this.instrumentId = instrumentId;
+        this.ticker = ticker;
         this.orderType = orderType;
         this.quantity = quantity;
         this.event = event;
@@ -47,6 +49,8 @@ public class TransactionLogDTO {
     public void setAccountId(Integer accountId) { this.accountId = accountId; }
     public Integer getInstrumentId() { return instrumentId; }
     public void setInstrumentId(Integer instrumentId) { this.instrumentId = instrumentId; }
+    public String getTicker() { return ticker; }
+    public void setTicker(String ticker) { this.ticker = ticker; }
     public String getOrderType() { return orderType; }
     public void setOrderType(String orderType) { this.orderType = orderType; }
     public Double getQuantity() { return quantity; }

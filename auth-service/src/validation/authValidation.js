@@ -23,14 +23,14 @@ function isValidUsername(username) {
 }
 
 function validateSignupInput(payload) {
-  const { username, email, password, phoneNumber } = payload || {};
+  const { username, email, password, phoneNumber, dateOfBirth } = payload || {};
 
-  if (!isNonEmptyString(username) || !isNonEmptyString(password) || !isNonEmptyString(email) || !isNonEmptyString(phoneNumber)) {
+  if (!isNonEmptyString(username) || !isNonEmptyString(password) || !isNonEmptyString(email) || !isNonEmptyString(phoneNumber) || !isNonEmptyString(dateOfBirth)) {
     return {
       ok: false,
       status: 400,
       errorCode: 'INVALID_REQUEST_BODY',
-      message: 'username, password, email, and phoneNumber must be non-null strings',
+      message: 'username, password, email, phoneNumber, and dateOfBirth must be non-null strings',
     };
   }
 
@@ -83,6 +83,7 @@ function validateSignupInput(payload) {
       normalizedEmail,
       normalizedPhoneNumber,
       password,
+      dateOfBirth,
     },
   };
 }

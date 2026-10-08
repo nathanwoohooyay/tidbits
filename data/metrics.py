@@ -26,7 +26,7 @@ class MetricsCalculator:
         
         # Get instrument details
         from .database import db
-        query = "SELECT instrument_id, type, market FROM instruments"
+        query = "SELECT instrument_id, type, exchange AS market FROM instruments"
         with db.get_cursor(dict_cursor=True) as cursor:
             cursor.execute(query)
             instruments = pd.DataFrame(cursor.fetchall())
@@ -62,7 +62,7 @@ class MetricsCalculator:
         
         # Get market details
         from .database import db
-        query = "SELECT instrument_id, market FROM instruments"
+        query = "SELECT instrument_id, exchange AS market FROM instruments"
         with db.get_cursor(dict_cursor=True) as cursor:
             cursor.execute(query)
             instruments = pd.DataFrame(cursor.fetchall())

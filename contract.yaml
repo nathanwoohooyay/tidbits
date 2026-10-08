@@ -28,6 +28,8 @@ tags:
     description: Order processing endpoints
   - name: Instruments
     description: Instrument/Asset catalog endpoints
+  - name: Pricing
+    description: Market pricing and candle data endpoints
   - name: Holdings
     description: Portfolio holdings endpoints
   - name: Transactions
@@ -92,63 +94,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponseDTO'
 
   # ==================== USERS ====================
-  /api/users:
-    get:
-      tags:
-        - Users
-      summary: Get all users
-      description: Retrieve a list of all users in the system
-      operationId: getAllUsers
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: List of users retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UserDTO'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    post:
-      tags:
-        - Users
-      summary: Create a new user
-      description: Register a new user account in the system
-      operationId: createUser
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-      responses:
-        '200':
-          description: User created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          description: Invalid input or user already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '409':
-          description: Conflict - username or email already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
   /api/users/{userId}:
     get:
       tags:
@@ -172,7 +117,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserDTO'
         '401':
           description: Unauthorized - invalid or expired token
           content:
@@ -207,14 +152,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: '#/components/schemas/UserUpdateDTO'
       responses:
         '200':
           description: User updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserDTO'
         '400':
           description: Invalid input
           content:
@@ -262,7 +207,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserDTO'
         '400':
           description: Invalid input
           content:
@@ -343,7 +288,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserDTO'
         '400':
           description: Invalid password or password mismatch
           content:
@@ -364,15 +309,23 @@ paths:
                 $ref: '#/components/schemas/ErrorResponseDTO'
 
   # ==================== ACCOUNTS ====================
-  /api/accounts:
+  /api/users/{userId}/accounts:
     get:
       tags:
         - Accounts
-      summary: Get all accounts
-      description: Retrieve a list of all trading accounts
-      operationId: getAllAccounts
+      summary: Get all accounts for a user
+      description: Retrieve all trading accounts owned by a specific user
+      operationId: getAllAccountsByUser
       security:
         - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Unique user identifier
+          schema:
+            type: integer
+            format: int32
       responses:
         '200':
           description: List of accounts retrieved successfully
@@ -392,24 +345,35 @@ paths:
     post:
       tags:
         - Accounts
-      summary: Create a new account
-      description: Create a new trading account for a user
+      summary: Create a new account for a user
+      description: Create a new trading account under the specified user
       operationId: createAccount
       security:
         - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Unique user identifier
+          schema:
+            type: integer
+            format: int32
       requestBody:
         required: true
         content:
+          text/plain:
+            schema:
+              $ref: '#/components/schemas/AccountNicknameRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Account'
+              $ref: '#/components/schemas/AccountNicknameRequest'
       responses:
-        '200':
+        '201':
           description: Account created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Account'
+                $ref: '#/components/schemas/AccountDTO'
         '400':
           description: Invalid input or account already exists
           content:
@@ -423,17 +387,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponseDTO'
 
-  /api/accounts/{accountId}:
+  /api/users/{userId}/accounts/{id}:
     get:
       tags:
         - Accounts
       summary: Get account by ID
-      description: Retrieve a specific account by its account ID
+      description: Retrieve a specific account owned by the specified user
       operationId: getAccountById
       security:
         - BearerAuth: []
       parameters:
-        - name: accountId
+        - name: userId
+          in: path
+          required: true
+          description: Unique user identifier
+          schema:
+            type: integer
+            format: int32
+        - name: id
           in: path
           required: true
           description: Unique account identifier
@@ -446,7 +417,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Account'
+                $ref: '#/components/schemas/AccountDTO'
         '401':
           description: Unauthorized - invalid or expired token
           content:
@@ -464,12 +435,19 @@ paths:
       tags:
         - Accounts
       summary: Update account
-      description: Replace all account information for the specified account ID
+      description: Update the nickname for a specific user account
       operationId: updateAccount
       security:
         - BearerAuth: []
       parameters:
-        - name: accountId
+        - name: userId
+          in: path
+          required: true
+          description: Unique user identifier
+          schema:
+            type: integer
+            format: int32
+        - name: id
           in: path
           required: true
           description: Unique account identifier
@@ -479,64 +457,15 @@ paths:
       requestBody:
         required: true
         content:
+          text/plain:
+            schema:
+              $ref: '#/components/schemas/AccountNicknameRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/Account'
+              $ref: '#/components/schemas/AccountNicknameRequest'
       responses:
-        '200':
-          description: Account updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Account'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    patch:
-      tags:
-        - Accounts
-      summary: Partially update account
-      description: Update specific fields of an account without replacing all data
-      operationId: partiallyUpdateAccount
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Account'
-      responses:
-        '200':
-          description: Account partially updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Account'
+        '202':
+          description: Account update accepted
         '400':
           description: Invalid input
           content:
@@ -560,12 +489,19 @@ paths:
       tags:
         - Accounts
       summary: Delete account
-      description: Remove a trading account from the system
+      description: Remove a trading account owned by the specified user
       operationId: deleteAccount
       security:
         - BearerAuth: []
       parameters:
-        - name: accountId
+        - name: userId
+          in: path
+          required: true
+          description: Unique user identifier
+          schema:
+            type: integer
+            format: int32
+        - name: id
           in: path
           required: true
           description: Unique account identifier
@@ -614,7 +550,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/OrderDTO'
+                  $ref: '#/components/schemas/OrderResponseDTO'
         '401':
           description: Unauthorized - invalid or expired token
           content:
@@ -631,9 +567,9 @@ paths:
     post:
       tags:
         - Orders
-      summary: Create a new order
-      description: Place a new buy or sell order for the account. Validates balance/holdings and creates order with status CREATED.
-      operationId: createOrder
+      summary: Request a new order
+      description: Submit a new buy or sell order for the account
+      operationId: requestOrder
       security:
         - BearerAuth: []
       parameters:
@@ -651,12 +587,12 @@ paths:
             schema:
               $ref: '#/components/schemas/Order'
       responses:
-        '200':
-          description: Order created successfully
+        '202':
+          description: Order request accepted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Order'
+                $ref: '#/components/schemas/OrderResponseDTO'
         '400':
           description: Invalid order or insufficient balance/holdings
           content:
@@ -706,7 +642,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Order'
+                $ref: '#/components/schemas/OrderResponseDTO'
         '401':
           description: Unauthorized - invalid or expired token
           content:
@@ -719,6 +655,88 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponseDTO'
+
+  # ==================== PRICING ====================
+  /api/pricing/quotes:
+    get:
+      tags:
+        - Pricing
+      summary: Get live quotes
+      description: Retrieve batch quote data for one or more comma-separated symbols
+      operationId: getQuotes
+      parameters:
+        - name: symbols
+          in: query
+          required: true
+          description: Comma-separated ticker symbols
+          schema:
+            type: string
+            example: AAPL,MSFT
+        - name: refresh
+          in: query
+          required: false
+          description: Force a fresh upstream quote fetch
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Quotes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingBatchResponseDTO'
+
+  /api/pricing/candles/{symbol}:
+    get:
+      tags:
+        - Pricing
+      summary: Get historical candles
+      description: Retrieve historical candle data for a symbol and interval
+      operationId: getHistoricalCandles
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Ticker symbol
+          schema:
+            type: string
+            example: AAPL
+        - name: from
+          in: query
+          required: false
+          description: Inclusive start date
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: Inclusive end date
+          schema:
+            type: string
+            format: date
+        - name: interval
+          in: query
+          required: false
+          description: Candle interval
+          schema:
+            type: string
+            default: 1d
+            example: 1d
+      responses:
+        '200':
+          description: Candle data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingCandlesResponseDTO'
+        '202':
+          description: Candle backfill accepted and still in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingCandlesResponseDTO'
 
   # ==================== INSTRUMENTS ====================
   /api/instruments:
@@ -923,7 +941,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/AccountHolding'
+                  $ref: '#/components/schemas/AccountHoldingDTO'
         '401':
           description: Unauthorized - invalid or expired token
           content:
@@ -967,7 +985,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountHolding'
+                $ref: '#/components/schemas/AccountHoldingDTO'
         '401':
           description: Unauthorized - invalid or expired token
           content:
@@ -982,6 +1000,88 @@ paths:
                 $ref: '#/components/schemas/ErrorResponseDTO'
 
   # ==================== ACCOUNT TRANSACTIONS ====================
+  /api/accounts/{accountId}/deposit:
+    post:
+      tags:
+        - Transactions
+      summary: Deposit cash into an account
+      description: Record a cash deposit for the specified account
+      operationId: depositTransaction
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique account identifier
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AmountRequest'
+      responses:
+        '200':
+          description: Deposit recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountTransactionDTO'
+        '400':
+          description: Invalid deposit amount
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDTO'
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDTO'
+
+  /api/accounts/{accountId}/withdraw:
+    post:
+      tags:
+        - Transactions
+      summary: Withdraw cash from an account
+      description: Record a cash withdrawal for the specified account
+      operationId: withdrawTransaction
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique account identifier
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AmountRequest'
+      responses:
+        '200':
+          description: Withdrawal recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountTransactionDTO'
+        '400':
+          description: Invalid withdrawal amount
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDTO'
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDTO'
+
   /api/accounts/{accountId}/transactions:
     get:
       tags:
@@ -1007,55 +1107,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/AccountTransaction'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    post:
-      tags:
-        - Transactions
-      summary: Create a new transaction
-      description: Record a new transaction for an account
-      operationId: createAccountTransaction
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AccountTransaction'
-      responses:
-        '200':
-          description: Transaction created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AccountTransaction'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+                  $ref: '#/components/schemas/AccountTransactionDTO'
         '401':
           description: Unauthorized - invalid or expired token
           content:
@@ -1099,7 +1151,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AccountTransaction'
+                $ref: '#/components/schemas/AccountTransactionDTO'
         '401':
           description: Unauthorized - invalid or expired token
           content:
@@ -1139,7 +1191,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/OrderStatusHistory'
+                  $ref: '#/components/schemas/OrderStatusHistoryDTO'
         '401':
           description: Unauthorized - invalid or expired token
           content:
@@ -1216,19 +1268,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponseDTO'
 
+  /api/roles/users/{userId}:
     put:
       tags:
         - Roles
-      summary: Update role
-      description: Replace all role information
-      operationId: updateRole
+      summary: Update a user's role
+      description: Assign a new role to a user. This operation is intended for admin users.
+      operationId: updateUserRole
       security:
         - BearerAuth: []
       parameters:
-        - name: id
+        - name: userId
           in: path
           required: true
-          description: Unique role identifier
+          description: Unique user identifier
           schema:
             type: integer
             format: int32
@@ -1237,16 +1290,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Role'
+              type: object
+              properties:
+                roleId:
+                  type: integer
+                  format: int32
+                roleName:
+                  $ref: '#/components/schemas/RoleType'
       responses:
         '200':
-          description: Role updated successfully
+          description: User role updated successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Role'
         '400':
-          description: Invalid input
+          description: Invalid request payload
           content:
             application/json:
               schema:
@@ -1258,39 +1317,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponseDTO'
         '404':
-          description: Role not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    delete:
-      tags:
-        - Roles
-      summary: Delete role
-      description: Remove a role from the system
-      operationId: deleteRole
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: Unique role identifier
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '204':
-          description: Role deleted successfully
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Role not found
+          description: User or role not found
           content:
             application/json:
               schema:
@@ -1517,25 +1544,28 @@ components:
           format: email
           example: john@example.com
           description: User's email address
-        createdAt:
-          type: string
-          format: date-time
-          example: 2024-01-15T10:30:00Z
-          description: Account creation timestamp
         phoneNumber:
           type: string
           example: +1-555-0123
           description: User's contact phone number
-        lastLogin:
-          type: string
-          format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Last login timestamp
         rewardPoints:
           type: integer
           format: int32
           example: 150
           description: Accumulated reward points
+
+    UserUpdateDTO:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: john.updated@example.com
+          description: Updated user email address
+        phoneNumber:
+          type: string
+          example: +1-555-0142
+          description: Updated user contact phone number
 
     AccountDTO:
       type: object
@@ -1559,13 +1589,13 @@ components:
           format: double
           example: 50000.00
           description: Available cash balance in the account
-        createdAt:
-          type: string
-          format: date-time
-          example: 2024-01-15T10:30:00Z
-          description: Account creation timestamp
 
-    OrderDTO:
+    AccountNicknameRequest:
+      type: string
+      example: Main Trading Account
+      description: Raw account nickname request body
+
+    OrderResponseDTO:
       type: object
       properties:
         orderId:
@@ -1573,35 +1603,28 @@ components:
           format: int32
           example: 501
           description: Unique order identifier
-        accountId:
-          type: integer
-          format: int32
-          example: 101
-          description: Associated account ID
-        instrumentId:
-          type: integer
-          format: int32
-          example: 201
-          description: Instrument being traded
         quantity:
           type: number
           format: double
           example: 100.5
           description: Number of units to trade
-        stockPrice:
+        price:
           type: number
           format: double
           example: 125.75
           description: Price per unit at order time
         orderType:
-          $ref: '#/components/schemas/OrderType'
-        status:
-          $ref: '#/components/schemas/OrderStatus'
-        lastUpdatedAt:
           type: string
-          format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Last order status update timestamp
+          example: BUY
+        status:
+          type: string
+          example: PLACED
+        instrument:
+          $ref: '#/components/schemas/InstrumentDTO'
+        statusHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderStatusHistoryDTO'
 
     InstrumentDTO:
       type: object
@@ -1621,10 +1644,10 @@ components:
           description: Full instrument name
         type:
           $ref: '#/components/schemas/InstrumentType'
-        market:
+        exchange:
           type: string
           example: NASDAQ
-          description: Trading market/exchange
+          description: Trading exchange
 
     AccountHoldingDTO:
       type: object
@@ -1634,11 +1657,6 @@ components:
           format: int32
           example: 301
           description: Unique holding identifier
-        accountId:
-          type: integer
-          format: int32
-          example: 101
-          description: Associated account ID
         instrumentId:
           type: integer
           format: int32
@@ -1654,11 +1672,6 @@ components:
           format: double
           example: 6287.50
           description: Total amount invested in this holding
-        lastUpdated:
-          type: string
-          format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Last update timestamp
 
     AccountTransactionDTO:
       type: object
@@ -1668,11 +1681,6 @@ components:
           format: int32
           example: 401
           description: Unique transaction identifier
-        accountId:
-          type: integer
-          format: int32
-          example: 101
-          description: Associated account ID
         orderId:
           type: integer
           format: int32
@@ -1685,11 +1693,12 @@ components:
           description: Transaction amount
         transactionType:
           $ref: '#/components/schemas/TransactionType'
-        createdAt:
-          type: string
-          format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Transaction creation timestamp
+
+    AmountRequest:
+      type: number
+      format: double
+      example: 1000.0
+      description: Raw numeric amount request body
 
     RoleDTO:
       type: object
@@ -1705,11 +1714,11 @@ components:
     ChangePasswordDTO:
       type: object
       required:
-        - oldPassword
+        - currentPassword
         - newPassword
         - confirmPassword
       properties:
-        oldPassword:
+        currentPassword:
           type: string
           format: password
           description: Current password for verification
@@ -1747,6 +1756,156 @@ components:
           format: int32
           example: 404
           description: HTTP status code
+
+    OrderStatusHistoryDTO:
+      type: object
+      properties:
+        historyId:
+          type: integer
+          format: int32
+          example: 601
+          description: Unique history entry identifier
+        changedAt:
+          type: string
+          format: date-time
+          example: 2024-09-22T14:45:30Z
+          description: Status change timestamp
+        oldStatus:
+          $ref: '#/components/schemas/OrderStatus'
+        newStatus:
+          $ref: '#/components/schemas/OrderStatus'
+
+    PricingBatchResponseDTO:
+      type: object
+      properties:
+        asOf:
+          type: string
+          example: 2024-09-22T14:45:30Z
+          description: Timestamp for the returned quote snapshot
+        quotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PricingQuoteDTO'
+
+    PricingQuoteDTO:
+      type: object
+      properties:
+        instrumentId:
+          type: integer
+          format: int32
+          example: 201
+        symbol:
+          type: string
+          example: AAPL
+        price:
+          type: number
+          format: double
+          example: 189.22
+        change:
+          type: number
+          format: double
+          example: 1.35
+        bid:
+          type: number
+          format: double
+          example: 189.2
+        ask:
+          type: number
+          format: double
+          example: 189.25
+        changePercent:
+          type: number
+          format: double
+          example: 0.72
+        prevClose:
+          type: number
+          format: double
+          example: 187.87
+        currency:
+          type: string
+          example: USD
+        asOf:
+          type: string
+          example: 2024-09-22T14:45:30Z
+        stale:
+          type: boolean
+          example: false
+        source:
+          type: string
+          example: yahoo
+        errorCode:
+          type: string
+          nullable: true
+          example: null
+        errorMessage:
+          type: string
+          nullable: true
+          example: null
+
+    PricingCandlesResponseDTO:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: AAPL
+        interval:
+          type: string
+          example: 1d
+        currency:
+          type: string
+          example: USD
+        asOf:
+          type: string
+          nullable: true
+          example: 2024-09-22T14:45:30Z
+        source:
+          type: string
+          example: yahoo
+        partial:
+          type: boolean
+          example: false
+        availableFrom:
+          type: string
+          nullable: true
+          example: 2024-01-01
+        candles:
+          type: array
+          items:
+            $ref: '#/components/schemas/PricingCandleDTO'
+
+    PricingCandleDTO:
+      type: object
+      properties:
+        date:
+          type: string
+          example: 2024-09-22
+        open:
+          type: number
+          format: double
+          example: 187.21
+        high:
+          type: number
+          format: double
+          example: 190.04
+        low:
+          type: number
+          format: double
+          example: 186.95
+        close:
+          type: number
+          format: double
+          example: 189.22
+        adjclose:
+          type: number
+          format: double
+          example: 189.22
+        volume:
+          type: integer
+          format: int64
+          example: 53421000
+        synthetic:
+          type: boolean
+          example: false
 
     # ==================== ENTITIES ====================
     User:
@@ -2095,9 +2254,10 @@ components:
     InstrumentType:
       type: string
       enum:
-        - STOCK
-        - BOND
-        - MUTUAL_FUND
+        - equity
+        - crypto
+        - fx
+        - etf
         - COMMODITY
       example: STOCK
       description: Type of trading instrument

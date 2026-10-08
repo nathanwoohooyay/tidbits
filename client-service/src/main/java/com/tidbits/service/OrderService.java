@@ -3,6 +3,7 @@ package com.tidbits.service;
 import com.tidbits.exception.BadRequestException;
 import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.dto.InstrumentDTO;
+import com.tidbits.model.dto.OrderEventDTO;
 import com.tidbits.model.dto.PricingQuoteDTO;
 import com.tidbits.model.dto.OrderResponseDTO;
 import com.tidbits.model.dto.OrderStatusHistoryDTO;
@@ -28,6 +29,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -35,12 +38,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 public class OrderService {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private AccountService accountService;
 
     @Autowired
     private AccountRepository accountRepository;
@@ -52,7 +59,7 @@ public class OrderService {
     private AccountTransactionRepository accountTransactionRepository;
 
     @Autowired
-    private OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private OrderStatusHistoryService orderStatusHistoryService;
 
     @Autowired
     private InstrumentRepository instrumentRepository;
@@ -60,14 +67,16 @@ public class OrderService {
     @Autowired
     private PricingService pricingService;
 
+    @Autowired
+    private OrderEventPublisher orderEventPublisher;
+
     private static final Set<OrderStatus> FINAL_STATUSES = Set.of(
             OrderStatus.FILLED,
             OrderStatus.CANCELED,
             OrderStatus.REJECTED
     );
 
-    @Transactional
-    public Order createOrder(Order order) {
+    public Order requestOrder(Order order) {
         validateOrderRequest(order);
 
         Account account = getAuthorizedAccount(order.getAccountId());
@@ -75,40 +84,85 @@ public class OrderService {
         Instrument instrument = instrumentRepository.findById(order.getInstrumentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Instrument " + order.getInstrumentId() + " not found."));
 
-        double quotePrice = resolveQuotePrice(instrument, order.getOrderType());
-        order.setStockPrice(quotePrice);
+        order.setOrderId(null);
+        orderStatusEvent(order, null, OrderStatus.PLACED);
 
-        double totalAmount = order.getQuantity() * order.getStockPrice();
-        if (order.getOrderType() == OrderType.BUY) {
-            processBuyOrder(account, order.getInstrumentId(), order.getQuantity(), totalAmount);
+        return order;
+    }
+
+    @Transactional
+    public Order fillOrder(OrderEventDTO orderEvent) {
+        validateOrderEvent(orderEvent);
+
+        Account account = accountService.getAccountById(orderEvent.accountId()).orElseThrow(() -> new ResourceNotFoundException(
+                "Account " + orderEvent.accountId() + " not found."));
+        Order currOrder = getOrderByIdForAccount(orderEvent.accountId(), orderEvent.orderId(), false);
+
+        OrderType orderType = parseOrderType(orderEvent.orderType());
+        currOrder.setOrderType(orderType);
+
+        Instrument instrument = instrumentRepository.findById(orderEvent.instrumentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Instrument " + orderEvent.instrumentId() + " not found."));
+
+        double quotePrice = resolveQuotePrice(instrument, orderType);
+        currOrder.setStockPrice(quotePrice);
+
+        double totalAmount = floorToTwoDecimals(currOrder.getQuantity() * currOrder.getStockPrice());
+
+        boolean status = true;
+        if (orderType == OrderType.BUY) {
+            status = processBuyOrder(account, currOrder.getInstrumentId(), currOrder.getQuantity(), totalAmount);
         } else {
-            processSellOrder(account, order.getInstrumentId(), order.getQuantity(), totalAmount);
+            status = processSellOrder(account, currOrder.getInstrumentId(), currOrder.getQuantity(), totalAmount);
+        }
+
+        if (!status) {
+            orderStatusEvent(currOrder, OrderStatus.PLACED, OrderStatus.REJECTED);
+            return currOrder;
         }
 
         accountRepository.save(account);
 
-        order.setOrderId(null);
-        order.setStatus(OrderStatus.CREATED);
-        Order createdOrder = orderRepository.save(order);
-        createStatusHistory(createdOrder.getOrderId(), null, OrderStatus.CREATED);
-
-        createdOrder.setStatus(OrderStatus.PLACED);
-        Order placedOrder = orderRepository.save(createdOrder);
-        createStatusHistory(placedOrder.getOrderId(), OrderStatus.CREATED, OrderStatus.PLACED);
-
         AccountTransaction transaction = new AccountTransaction();
         transaction.setAccountId(account.getAccountId());
-        transaction.setOrderId(placedOrder.getOrderId());
+        transaction.setOrderId(currOrder.getOrderId());
         transaction.setAmount(totalAmount);
-        transaction.setTransactionType(order.getOrderType() == OrderType.BUY ? TransactionType.BUY : TransactionType.SELL);
+        transaction.setTransactionType(orderType == OrderType.BUY ? TransactionType.BUY : TransactionType.SELL);
         transaction.setCreatedAt(LocalDateTime.now());
-        accountTransactionRepository.save(transaction);
+        AccountTransaction at = accountTransactionRepository.save(transaction);
 
-        return placedOrder;
+        orderStatusEvent(currOrder, OrderStatus.PLACED, OrderStatus.ACCEPTED, at.getTransactionId());
+
+        orderStatusEvent(currOrder, OrderStatus.ACCEPTED, OrderStatus.FILLED, at.getTransactionId());
+
+        return currOrder;
+    }
+
+    private void orderStatusEvent(Order order, OrderStatus oldStatus, OrderStatus newStatus, Integer transactionId) {
+        order.setStatus(newStatus);
+        Order createdOrder = orderRepository.save(order);
+        orderStatusHistoryService.switchStatus(order, oldStatus, newStatus);
+        
+        publishOrderEvent("ORDER_" + newStatus.name(), order, transactionId);
+    }
+
+    private void orderStatusEvent(Order order, OrderStatus oldStatus, OrderStatus newStatus) {
+        order.setStatus(newStatus);
+        Order createdOrder = orderRepository.save(order);
+        orderStatusHistoryService.switchStatus(order, oldStatus, newStatus);
+        
+        publishOrderEvent("ORDER_" + newStatus.name(), order);
     }
 
     public Order getOrderByIdForAccount(Integer accountId, Integer orderId) {
-        getAuthorizedAccount(accountId);
+        return getOrderByIdForAccount(accountId, orderId, true);
+    }
+
+    private Order getOrderByIdForAccount(Integer accountId, Integer orderId, boolean requireAuthorization) {
+        if (requireAuthorization) {
+            getAuthorizedAccount(accountId);
+        }
+
         return orderRepository.findById(orderId)
                 .filter(order -> order.getAccountId().equals(accountId))
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -120,56 +174,17 @@ public class OrderService {
         return orderRepository.findByAccountId(accountId);
     }
 
-    @Transactional
-    public Order updateOrder(Integer orderId, Order order) {
-        Order existingOrder = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order " + orderId + " not found."));
-
-        getAuthorizedAccount(existingOrder.getAccountId());
-
-        if (order.getQuantity() != null && order.getQuantity() > 0) {
-            existingOrder.setQuantity(order.getQuantity());
-        }
-
-        if (order.getStockPrice() != null && order.getStockPrice() > 0) {
-            existingOrder.setStockPrice(order.getStockPrice());
-        }
-
-        if (order.getOrderType() != null) {
-            existingOrder.setOrderType(order.getOrderType());
-        }
-
-        if (order.getStatus() != null && order.getStatus() != existingOrder.getStatus()) {
-            OrderStatus oldStatus = existingOrder.getStatus();
-            validateStatusTransition(oldStatus, order.getStatus());
-            existingOrder.setStatus(order.getStatus());
-            createStatusHistory(existingOrder.getOrderId(), oldStatus, order.getStatus());
-        }
-
-        return orderRepository.save(existingOrder);
+    private void publishOrderEvent(String eventType, Order order) {
+        orderEventPublisher.publish(eventType, order, toResponseDto(order));
     }
 
-    @Transactional
-    public Order updateOrderStatus(Integer accountId, Integer orderId, OrderStatus newStatus) {
-        getAuthorizedAccount(accountId);
-        Order order = getOrderByIdForAccount(accountId, orderId);
-
-        if (order.getStatus() == newStatus) {
-            return order;
-        }
-
-        validateStatusTransition(order.getStatus(), newStatus);
-
-        OrderStatus oldStatus = order.getStatus();
-        order.setStatus(newStatus);
-        Order updated = orderRepository.save(order);
-        createStatusHistory(orderId, oldStatus, newStatus);
-        return updated;
+    private void publishOrderEvent(String eventType, Order order, Integer transactionId) {
+        orderEventPublisher.publish(eventType, order, toResponseDto(order), transactionId);
     }
 
     private Account getAuthorizedAccount(Integer accountId) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Account " + accountId + " not found."));
+        Account account = accountService.getAccountById(accountId).orElseThrow(() -> new ResourceNotFoundException(
+                "Account " + accountId + " not found."));
 
         Integer authenticatedUserId = getAuthenticatedUserId();
         if (!authenticatedUserId.equals(account.getUserId())) {
@@ -177,6 +192,24 @@ public class OrderService {
         }
 
         return account;
+    }
+
+    private void validateOrderEvent(OrderEventDTO orderEvent) {
+        if (orderEvent == null) {
+            throw new BadRequestException("Order event payload is required.");
+        }
+
+        if (orderEvent.accountId() == null || orderEvent.instrumentId() == null || orderEvent.orderId() == null || orderEvent.orderType() == null) {
+            throw new BadRequestException("Order event must include order, account, instrument, and order type.");
+        }
+    }
+
+    private OrderType parseOrderType(String orderType) {
+        try {
+            return OrderType.valueOf(orderType.trim().toUpperCase(Locale.ROOT));
+        } catch (RuntimeException ex) {
+            throw new BadRequestException("Unsupported order type: " + orderType);
+        }
     }
 
     private Integer getAuthenticatedUserId() {
@@ -211,7 +244,7 @@ public class OrderService {
             dto.setInstrument(instrumentDTO);
         }
 
-        List<OrderStatusHistoryDTO> history = orderStatusHistoryRepository.findByOrderId(order.getOrderId()).stream()
+        List<OrderStatusHistoryDTO> history = orderStatusHistoryService.getHistoryByOrderId(order.getOrderId()).stream()
                 .sorted(Comparator.comparing(OrderStatusHistory::getChangedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(this::toHistoryDto)
                 .collect(Collectors.toList());
@@ -275,13 +308,13 @@ public class OrderService {
         return sidePrice;
     }
 
-    private void processBuyOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {
+    private boolean processBuyOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {
         double currentBalance = account.getCashBalance() == null ? 0.0 : account.getCashBalance();
         if (currentBalance < totalAmount) {
-            throw new BadRequestException("Insufficient cash balance for buy order.");
+            return false;
         }
 
-        account.setCashBalance(currentBalance - totalAmount);
+        account.setCashBalance(floorToTwoDecimals(currentBalance - totalAmount));
 
         AccountHolding holding = accountHoldingRepository
                 .findByAccountIdAndInstrumentId(account.getAccountId(), instrumentId)
@@ -298,16 +331,17 @@ public class OrderService {
         holding.setAmountInvested(holding.getAmountInvested() + totalAmount);
         holding.setLastUpdated(LocalDateTime.now());
         accountHoldingRepository.save(holding);
+        return true;
     }
 
-    private void processSellOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {
-        AccountHolding holding = accountHoldingRepository
-                .findByAccountIdAndInstrumentId(account.getAccountId(), instrumentId)
-                .orElseThrow(() -> new BadRequestException("No holdings available to sell for instrument " + instrumentId + "."));
+    private boolean processSellOrder(Account account, Integer instrumentId, Double quantity, double totalAmount) {
+        Optional<AccountHolding> holdingOpt = accountHoldingRepository
+                .findByAccountIdAndInstrumentId(account.getAccountId(), instrumentId);
 
-        if (holding.getQuantity() == null || holding.getQuantity() < quantity) {
-            throw new BadRequestException("Insufficient holdings quantity for sell order.");
+        if (holdingOpt.isEmpty() || holdingOpt.get().getQuantity() == null || holdingOpt.get().getQuantity() < quantity) {
+            return false;
         }
+        AccountHolding holding = holdingOpt.get();
 
         double previousQuantity = holding.getQuantity();
         double remainingQuantity = previousQuantity - quantity;
@@ -323,16 +357,13 @@ public class OrderService {
         }
 
         double currentBalance = account.getCashBalance() == null ? 0.0 : account.getCashBalance();
-        account.setCashBalance(currentBalance + totalAmount);
+        account.setCashBalance(floorToTwoDecimals(currentBalance + totalAmount));
+
+        return true;
     }
 
-    private void createStatusHistory(Integer orderId, OrderStatus oldStatus, OrderStatus newStatus) {
-        OrderStatusHistory statusHistory = new OrderStatusHistory();
-        statusHistory.setOrderId(orderId);
-        statusHistory.setChangedAt(LocalDateTime.now());
-        statusHistory.setOldStatus(oldStatus);
-        statusHistory.setNewStatus(newStatus);
-        orderStatusHistoryRepository.save(statusHistory);
+    private double floorToTwoDecimals(double value) {
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.FLOOR).doubleValue();
     }
 
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
@@ -345,19 +376,14 @@ public class OrderService {
         }
 
         switch (currentStatus) {
-            case CREATED -> {
-                if (!(newStatus == OrderStatus.PENDING || newStatus == OrderStatus.PLACED || newStatus == OrderStatus.CANCELED || newStatus == OrderStatus.REJECTED)) {
-                    throw new BadRequestException("Invalid status transition from CREATED to " + newStatus + ".");
+            case PLACED -> {
+                if (!(newStatus == OrderStatus.PENDING || newStatus == OrderStatus.ACCEPTED || newStatus == OrderStatus.CANCELED || newStatus == OrderStatus.REJECTED)) {
+                    throw new BadRequestException("Invalid status transition from PLACED to " + newStatus + ".");
                 }
             }
             case PENDING -> {
                 if (!(newStatus == OrderStatus.PLACED || newStatus == OrderStatus.CANCELED || newStatus == OrderStatus.REJECTED)) {
                     throw new BadRequestException("Invalid status transition from PENDING to " + newStatus + ".");
-                }
-            }
-            case PLACED -> {
-                if (!(newStatus == OrderStatus.ACCEPTED || newStatus == OrderStatus.CANCELED || newStatus == OrderStatus.REJECTED)) {
-                    throw new BadRequestException("Invalid status transition from PLACED to " + newStatus + ".");
                 }
             }
             case ACCEPTED -> {

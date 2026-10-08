@@ -18,7 +18,9 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     phone_number TEXT UNIQUE,
     last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    reward_points INT DEFAULT 0 NOT NULL
+    reward_points INT DEFAULT 0 NOT NULL,
+    date_of_birth DATE NOT NULL,
+    token_version INT DEFAULT 0 NOT NULL
 );
 
 CREATE TABLE accounts (
@@ -57,7 +59,7 @@ CREATE TABLE orders (
     account_id INT NOT NULL REFERENCES accounts(account_id),
     instrument_id INT NOT NULL REFERENCES instruments(instrument_id),
     quantity NUMERIC(17, 4) NOT NULL CHECK (quantity > 0),
-    stock_price NUMERIC(15, 2) NOT NULL CHECK (stock_price > 0),
+    stock_price NUMERIC(15, 2) CHECK (stock_price > 0),
     order_type order_type_enum NOT NULL,
     status order_status_type DEFAULT 'created' NOT NULL
 );
@@ -73,7 +75,7 @@ CREATE TABLE order_status_history(
 CREATE TABLE account_transactions (
     transaction_id SERIAL PRIMARY KEY,
     account_id INT NOT NULL REFERENCES accounts(account_id),
-    order_id INT NOT NULL REFERENCES orders(order_id),
+    order_id INT REFERENCES orders(order_id),
     amount NUMERIC(15, 2) NOT NULL CHECK (amount > 0),
     transaction_type transaction_type NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -81,20 +83,30 @@ CREATE TABLE account_transactions (
 
 CREATE TABLE user_logs (
     log_id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(user_id),
+    user_id INT REFERENCES users(user_id),
+    username TEXT,
     ip_address TEXT,
     event TEXT NOT NULL,
     status log_status_type,
     happened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-CREATE TABLE transaction_log(
+CREATE TABLE transaction_logs(
     log_id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(user_id),
     account_id INT NOT NULL REFERENCES accounts(account_id),
     event TEXT NOT NULL,
-    ip_address TEXT,
-    transaction_id INT NOT NULL REFERENCES account_transactions(transaction_id),
+    amount NUMERIC(15, 2),
+    transaction_id INT REFERENCES account_transactions(transaction_id),
+    order_id INT REFERENCES orders(order_id),
     status log_status_type,
     happened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE refresh_tokens (
+    token_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE REFERENCES users(user_id),
+    refresh_token TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NOT NULL
 );

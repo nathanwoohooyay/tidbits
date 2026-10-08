@@ -1,7 +1,9 @@
 package com.tidbits.audit.controller;
 
 import com.tidbits.audit.model.dto.RoleDTO;
+import com.tidbits.audit.model.dto.UserRoleUpdateRequestDTO;
 import com.tidbits.audit.model.entity.Role;
+import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.audit.service.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +21,9 @@ public class RoleController {
 
     @GetMapping("/{id}")
     public ResponseEntity<RoleDTO> getRoleById(@PathVariable Integer id) {
-        return roleService.getRoleById(id)
-                .map(this::toDto)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        Role role = roleService.getRoleById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Role not found for id: " + id));
+        return ResponseEntity.ok(toDto(role));
     }
 
     @GetMapping
@@ -34,14 +35,13 @@ public class RoleController {
         return ResponseEntity.ok(roles);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<RoleDTO> updateRole(@PathVariable Integer id, @RequestBody Role role) {
-        return ResponseEntity.ok(null);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRole(@PathVariable Integer id) {
-        return ResponseEntity.noContent().build();
+    @PutMapping("/users/{userId}")
+    public ResponseEntity<RoleDTO> updateUserRole(
+            @PathVariable Integer userId,
+            @RequestBody UserRoleUpdateRequestDTO request
+    ) {
+        Role updatedRole = roleService.updateUserRole(userId, request.getRoleId(), request.getRoleName());
+        return ResponseEntity.ok(toDto(updatedRole));
     }
 
     private RoleDTO toDto(Role role) {

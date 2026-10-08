@@ -1,5 +1,6 @@
 package com.tidbits.config;
 
+import com.tidbits.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +25,12 @@ public class SecurityConfig {
     @Value("${security.jwt.shared-secret}")
     private String sharedSecret;
 
+    private final UserRepository userRepository;
+
+    public SecurityConfig(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
@@ -38,7 +45,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> req
                         .requestMatchers("/public").permitAll()
-                        .requestMatchers("/api/users/**", "/api/accounts/**", "/api/pricing/**").authenticated())
+                        .requestMatchers("/api/users/**", "/api/accounts/**", "/api/pricing/**", "/api/orders/**")
+                        .authenticated())
                 .oauth2ResourceServer((OAuth2ResourceServerConfigurer<HttpSecurity> oauth2) ->
                         oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(authenticationConverter)));
 

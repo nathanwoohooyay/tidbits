@@ -15,34 +15,35 @@ public class TransactionLogService {
     private TransactionLogRepository transactionLogRepository;
 
     public TransactionLog createTransactionLog(TransactionLog transactionLog) {
-        return null;
+        return transactionLogRepository.save(transactionLog);
     }
 
     public Optional<TransactionLog> getTransactionLogById(Integer logId) {
-
-        return Optional.empty();
+        return transactionLogRepository.findById(logId);
     }
 
     public List<TransactionLog> getLogsByUserId(Integer userId) {
-        return List.of();
+        return transactionLogRepository.findByUserId(userId);
     }
 
     public List<TransactionLog> getLogsByAccountId(Integer accountId) {
-        return List.of();
+        return transactionLogRepository.findByAccountId(accountId);
     }
 
     public List<TransactionLog> getLogsByTransactionId(Integer transactionId) {
-        return List.of();
+        return transactionLogRepository.findByTransactionId(transactionId);
     }
 
     public List<TransactionLog> getAllTransactionLogs() {
-        return List.of();
+        return transactionLogRepository.findAll();
     }
 
     public TransactionLog updateTransactionLog(Integer logId, TransactionLog transactionLog) {
-        return null;
+        transactionLog.setLogId(logId);
+        return transactionLogRepository.save(transactionLog);
     }
 
     public void deleteTransactionLog(Integer logId) {
+        transactionLogRepository.deleteById(logId);
     }
 }

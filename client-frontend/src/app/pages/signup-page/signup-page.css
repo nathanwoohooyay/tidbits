@@ -38,6 +38,17 @@ input {
   font: inherit;
 }
 
+.input-invalid {
+  border-color: #d64545;
+  background: #fff7f7;
+}
+
+.field-error {
+  margin-top: 0.4rem;
+  color: #9b2c2c;
+  font-size: 0.9rem;
+}
+
 .error {
   margin: 1rem 0;
   padding: 0.85rem 1rem;

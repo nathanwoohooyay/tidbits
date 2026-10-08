@@ -15,6 +15,7 @@
         [(ngModel)]="loginUsername"
         placeholder="e.g. john_investor"
         autocomplete="username"
+        (ngModelChange)="onLoginInputChange()"
         (keyup.enter)="login()"
       />
     </div>
@@ -27,6 +28,7 @@
         [(ngModel)]="loginPassword"
         placeholder="Enter your password"
         autocomplete="current-password"
+        (ngModelChange)="onLoginInputChange()"
         (keyup.enter)="login()"
       />
     </div>

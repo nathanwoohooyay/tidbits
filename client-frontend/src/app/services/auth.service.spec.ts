@@ -41,6 +41,15 @@ describe('AuthService error handling', () => {
     expect(service.getLoginErrorMessage(error)).toBe('Invalid username or password.');
   });
 
+  it('normalizes a backend invalid-credentials login message', () => {
+    const error = new HttpErrorResponse({
+      status: 401,
+      error: { message: 'invalid username or password' },
+    });
+
+    expect(service.getLoginErrorMessage(error)).toBe('Invalid username or password.');
+  });
+
   it('returns an account-exists message for signup conflicts without a backend message', () => {
     const error = new HttpErrorResponse({
       status: 409,
@@ -48,6 +57,35 @@ describe('AuthService error handling', () => {
     });
 
     expect(service.getSignupErrorMessage(error)).toBe('An account with those details already exists.');
+  });
+
+  it('returns a field-specific signup validation message when the backend provides an error code', () => {
+    const error = new HttpErrorResponse({
+      status: 422,
+      error: {
+        errorCode: 'INVALID_EMAIL',
+        message: 'enter a valid email address',
+      },
+    });
+
+    expect(service.getSignupErrorMessage(error)).toBe('Enter a valid email address.');
+    expect(service.getSignupFieldErrors(error)).toEqual({
+      email: 'Enter a valid email address.',
+    });
+  });
+
+  it('maps signup conflict codes to the appropriate field errors', () => {
+    const error = new HttpErrorResponse({
+      status: 409,
+      error: {
+        errorCode: 'PHONE_NUMBER_ALREADY_EXISTS',
+        message: 'phone number already exists',
+      },
+    });
+
+    expect(service.getSignupFieldErrors(error)).toEqual({
+      phoneNumber: 'That phone number is already registered.',
+    });
   });
 
   it('returns a service-unavailable message for signup server failures', () => {

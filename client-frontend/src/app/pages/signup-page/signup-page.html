@@ -13,27 +13,97 @@
 
     <div class="form-group">
       <label for="signup-username">Username</label>
-      <input id="signup-username" type="text" [(ngModel)]="signupUsername" autocomplete="username">
+      <input
+        id="signup-username"
+        type="text"
+        [(ngModel)]="signupUsername"
+        autocomplete="username"
+        [attr.aria-invalid]="!!signupFieldErrors.username"
+        [class.input-invalid]="!!signupFieldErrors.username"
+        (ngModelChange)="onSignupInputChange('username')"
+      >
+      @if (signupFieldErrors.username) {
+        <div class="field-error">{{ signupFieldErrors.username }}</div>
+      }
     </div>
 
     <div class="form-group">
       <label for="signup-email">Email</label>
-      <input id="signup-email" type="email" [(ngModel)]="signupEmail" autocomplete="email">
+      <input
+        id="signup-email"
+        type="email"
+        [(ngModel)]="signupEmail"
+        autocomplete="email"
+        [attr.aria-invalid]="!!signupFieldErrors.email"
+        [class.input-invalid]="!!signupFieldErrors.email"
+        (ngModelChange)="onSignupInputChange('email')"
+      >
+      @if (signupFieldErrors.email) {
+        <div class="field-error">{{ signupFieldErrors.email }}</div>
+      }
     </div>
+
+      <div class="form-group">
+          <label for="date-of-birth">Date Of Birth </label>
+          <input
+                id="date-of-birth"
+                type="date"
+                [(ngModel)]="signupDateOfBirth"
+                [attr.aria-invalid]="!!signupFieldErrors.dateOfBirth"
+                [class.input-invalid]="!!signupFieldErrors.dateOfBirth"
+                (ngModelChange)="onSignupInputChange('dateOfBirth')"
+                >
+          @if (signupFieldErrors.dateOfBirth) {
+              <div class="field-error">{{ signupFieldErrors.dateOfBirth }}</div>
+          }
+
+      </div>
 
     <div class="form-group">
       <label for="signup-phone">Phone Number</label>
-      <input id="signup-phone" type="text" [(ngModel)]="signupPhoneNumber">
+      <input
+        id="signup-phone"
+        type="text"
+        [(ngModel)]="signupPhoneNumber"
+        [attr.aria-invalid]="!!signupFieldErrors.phoneNumber"
+        [class.input-invalid]="!!signupFieldErrors.phoneNumber"
+        (ngModelChange)="onSignupInputChange('phoneNumber')"
+      >
+      @if (signupFieldErrors.phoneNumber) {
+        <div class="field-error">{{ signupFieldErrors.phoneNumber }}</div>
+      }
     </div>
 
     <div class="form-group">
       <label for="signup-password">Password</label>
-      <input id="signup-password" type="password" [(ngModel)]="signupPassword" autocomplete="new-password">
+      <input
+        id="signup-password"
+        type="password"
+        [(ngModel)]="signupPassword"
+        autocomplete="new-password"
+        [attr.aria-invalid]="!!signupFieldErrors.password"
+        [class.input-invalid]="!!signupFieldErrors.password"
+        (ngModelChange)="onSignupInputChange('password')"
+      >
+      @if (signupFieldErrors.password) {
+        <div class="field-error">{{ signupFieldErrors.password }}</div>
+      }
     </div>
 
     <div class="form-group">
       <label for="signup-confirm-password">Confirm Password</label>
-      <input id="signup-confirm-password" type="password" [(ngModel)]="signupConfirmPassword" autocomplete="new-password">
+      <input
+        id="signup-confirm-password"
+        type="password"
+        [(ngModel)]="signupConfirmPassword"
+        autocomplete="new-password"
+        [attr.aria-invalid]="!!signupFieldErrors.confirmPassword"
+        [class.input-invalid]="!!signupFieldErrors.confirmPassword"
+        (ngModelChange)="onSignupInputChange('confirmPassword')"
+      >
+      @if (signupFieldErrors.confirmPassword) {
+        <div class="field-error">{{ signupFieldErrors.confirmPassword }}</div>
+      }
     </div>
 
     <button type="button" class="btn-primary" (click)="signup()" [disabled]="signupLoading">

@@ -22,6 +22,10 @@ export class LoginPageComponent {
   loginError = '';
   loginLoading = false;
 
+  onLoginInputChange() {
+    this.loginError = '';
+  }
+
   login() {
     const username = this.loginUsername.trim();
     const password = this.loginPassword.trim();

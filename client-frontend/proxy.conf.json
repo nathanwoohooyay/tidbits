@@ -6,7 +6,7 @@
     "logLevel": "debug"
   },
   "/api": {
-    "target": "http://127.0.0.1:9875",
+    "target": "http://127.0.0.1:8090/client",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"

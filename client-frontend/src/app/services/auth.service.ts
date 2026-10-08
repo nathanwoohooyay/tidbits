@@ -3,7 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 type AuthFlow = 'login' | 'signup';
-export type SignupField = 'username' | 'email' | 'phoneNumber' | 'password';
+export type SignupField = 'username' | 'email' | 'dateOfBirth' | 'phoneNumber' | 'password';
 
 interface AuthErrorPayload {
   error?: string;
@@ -20,6 +20,7 @@ export interface LoginResponse {
 export interface SignupRequest {
   username: string;
   email: string;
+  dateOfBirth: string;
   phoneNumber: string;
   password: string;
 }
@@ -65,6 +66,8 @@ export class AuthService {
         return { username: 'Username must be 3-30 characters and use only letters, numbers, periods, underscores, or hyphens.' };
       case 'INVALID_EMAIL':
         return { email: 'Enter a valid email address.' };
+      case 'INVALID_DATE_OF_BIRTH':
+        return { dateOfBirth: 'Enter a valid date of birth.' };
       case 'INVALID_PHONE_NUMBER':
         return { phoneNumber: 'Enter a valid 10-digit US phone number.' };
       case 'INVALID_PASSWORD':

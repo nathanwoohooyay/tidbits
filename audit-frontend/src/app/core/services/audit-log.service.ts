@@ -69,6 +69,7 @@ export class AuditLogService {
           logId: Number(log.logId ?? 0),
           accountId: Number(log.accountId ?? 0),
           instrumentId: Number(log.instrumentId ?? 0),
+          ticker: log.ticker,
           transactionId: log.transactionId == null ? undefined : Number(log.transactionId),
           orderId: log.orderId == null ? undefined : Number(log.orderId),
           orderType: orderType || event,

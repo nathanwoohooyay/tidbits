@@ -59,6 +59,7 @@ export interface TransactionLog {
   logId: number;
   accountId: number;
   instrumentId: number;
+  ticker?: string;
   transactionId?: number;
   orderId?: number;
   orderType: string;

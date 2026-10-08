@@ -84,6 +84,7 @@ CREATE TABLE account_transactions (
 CREATE TABLE user_logs (
     log_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(user_id),
+    username TEXT,
     ip_address TEXT,
     event TEXT NOT NULL,
     status log_status_type,
@@ -97,6 +98,7 @@ CREATE TABLE transaction_logs(
     event TEXT NOT NULL,
     amount NUMERIC(15, 2),
     transaction_id INT REFERENCES account_transactions(transaction_id),
+    order_id INT REFERENCES orders(order_id),
     status log_status_type,
     happened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

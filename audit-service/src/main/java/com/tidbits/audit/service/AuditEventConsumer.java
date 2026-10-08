@@ -77,7 +77,9 @@ public class AuditEventConsumer {
         TransactionLog log = new TransactionLog();
         log.setUserId(userId);
         log.setAccountId(event.accountId());
+        log.setOrderId(event.orderId());
         log.setEvent(event.eventType());
+        log.setStockPrice(event.stockPrice());
         log.setAmount(resolveAmount(event));
         log.setTransactionId(transactionId);
         log.setStatus(resolveTransactionStatus(event));
@@ -98,6 +100,7 @@ public class AuditEventConsumer {
 
         UserLog log = new UserLog();
         log.setUserId(event.userId());
+        log.setUsername(event.username());
         log.setIpAddress(event.ipAddress());
         log.setEvent(event.eventType());
         log.setStatus(LogStatus.fromValue(event.status()));

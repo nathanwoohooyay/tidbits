@@ -95,4 +95,15 @@ describe('GatewayAuthService', () => {
       message: 'Authorization header is required',
     });
   });
+
+  it('allows unauthenticated OPTIONS preflight requests', async () => {
+    const service = new GatewayAuthService();
+    const request = {
+      method: 'OPTIONS',
+      originalUrl: '/audit/api/logs/users',
+      headers: {},
+    } as Request;
+
+    await expect(service.authorizeRequest(request, '/audit')).resolves.toBeUndefined();
+  });
 });

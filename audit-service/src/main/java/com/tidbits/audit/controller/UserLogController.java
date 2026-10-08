@@ -51,6 +51,7 @@ public class UserLogController {
         return new UserLogDTO(
                 log.getLogId(),
                 log.getUserId(),
+                log.getUsername(),
                 log.getIpAddress(),
                 log.getEvent(),
                 log.getStatus(),

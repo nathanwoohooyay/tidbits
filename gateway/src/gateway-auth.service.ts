@@ -30,6 +30,9 @@ export class GatewayAuthService implements OnModuleDestroy {
   });
 
   async authorizeRequest(request: Request, routePrefix: string): Promise<void> {
+    if (request.method === 'OPTIONS') {
+      return;
+    }
 
     const token = this.extractBearerToken(request.headers.authorization);
     const payload = this.verifyToken(token);

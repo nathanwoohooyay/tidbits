@@ -48,10 +48,10 @@ public class UserService {
             user.setEmail(newEmail);
             User saved = userRepository.save(user);
 
-            userAuditEventPublisher.publish("CHANGE_EMAIL", userId, "SUCCESS", "Email changed");
+            userAuditEventPublisher.publish("CHANGE_EMAIL", userId, saved.getUsername(), "SUCCESS", "Email changed");
             return saved;
         } catch (RuntimeException ex) {
-            userAuditEventPublisher.publish("CHANGE_EMAIL", userId, "FAILURE", ex.getMessage());
+            userAuditEventPublisher.publish("CHANGE_EMAIL", userId, user.getUsername(), "FAILURE", ex.getMessage());
             throw ex;
         }
     }
@@ -68,10 +68,10 @@ public class UserService {
             user.setPhoneNumber(newPhoneNumber);
             User saved = userRepository.save(user);
 
-            userAuditEventPublisher.publish("CHANGE_PHONE_NUMBER", userId, "SUCCESS", "Phone number changed");
+            userAuditEventPublisher.publish("CHANGE_PHONE_NUMBER", userId, saved.getUsername(), "SUCCESS", "Phone number changed");
             return saved;
         } catch (RuntimeException ex) {
-            userAuditEventPublisher.publish("CHANGE_PHONE_NUMBER", userId, "FAILURE", ex.getMessage());
+            userAuditEventPublisher.publish("CHANGE_PHONE_NUMBER", userId, user.getUsername(), "FAILURE", ex.getMessage());
             throw ex;
         }
     }
@@ -104,10 +104,10 @@ public class UserService {
             user.setPasswordHash(BCrypt.hashpw(newPassword, BCrypt.gensalt()));
             User saved = userRepository.save(user);
 
-            userAuditEventPublisher.publish("CHANGE_PASSWORD", userId, "SUCCESS", "Password changed");
+            userAuditEventPublisher.publish("CHANGE_PASSWORD", userId, saved.getUsername(), "SUCCESS", "Password changed");
             return saved;
         } catch (RuntimeException ex) {
-            userAuditEventPublisher.publish("CHANGE_PASSWORD", userId, "FAILURE", ex.getMessage());
+            userAuditEventPublisher.publish("CHANGE_PASSWORD", userId, user.getUsername(), "FAILURE", ex.getMessage());
             throw ex;
         }
     }

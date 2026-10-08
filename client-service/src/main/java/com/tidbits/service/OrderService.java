@@ -129,13 +129,21 @@ public class OrderService {
         transaction.setAmount(totalAmount);
         transaction.setTransactionType(orderType == OrderType.BUY ? TransactionType.BUY : TransactionType.SELL);
         transaction.setCreatedAt(LocalDateTime.now());
-        accountTransactionRepository.save(transaction);
+        AccountTransaction at = accountTransactionRepository.save(transaction);
 
-        orderStatusEvent(currOrder, OrderStatus.PLACED, OrderStatus.ACCEPTED);
+        orderStatusEvent(currOrder, OrderStatus.PLACED, OrderStatus.ACCEPTED, at.getTransactionId());
 
-        orderStatusEvent(currOrder, OrderStatus.ACCEPTED, OrderStatus.FILLED);
+        orderStatusEvent(currOrder, OrderStatus.ACCEPTED, OrderStatus.FILLED, at.getTransactionId());
 
         return currOrder;
+    }
+
+    private void orderStatusEvent(Order order, OrderStatus oldStatus, OrderStatus newStatus, Integer transactionId) {
+        order.setStatus(newStatus);
+        Order createdOrder = orderRepository.save(order);
+        orderStatusHistoryService.switchStatus(order, oldStatus, newStatus);
+        
+        publishOrderEvent("ORDER_" + newStatus.name(), order, transactionId);
     }
 
     private void orderStatusEvent(Order order, OrderStatus oldStatus, OrderStatus newStatus) {

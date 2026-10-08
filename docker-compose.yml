@@ -82,6 +82,7 @@ services:
     container_name: tidbits-auth-service
     environment:
       PORT: 4000
+      AUTH_CORS_ORIGINS: ${AUTH_CORS_ORIGINS:-http://localhost:8084,http://localhost:4200,http://localhost:8080,http://localhost:9875}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
@@ -160,6 +161,7 @@ services:
     container_name: tidbits-gateway
     environment:
       PORT: 3000
+      GATEWAY_CORS_ORIGINS: ${GATEWAY_CORS_ORIGINS:-http://localhost:8084,http://localhost:4200,http://localhost:8080,http://localhost:9875}
       CLIENT_SERVICE_URL: http://client-service:8082
       AUDIT_SERVICE_URL: http://audit-service:8083
       DB_HOST: ${DB_HOST}
@@ -177,6 +179,39 @@ services:
         condition: service_started
       audit-service:
         condition: service_started
+    networks:
+      - tidbits-network
+
+  metrics-service:
+    build:
+      context: .
+      dockerfile: data/Dockerfile
+    container_name: tidbits-metrics-service
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tidbits-network
+
+  audit-frontend:
+    build:
+      context: ./audit-frontend
+      dockerfile: Dockerfile
+    container_name: tidbits-audit-frontend
+    ports:
+      - "8084:80"
+    depends_on:
+      - gateway
+      - auth-service
+      - metrics-service
     networks:
       - tidbits-network
 

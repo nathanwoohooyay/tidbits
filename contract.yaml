@@ -1,281 +1,228 @@
 openapi: 3.0.3
 info:
   title: Tidbits Trading Platform API
-  description: RESTful API for a comprehensive trading platform with account management, order processing, and portfolio tracking
-  version: 1.0.0
-  contact:
-    name: Tidbits Development Team
-  license:
-    name: MIT
+  version: 2.0.0
+  summary: Multi-service API contract for authentication, trading, pricing, and audit workflows.
+  description: |
+    This contract replaces the previous draft and documents the API surface that is actually implemented in the workspace.
 
-servers:
-  - url: http://localhost:8080
-    description: Local Development Server
-  - url: https://api.tidbits.com
-    description: Production Server
+    The platform is split into four runtime pieces:
 
-security:
-  - BearerAuth: []
+    1. `auth-service` issues JWT access tokens and manages refresh cookies.
+    2. `client-service` owns user self-service trading workflows such as accounts, holdings, orders, cash movements, and pricing.
+    3. `audit-service` exposes admin reporting, role management, and audit-log read operations.
+    4. `gateway` is a thin reverse proxy. It forwards client-service routes under `/client/*` and audit-service routes under `/audit/*`. Auth routes are not proxied by the current gateway implementation.
 
+    Important behavior to understand before integrating:
+
+    - Access tokens are JWT bearer tokens signed with a shared HS256 secret.
+    - Refresh tokens are stored in an HTTP-only cookie named `refreshToken` and are only used by auth endpoints.
+    - User self-service routes under `/api/users/{userId}` and `/api/users/{userId}/accounts` enforce that the JWT subject matches the path `userId`.
+    - Account-scoped routes under `/api/accounts/{accountId}/...` are authenticated, but the current client-service implementation does not additionally compare `accountId` against the JWT subject.
+    - Audit write routes for user logs and transaction logs exist in controllers, but the current audit-service security configuration denies those non-GET requests. They are documented here with that limitation called out explicitly.
+    - Several endpoints intentionally accept primitive bodies instead of JSON objects: account nicknames are raw strings, deposit and withdraw amounts are raw numbers, and some user updates are raw strings.
+    - Historical candle requests can return `202 Accepted` when a backfill has been kicked off and data is not ready yet.
+
+    Server usage:
+
+    - Use `http://localhost:4000` for `/api/auth/*`.
+    - Use `http://localhost:8082` for client-service trading paths.
+    - Use `http://localhost:8083` for audit-service admin, roles, and audit-log paths.
+    - If you go through the gateway at `http://localhost:3000`, prepend `/client` to every client-service path and `/audit` to every audit-service path.
+x-service-base-urls:
+  auth: http://localhost:4000
+  # client: http://localhost:8082
+  # audit: http://localhost:8083
+  gateway:
+    client: http://localhost:3000/client
+    audit: http://localhost:3000/audit
 tags:
   - name: Authentication
-    description: User authentication endpoints
+    description: Auth-service routes for registration, login, refresh-token exchange, logout, and health checks.
   - name: Users
-    description: User management endpoints
+    description: Client-service routes for reading and updating the authenticated user's own profile data.
   - name: Accounts
-    description: Account management endpoints
-  - name: Orders
-    description: Order processing endpoints
-  - name: Instruments
-    description: Instrument/Asset catalog endpoints
-  - name: Pricing
-    description: Market pricing and candle data endpoints
+    description: Client-service routes for creating, listing, renaming, and deleting trading accounts owned by a user.
   - name: Holdings
-    description: Portfolio holdings endpoints
-  - name: Transactions
-    description: Transaction history endpoints
+    description: Client-service routes for viewing current portfolio holdings on an account.
+  - name: Orders
+    description: Client-service routes for placing orders and reading order history.
+  - name: Pricing
+    description: Client-service market-data routes for quotes and historical candles.
+  - name: Admin
+    description: Audit-service routes for platform administration and user-level oversight.
   - name: Roles
-    description: Role management endpoints
-  - name: Logs
-    description: Audit and activity logging endpoints
+    description: Audit-service routes for reading roles and reassigning a user's role.
+  - name: User Logs
+    description: Audit-service routes for user audit-log retrieval and controller-level write operations.
+  - name: Transaction Logs
+    description: Audit-service routes for transaction audit-log retrieval and controller-level write operations.
 
 paths:
-  # ==================== AUTHENTICATION ====================
+  /api/auth/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new platform user
+      description: |
+        Creates a new user in PostgreSQL with the default signup role of `client`.
+
+        Validation rules implemented by auth-service:
+
+        - `username`, `email`, `password`, `phoneNumber`, and `dateOfBirth` must all be non-empty strings.
+        - `email` must match a basic email format.
+        - `password` must be 8 to 20 characters and include at least one lowercase letter, one uppercase letter, and one digit.
+        - `phoneNumber` is validated as a US number and normalized internally.
+
+        A successful signup returns a compact user summary from auth-service using the exact JSON keys emitted by the Node implementation.
+      operationId: signupUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: User created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignupResponse'
+        '400':
+          $ref: '#/components/responses/AuthBadRequest'
+        '409':
+          $ref: '#/components/responses/AuthConflict'
+        '422':
+          $ref: '#/components/responses/AuthUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/AuthInternalServerError'
+
   /api/auth/login:
     post:
       tags:
         - Authentication
-      summary: User login
-      description: Authenticate user with username and password. Returns JWT token for subsequent requests.
+      summary: Authenticate with username and password
+      description: |
+        Verifies credentials, updates `last_login`, stores a hashed refresh token in the database, sets the `refreshToken` HTTP-only cookie, and returns a short-lived JWT access token in the response body.
       operationId: loginUser
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequestDTO'
+              $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Login successful
+          description: Login successful.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponseDTO'
-        '401':
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+                $ref: '#/components/schemas/LoginResponse'
         '400':
-          description: Bad request
+          $ref: '#/components/responses/AuthBadRequest'
+        '401':
+          $ref: '#/components/responses/AuthUnauthorized'
+        '500':
+          $ref: '#/components/responses/AuthInternalServerError'
+
+  /api/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Exchange the refresh cookie for a new access token
+      description: |
+        Reads the `refreshToken` cookie, hashes it, validates it against the `refresh_tokens` table, checks expiry, and returns a new access token.
+
+        The login route returns the access token under `token`, while this route returns it under `accessToken`. That naming difference is current implemented behavior.
+      operationId: refreshAccessToken
+      security:
+        - RefreshTokenCookie: []
+      responses:
+        '200':
+          description: Access token refreshed successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          $ref: '#/components/responses/AuthUnauthorized'
+        '500':
+          $ref: '#/components/responses/AuthInternalServerError'
 
   /api/auth/logout:
     post:
       tags:
         - Authentication
-      summary: User logout
-      description: Invalidate the current JWT token
+      summary: Log out and clear the refresh token
+      description: |
+        Deletes the hashed refresh token from the database when present and always clears the `refreshToken` cookie. The endpoint returns `204 No Content`, even if the cookie is already missing.
       operationId: logoutUser
-      security:
-        - BearerAuth: []
+      responses:
+        '204':
+          description: Logout completed and refresh cookie cleared.
+        '500':
+          $ref: '#/components/responses/AuthInternalServerError'
+
+  /api/auth/health:
+    get:
+      tags:
+        - Authentication
+      summary: Auth service health check
+      description: Lightweight readiness endpoint exposed by auth-service.
+      operationId: authHealth
       responses:
         '200':
-          description: Logout successful
-        '401':
-          description: Unauthorized - invalid or expired token
+          description: Auth service is up.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+                $ref: '#/components/schemas/HealthResponse'
 
-  # ==================== USERS ====================
   /api/users/{userId}:
     get:
       tags:
         - Users
-      summary: Get user by ID
-      description: Retrieve a specific user by their user ID
+      summary: Get the authenticated user's profile
+      description: |
+        Returns a `UserDTO` for the requested user.
+
+        Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: getUserById
       security:
         - BearerAuth: []
       parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/UserId'
       responses:
         '200':
-          description: User retrieved successfully
+          description: User retrieved successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
         '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    put:
-      tags:
-        - Users
-      summary: Update user
-      description: Replace all user information for the specified user ID
-      operationId: updateUser
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserUpdateDTO'
-      responses:
-        '200':
-          description: User updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserDTO'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    patch:
-      tags:
-        - Users
-      summary: Partially update user
-      description: Update specific fields of a user without replacing all data
-      operationId: partiallyUpdateUser
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-      responses:
-        '200':
-          description: User partially updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserDTO'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    delete:
-      tags:
-        - Users
-      summary: Delete user
-      description: Remove a user from the system
-      operationId: deleteUser
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '204':
-          description: User deleted successfully
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
   /api/users/{userId}/change-password:
     patch:
       tags:
         - Users
-      summary: Change user password
-      description: Update the password for an existing user account
+      summary: Change the authenticated user's password
+      description: |
+        Updates the password for the target user.
+
+        Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: changePassword
       security:
         - BearerAuth: []
       parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/UserId'
       requestBody:
         required: true
         content:
@@ -284,51 +231,131 @@ paths:
               $ref: '#/components/schemas/ChangePasswordDTO'
       responses:
         '200':
-          description: Password changed successfully
+          description: Password changed successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserDTO'
         '400':
-          description: Invalid password or password mismatch
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceBadRequest'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
         '404':
-          description: User not found
+          $ref: '#/components/responses/ServiceNotFound'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/users/{userId}/change-email:
+    patch:
+      tags:
+        - Users
+      summary: Change the authenticated user's email address
+      description: |
+        Accepts a raw string body instead of a JSON object.
+
+        Authorization rule: the JWT subject must equal the `userId` path parameter.
+      operationId: changeEmail
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              $ref: '#/components/schemas/EmailChangeRequest'
+            example: trader.updated@example.com
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailChangeRequest'
+            example: trader.updated@example.com
+      responses:
+        '200':
+          description: Email changed successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+                $ref: '#/components/schemas/UserDTO'
+        '400':
+          $ref: '#/components/responses/ServiceBadRequest'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
-  # ==================== ACCOUNTS ====================
+  /api/users/{userId}/change-phone-number:
+    patch:
+      tags:
+        - Users
+      summary: Change the authenticated user's phone number
+      description: |
+        Accepts a raw string body instead of a JSON object.
+
+        Authorization rule: the JWT subject must equal the `userId` path parameter.
+      operationId: changePhoneNumber
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              $ref: '#/components/schemas/PhoneNumberChangeRequest'
+            example: 5550123
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneNumberChangeRequest'
+            example: 5550123
+      responses:
+        '200':
+          description: Phone number changed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDTO'
+        '400':
+          $ref: '#/components/responses/ServiceBadRequest'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
   /api/users/{userId}/accounts:
     get:
       tags:
         - Accounts
-      summary: Get all accounts for a user
-      description: Retrieve all trading accounts owned by a specific user
+      summary: List all trading accounts for a user
+      description: |
+        Returns every account owned by the specified user.
+
+        Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: getAllAccountsByUser
       security:
         - BearerAuth: []
       parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/UserId'
       responses:
         '200':
-          description: List of accounts retrieved successfully
+          description: Accounts retrieved successfully.
           content:
             application/json:
               schema:
@@ -336,606 +363,199 @@ paths:
                 items:
                   $ref: '#/components/schemas/AccountDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
     post:
       tags:
         - Accounts
-      summary: Create a new account for a user
-      description: Create a new trading account under the specified user
+      summary: Create a new trading account
+      description: |
+        Creates an account for the specified user.
+
+        The request body is a raw nickname string, not a JSON object.
+
+        Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: createAccount
       security:
         - BearerAuth: []
       parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/UserId'
       requestBody:
         required: true
         content:
           text/plain:
             schema:
               $ref: '#/components/schemas/AccountNicknameRequest'
+            example: Main Trading Account
           application/json:
             schema:
               $ref: '#/components/schemas/AccountNicknameRequest'
+            example: Main Trading Account
       responses:
         '201':
-          description: Account created successfully
+          description: Account created successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountDTO'
         '400':
-          description: Invalid input or account already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceBadRequest'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
   /api/users/{userId}/accounts/{id}:
     get:
       tags:
         - Accounts
-      summary: Get account by ID
-      description: Retrieve a specific account owned by the specified user
+      summary: Get a single trading account
+      description: |
+        Returns one account owned by the specified user.
+
+        Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: getAccountById
       security:
         - BearerAuth: []
       parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
-        - name: id
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/AccountIdById'
       responses:
         '200':
-          description: Account retrieved successfully
+          description: Account retrieved successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
         '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
     put:
       tags:
         - Accounts
-      summary: Update account
-      description: Update the nickname for a specific user account
+      summary: Rename an account
+      description: |
+        Accepts a raw nickname string and returns `202 Accepted` with an empty body.
+
+        Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: updateAccount
       security:
         - BearerAuth: []
       parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
-        - name: id
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/AccountIdById'
       requestBody:
         required: true
         content:
           text/plain:
             schema:
               $ref: '#/components/schemas/AccountNicknameRequest'
+            example: Retirement Account
           application/json:
             schema:
               $ref: '#/components/schemas/AccountNicknameRequest'
+            example: Retirement Account
       responses:
         '202':
-          description: Account update accepted
+          description: Account rename accepted.
         '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceBadRequest'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
         '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
+          $ref: '#/components/responses/ServiceNotFound'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
     delete:
       tags:
         - Accounts
-      summary: Delete account
-      description: Remove a trading account owned by the specified user
+      summary: Delete an account
+      description: |
+        Deletes the target account.
+
+        Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: deleteAccount
       security:
         - BearerAuth: []
       parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
-        - name: id
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/AccountIdById'
       responses:
         '204':
-          description: Account deleted successfully
+          description: Account deleted successfully.
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
         '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
-  # ==================== ORDERS ====================
-  /api/accounts/{accountId}/orders:
+  /api/accounts/{accountId}/holdings/{holdingId}:
     get:
       tags:
-        - Orders
-      summary: Get all orders for an account
-      description: Retrieve a list of all orders for a specific account
-      operationId: getAllOrdersByAccountId
+        - Holdings
+      summary: Get one holding on an account
+      description: |
+        Returns a single holding DTO.
+
+        Current implementation detail: the route requires a valid JWT through client-service security, but the controller does not verify that `accountId` belongs to the authenticated user.
+      operationId: getAccountHoldingById
       security:
         - BearerAuth: []
       parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/HoldingId'
       responses:
         '200':
-          description: List of orders retrieved successfully
+          description: Holding retrieved successfully.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/OrderResponseDTO'
+                $ref: '#/components/schemas/AccountHoldingDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
         '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
-    post:
-      tags:
-        - Orders
-      summary: Request a new order
-      description: Submit a new buy or sell order for the account
-      operationId: requestOrder
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Order'
-      responses:
-        '202':
-          description: Order request accepted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrderResponseDTO'
-        '400':
-          description: Invalid order or insufficient balance/holdings
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Account or Instrument not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-  /api/accounts/{accountId}/orders/{orderId}:
-    get:
-      tags:
-        - Orders
-      summary: Get order by ID
-      description: Retrieve a specific order from an account
-      operationId: getOrderById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
-        - name: orderId
-          in: path
-          required: true
-          description: Unique order identifier
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '200':
-          description: Order retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrderResponseDTO'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Order or Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-  # ==================== PRICING ====================
-  /api/pricing/quotes:
-    get:
-      tags:
-        - Pricing
-      summary: Get live quotes
-      description: Retrieve batch quote data for one or more comma-separated symbols
-      operationId: getQuotes
-      parameters:
-        - name: symbols
-          in: query
-          required: true
-          description: Comma-separated ticker symbols
-          schema:
-            type: string
-            example: AAPL,MSFT
-        - name: refresh
-          in: query
-          required: false
-          description: Force a fresh upstream quote fetch
-          schema:
-            type: boolean
-            default: false
-      responses:
-        '200':
-          description: Quotes retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PricingBatchResponseDTO'
-
-  /api/pricing/candles/{symbol}:
-    get:
-      tags:
-        - Pricing
-      summary: Get historical candles
-      description: Retrieve historical candle data for a symbol and interval
-      operationId: getHistoricalCandles
-      parameters:
-        - name: symbol
-          in: path
-          required: true
-          description: Ticker symbol
-          schema:
-            type: string
-            example: AAPL
-        - name: from
-          in: query
-          required: false
-          description: Inclusive start date
-          schema:
-            type: string
-            format: date
-        - name: to
-          in: query
-          required: false
-          description: Inclusive end date
-          schema:
-            type: string
-            format: date
-        - name: interval
-          in: query
-          required: false
-          description: Candle interval
-          schema:
-            type: string
-            default: 1d
-            example: 1d
-      responses:
-        '200':
-          description: Candle data retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PricingCandlesResponseDTO'
-        '202':
-          description: Candle backfill accepted and still in progress
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PricingCandlesResponseDTO'
-
-  # ==================== INSTRUMENTS ====================
-  /api/instruments:
-    get:
-      tags:
-        - Instruments
-      summary: Get all instruments
-      description: Retrieve a list of all available trading instruments (stocks, bonds, etc.)
-      operationId: getAllInstruments
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: List of instruments retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Instrument'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    post:
-      tags:
-        - Instruments
-      summary: Create a new instrument
-      description: Add a new trading instrument to the system
-      operationId: createInstrument
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Instrument'
-      responses:
-        '200':
-          description: Instrument created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Instrument'
-        '400':
-          description: Invalid input or instrument already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-  /api/instruments/{instrumentId}:
-    get:
-      tags:
-        - Instruments
-      summary: Get instrument by ID
-      description: Retrieve details of a specific instrument
-      operationId: getInstrumentById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: instrumentId
-          in: path
-          required: true
-          description: Unique instrument identifier
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '200':
-          description: Instrument retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Instrument'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Instrument not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    patch:
-      tags:
-        - Instruments
-      summary: Update instrument
-      description: Update specific fields of an instrument
-      operationId: updateInstrument
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: instrumentId
-          in: path
-          required: true
-          description: Unique instrument identifier
-          schema:
-            type: integer
-            format: int32
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Instrument'
-      responses:
-        '200':
-          description: Instrument updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Instrument'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Instrument not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-    delete:
-      tags:
-        - Instruments
-      summary: Delete instrument
-      description: Remove an instrument from the system
-      operationId: deleteInstrument
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: instrumentId
-          in: path
-          required: true
-          description: Unique instrument identifier
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '204':
-          description: Instrument deleted successfully
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Instrument not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-  # ==================== HOLDINGS ====================
   /api/accounts/{accountId}/holdings/:
     get:
       tags:
         - Holdings
-      summary: Get all holdings for an account
-      description: Retrieve the portfolio of holdings owned by an account
+      summary: List all holdings on an account
+      description: |
+        Returns every holding for the target account.
+
+        Note the trailing slash. It is part of the implemented mapping.
+
+        Current implementation detail: the route requires a valid JWT through client-service security, but the controller does not verify that `accountId` belongs to the authenticated user.
       operationId: getAllAccountHoldings
       security:
         - BearerAuth: []
       parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/AccountId'
       responses:
         '200':
-          description: List of holdings retrieved successfully
+          description: Holdings retrieved successfully.
           content:
             application/json:
               schema:
@@ -943,165 +563,115 @@ paths:
                 items:
                   $ref: '#/components/schemas/AccountHoldingDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
         '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
-  /api/accounts/{accountId}/holdings/{holdingId}:
-    get:
-      tags:
-        - Holdings
-      summary: Get holding by ID
-      description: Retrieve details of a specific holding in an account's portfolio
-      operationId: getAccountHoldingById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
-        - name: holdingId
-          in: path
-          required: true
-          description: Unique holding identifier
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '200':
-          description: Holding retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AccountHoldingDTO'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Holding or Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-  # ==================== ACCOUNT TRANSACTIONS ====================
   /api/accounts/{accountId}/deposit:
     post:
       tags:
-        - Transactions
+        - Accounts
       summary: Deposit cash into an account
-      description: Record a cash deposit for the specified account
+      description: |
+        Accepts a raw numeric request body representing the amount to deposit.
+
+        Current implementation detail: the route requires a valid JWT through client-service security, but the controller does not verify that `accountId` belongs to the authenticated user.
       operationId: depositTransaction
+      security:
+        - BearerAuth: []
       parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/AccountId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/AmountRequest'
+            example: 1000.0
+          text/plain:
+            schema:
+              $ref: '#/components/schemas/AmountRequest'
+            example: 1000.0
       responses:
         '200':
-          description: Deposit recorded successfully
+          description: Deposit recorded successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountTransactionDTO'
         '400':
-          description: Invalid deposit amount
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceBadRequest'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
         '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceNotFound'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
   /api/accounts/{accountId}/withdraw:
     post:
       tags:
-        - Transactions
+        - Accounts
       summary: Withdraw cash from an account
-      description: Record a cash withdrawal for the specified account
+      description: |
+        Accepts a raw numeric request body representing the amount to withdraw.
+
+        Current implementation detail: the route requires a valid JWT through client-service security, but the controller does not verify that `accountId` belongs to the authenticated user.
       operationId: withdrawTransaction
+      security:
+        - BearerAuth: []
       parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/AccountId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/AmountRequest'
+            example: 250.0
+          text/plain:
+            schema:
+              $ref: '#/components/schemas/AmountRequest'
+            example: 250.0
       responses:
         '200':
-          description: Withdrawal recorded successfully
+          description: Withdrawal recorded successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountTransactionDTO'
         '400':
-          description: Invalid withdrawal amount
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceBadRequest'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
         '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceNotFound'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
   /api/accounts/{accountId}/transactions:
     get:
       tags:
-        - Transactions
-      summary: Get all transactions for an account
-      description: Retrieve a list of all transactions (buy, sell, deposit, withdraw) for an account
+        - Accounts
+      summary: List all transactions on an account
+      description: |
+        Returns deposits, withdrawals, and order-linked transactions for the target account.
+
+        Current implementation detail: the route requires a valid JWT through client-service security, but the controller does not verify that `accountId` belongs to the authenticated user.
       operationId: getAccountTransactions
       security:
         - BearerAuth: []
       parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/AccountId'
       responses:
         '200':
-          description: List of transactions retrieved successfully
+          description: Transactions retrieved successfully.
           content:
             application/json:
               schema:
@@ -1109,83 +679,153 @@ paths:
                 items:
                   $ref: '#/components/schemas/AccountTransactionDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
         '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
   /api/accounts/{accountId}/transactions/{transactionId}:
     get:
       tags:
-        - Transactions
-      summary: Get transaction by ID
-      description: Retrieve details of a specific transaction
+        - Accounts
+      summary: Get one account transaction
+      description: |
+        Returns a single account transaction.
+
+        Current implementation detail: the route requires a valid JWT through client-service security, but the controller does not verify that `accountId` belongs to the authenticated user before lookup; instead it compares the loaded transaction's `accountId` afterward.
       operationId: getAccountTransactionById
       security:
         - BearerAuth: []
       parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
-        - name: transactionId
-          in: path
-          required: true
-          description: Unique transaction identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/TransactionId'
       responses:
         '200':
-          description: Transaction retrieved successfully
+          description: Transaction retrieved successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountTransactionDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
         '404':
-          description: Transaction or Account not found
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/accounts/{accountId}/orders:
+    get:
+      tags:
+        - Orders
+      summary: List all orders on an account
+      description: |
+        Returns the order book for the target account.
+
+        Current implementation detail: the route requires a valid JWT through client-service security, but the controller does not verify that `accountId` belongs to the authenticated user.
+      operationId: getAllOrdersByAccountId
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: Orders retrieved successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderResponseDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+    post:
+      tags:
+        - Orders
+      summary: Submit a new order request
+      description: |
+        Accepts an order payload and overwrites any body-level `accountId` with the `accountId` path parameter before calling the service layer.
 
-  # ==================== ORDER STATUS HISTORY ====================
+        Current implementation detail: the route requires a valid JWT through client-service security, but the controller does not verify that `accountId` belongs to the authenticated user.
+      operationId: requestOrder
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+      responses:
+        '202':
+          description: Order accepted for processing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponseDTO'
+        '400':
+          $ref: '#/components/responses/ServiceBadRequest'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/accounts/{accountId}/orders/{orderId}:
+    get:
+      tags:
+        - Orders
+      summary: Get one order on an account
+      description: |
+        Returns a single order and its status history.
+
+        Current implementation detail: the route requires a valid JWT through client-service security, but the controller does not verify that `accountId` belongs to the authenticated user.
+      operationId: getOrderById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponseDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
   /api/orders/{orderId}/history:
     get:
       tags:
         - Orders
-      summary: Get order status history
-      description: Retrieve the complete status change history for an order
+      summary: Get the status history for an order
+      description: |
+        Returns every recorded status transition for the target order.
+
+        The route is protected by client-service security because it matches `/api/orders/**`.
       operationId: getAllOrderStatusHistories
       security:
         - BearerAuth: []
       parameters:
-        - name: orderId
-          in: path
-          required: true
-          description: Unique order identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/OrderId'
       responses:
         '200':
-          description: Order status history retrieved successfully
+          description: Order history retrieved successfully.
           content:
             application/json:
               schema:
@@ -1193,300 +833,564 @@ paths:
                 items:
                   $ref: '#/components/schemas/OrderStatusHistoryDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
         '404':
-          description: Order not found
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/pricing/quotes:
+    get:
+      tags:
+        - Pricing
+      summary: Get batch market quotes
+      description: |
+        Returns quote data for one or more comma-separated symbols.
+
+        `refresh=true` forces the pricing service to bypass cached data when possible.
+      operationId: getQuotes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: symbols
+          in: query
+          required: true
+          description: Comma-separated list of market symbols.
+          schema:
+            type: string
+            example: AAPL,MSFT,INFY.NS
+        - name: refresh
+          in: query
+          required: false
+          description: Whether to force a fresh upstream fetch.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Quotes retrieved successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+                $ref: '#/components/schemas/PricingBatchResponseDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
-  # ==================== ROLES ====================
+  /api/pricing/candles/{symbol}:
+    get:
+      tags:
+        - Pricing
+      summary: Get historical candles for a symbol
+      description: |
+        Returns candle data for the requested symbol and interval.
+
+        When the pricing service has accepted a backfill job but does not yet have candles available, the response is `202 Accepted` and the payload typically has `partial=true`, `asOf=null`, and an empty `candles` list.
+      operationId: getHistoricalCandles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Market symbol to query.
+          schema:
+            type: string
+            example: AAPL
+        - name: from
+          in: query
+          required: false
+          description: Inclusive start date.
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: Inclusive end date.
+          schema:
+            type: string
+            format: date
+        - name: interval
+          in: query
+          required: false
+          description: Candle interval.
+          schema:
+            type: string
+            default: 1d
+            example: 1d
+      responses:
+        '200':
+          description: Candle data retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingCandlesResponseDTO'
+        '202':
+          description: Backfill accepted and still in progress.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingCandlesResponseDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/users/{userId}/revoke:
+    post:
+      tags:
+        - Admin
+      summary: Revoke a user's access
+      description: |
+        Admin-only audit-service route that revokes access for the specified user and returns a plain-text confirmation message.
+      operationId: revokeUserAccess
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Access revoked successfully.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: User access revoked
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/admin/users:
+    get:
+      tags:
+        - Admin
+      summary: List all users for administrative review
+      description: Admin-only audit-service route that returns the expanded admin view of every user.
+      operationId: getAllAdminUsers
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Users retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminUserDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/admin/users/{userId}:
+    get:
+      tags:
+        - Admin
+      summary: Get one user's administrative profile
+      description: Admin-only audit-service route for detailed user inspection.
+      operationId: getAdminUserById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/admin/users/{userId}/accounts:
+    get:
+      tags:
+        - Admin
+      summary: List all accounts owned by a user
+      description: Admin-only audit-service route that exposes account data for oversight workflows.
+      operationId: getAdminAccountsByUserId
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Accounts retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminAccountDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/admin/dashboard/stats:
+    get:
+      tags:
+        - Admin
+      summary: Get audit dashboard totals
+      description: Admin-only audit-service route that returns high-level platform counts.
+      operationId: getDashboardStats
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboardDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
   /api/roles:
     get:
       tags:
         - Roles
-      summary: Get all roles
-      description: Retrieve a list of all available system roles
+      summary: List all available roles
+      description: |
+        Audit-service role lookup route.
+
+        Under the current security configuration, GET requests to `/api/**` are allowed for `ADMIN` and `AUDITOR` roles.
       operationId: getAllRoles
       security:
         - BearerAuth: []
       responses:
         '200':
-          description: List of roles retrieved successfully
+          description: Roles retrieved successfully.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Role'
+                  $ref: '#/components/schemas/RoleDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
   /api/roles/{id}:
     get:
       tags:
         - Roles
-      summary: Get role by ID
-      description: Retrieve a specific role by its ID
+      summary: Get one role by identifier
+      description: Audit-service role lookup route.
       operationId: getRoleById
       security:
         - BearerAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          description: Unique role identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/RoleId'
       responses:
         '200':
-          description: Role retrieved successfully
+          description: Role retrieved successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Role'
+                $ref: '#/components/schemas/RoleDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
         '404':
-          description: Role not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
   /api/roles/users/{userId}:
     put:
       tags:
         - Roles
-      summary: Update a user's role
-      description: Assign a new role to a user. This operation is intended for admin users.
+      summary: Reassign a user's role
+      description: |
+        Admin-only audit-service route.
+
+        The request can identify the new role by `roleId`, `roleName`, or both.
       operationId: updateUserRole
       security:
         - BearerAuth: []
       parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/UserId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                roleId:
-                  type: integer
-                  format: int32
-                roleName:
-                  $ref: '#/components/schemas/RoleType'
+              $ref: '#/components/schemas/UserRoleUpdateRequest'
       responses:
         '200':
-          description: User role updated successfully
+          description: User role updated successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Role'
+                $ref: '#/components/schemas/RoleDTO'
         '400':
-          description: Invalid request payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceBadRequest'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
         '404':
-          description: User or role not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
-  # ==================== LOGS - TRANSACTION ====================
-  /api/logs/transactions:
-    get:
-      tags:
-        - Logs
-      summary: Get all transaction logs
-      description: Retrieve all transaction audit logs in the system
-      operationId: getAllTransactionLogs
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: List of transaction logs retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TransactionLog'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-  /api/logs/transactions/{transactionId}:
-    get:
-      tags:
-        - Logs
-      summary: Get transaction log by ID
-      description: Retrieve a specific transaction log entry
-      operationId: getTransactionLogById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: transactionId
-          in: path
-          required: true
-          description: Unique transaction log identifier
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '200':
-          description: Transaction log retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransactionLog'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Transaction log not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-  /api/logs/transactions/accounts/{accountId}:
-    get:
-      tags:
-        - Logs
-      summary: Get transaction logs by account
-      description: Retrieve all transaction logs for a specific account
-      operationId: getTransactionLogsByAccountId
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: accountId
-          in: path
-          required: true
-          description: Unique account identifier
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '200':
-          description: List of transaction logs retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TransactionLog'
-        '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-        '404':
-          description: Account not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
-
-  # ==================== LOGS - USER ====================
   /api/logs/users:
     get:
       tags:
-        - Logs
-      summary: Get all user logs
-      description: Retrieve all user activity audit logs in the system
+        - User Logs
+      summary: List all user audit logs
+      description: |
+        Returns user log entries from audit-service.
+
+        Under the current audit-service security configuration, GET requests under `/api/**` are allowed for `ADMIN` and `AUDITOR` roles.
       operationId: getAllUserLogs
       security:
         - BearerAuth: []
       responses:
         '200':
-          description: List of user logs retrieved successfully
+          description: User logs retrieved successfully.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/UserLog'
+                  $ref: '#/components/schemas/UserLogDTO'
         '401':
-          description: Unauthorized - invalid or expired token
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+    post:
+      tags:
+        - User Logs
+      summary: Create a user audit log entry
+      description: |
+        Controller-level write operation for user logs.
+
+        Important: the route exists in the controller and would return `201 Created` on success, but the current audit-service `SecurityConfig` ends with `anyRequest().denyAll()` for unmatched non-GET requests. That means this operation is effectively unavailable until security rules are widened.
+      operationId: createUserLog
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogWriteRequest'
+      responses:
+        '201':
+          description: User log created successfully when security permits the request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+                $ref: '#/components/schemas/UserLogDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
-  /api/logs/users/{userId}:
+  /api/logs/users/{id}:
     get:
       tags:
-        - Logs
-      summary: Get user log by ID
-      description: Retrieve a specific user log entry
+        - User Logs
+      summary: Get one user audit log entry
+      description: Returns a single user log by log identifier.
       operationId: getUserLogById
       security:
         - BearerAuth: []
       parameters:
-        - name: userId
-          in: path
-          required: true
-          description: Unique user log identifier
-          schema:
-            type: integer
-            format: int32
+        - $ref: '#/components/parameters/UserLogId'
       responses:
         '200':
-          description: User log retrieved successfully
+          description: User log retrieved successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserLog'
+                $ref: '#/components/schemas/UserLogDTO'
         '401':
-          description: Unauthorized - invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
         '404':
-          description: User log not found
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/logs/transactions:
+    get:
+      tags:
+        - Transaction Logs
+      summary: List all transaction audit logs
+      description: |
+        Returns all transaction log entries.
+
+        Under the current audit-service security configuration, GET requests under `/api/**` are allowed for `ADMIN` and `AUDITOR` roles.
+      operationId: getAllTransactionLogs
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Transaction logs retrieved successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponseDTO'
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionLogDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+    post:
+      tags:
+        - Transaction Logs
+      summary: Create a transaction audit log entry
+      description: |
+        Controller-level write operation for transaction logs.
+
+        Important: the route exists in the controller and would return `200 OK` on success, but the current audit-service `SecurityConfig` denies this non-GET request for all callers.
+      operationId: createTransactionLog
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionLogCreateRequest'
+      responses:
+        '200':
+          description: Transaction log created successfully when security permits the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionLogDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/logs/transactions/{transactionId}:
+    get:
+      tags:
+        - Transaction Logs
+      summary: Get one transaction audit log entry
+      description: Returns a single transaction log by its log identifier.
+      operationId: getTransactionLogById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TransactionLogId'
+      responses:
+        '200':
+          description: Transaction log retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionLogDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/logs/transactions/users/{userId}:
+    get:
+      tags:
+        - Transaction Logs
+      summary: List transaction audit logs for a user
+      description: Returns all transaction logs associated with the given user identifier.
+      operationId: getTransactionLogsByUserId
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Transaction logs retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionLogDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/logs/transactions/accounts/{accountId}:
+    get:
+      tags:
+        - Transaction Logs
+      summary: List transaction audit logs for an account
+      description: Returns all transaction logs associated with the given account identifier.
+      operationId: getTransactionLogsByAccountId
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: Transaction logs retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionLogDTO'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
 
 components:
   securitySchemes:
@@ -1495,13 +1399,230 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        JWT Bearer token for API authentication.
-        To authenticate, obtain a token by calling POST /api/auth/login with valid credentials.
-        Then include the token in the Authorization header: Authorization: Bearer {token}
+        JWT access token signed with HS256.
+
+        Auth-service tokens currently include these claims:
+
+        - `sub`: user identifier
+        - `roles`: array of uppercase role names consumed as Spring `ROLE_*` authorities
+        - `tokenVersion`: integer used by the gateway for token revocation checks
+    RefreshTokenCookie:
+      type: apiKey
+      in: cookie
+      name: refreshToken
+      description: HTTP-only refresh token cookie set by `POST /api/auth/login`.
+
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      description: Numeric user identifier.
+      schema:
+        type: integer
+        format: int32
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: Numeric account identifier.
+      schema:
+        type: integer
+        format: int32
+    AccountIdById:
+      name: id
+      in: path
+      required: true
+      description: Numeric account identifier.
+      schema:
+        type: integer
+        format: int32
+    HoldingId:
+      name: holdingId
+      in: path
+      required: true
+      description: Numeric holding identifier.
+      schema:
+        type: integer
+        format: int32
+    TransactionId:
+      name: transactionId
+      in: path
+      required: true
+      description: Numeric transaction identifier.
+      schema:
+        type: integer
+        format: int32
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      description: Numeric order identifier.
+      schema:
+        type: integer
+        format: int32
+    RoleId:
+      name: id
+      in: path
+      required: true
+      description: Numeric role identifier.
+      schema:
+        type: integer
+        format: int32
+    UserLogId:
+      name: id
+      in: path
+      required: true
+      description: Numeric user-log identifier.
+      schema:
+        type: integer
+        format: int32
+    TransactionLogId:
+      name: transactionId
+      in: path
+      required: true
+      description: Numeric transaction-log identifier as used by the controller path.
+      schema:
+        type: integer
+        format: int32
+
+  responses:
+    AuthBadRequest:
+      description: Request body failed basic validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthErrorResponse'
+    AuthUnauthorized:
+      description: Authentication failed or a refresh token was missing, invalid, or expired.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthErrorResponse'
+    AuthConflict:
+      description: A unique auth-service resource already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthErrorResponse'
+    AuthUnprocessableEntity:
+      description: Request body was well formed but failed auth-service business validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthErrorResponse'
+    AuthInternalServerError:
+      description: Auth-service encountered an unexpected server-side failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthErrorResponse'
+    ServiceBadRequest:
+      description: Request payload or parameter values were invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServiceErrorResponse'
+    ServiceUnauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServiceErrorResponse'
+    ServiceForbidden:
+      description: Authenticated caller is not allowed to perform the operation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServiceErrorResponse'
+    ServiceNotFound:
+      description: Requested resource could not be found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServiceErrorResponse'
+    ServiceUnprocessableEntity:
+      description: Request passed parsing but violated a business rule.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServiceErrorResponse'
+    ServiceInternalServerError:
+      description: Downstream Spring service encountered an unexpected failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServiceErrorResponse'
 
   schemas:
-    # ==================== DTOs ====================
-    LoginRequestDTO:
+    SignupRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - phoneNumber
+        - dateOfBirth
+      properties:
+        username:
+          type: string
+          example: john_doe
+          description: Unique login username.
+        email:
+          type: string
+          format: email
+          example: john@example.com
+          description: Email address validated by auth-service.
+        password:
+          type: string
+          format: password
+          example: SecurePass123
+          description: 8 to 20 characters, with lowercase, uppercase, and digit.
+        phoneNumber:
+          type: string
+          example: 5550123
+          description: US phone number input expected by auth-service validation.
+        dateOfBirth:
+          type: string
+          format: date
+          example: 1990-04-15
+          description: Date-of-birth string required during signup.
+
+    SignupResponse:
+      type: object
+      required:
+        - message
+        - user
+      properties:
+        message:
+          type: string
+          example: user created
+        user:
+          $ref: '#/components/schemas/AuthSignupUser'
+
+    AuthSignupUser:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          format: int32
+          example: 42
+        username:
+          type: string
+          example: john_doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        phoneNumber:
+          type: string
+          example: 5550123
+        created_at:
+          type: string
+          format: date-time
+          example: 2026-10-08T10:15:30Z
+
+    LoginRequest:
       type: object
       required:
         - username
@@ -1510,22 +1631,89 @@ components:
         username:
           type: string
           example: john_doe
-          description: User's login username
         password:
           type: string
           format: password
-          example: SecurePassword123!
-          description: User's password
+          example: SecurePass123
 
-    LoginResponseDTO:
+    LoginResponse:
       type: object
+      required:
+        - token
       properties:
         token:
           type: string
+          description: Access token returned by auth-service after login.
           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-          description: JWT authentication token for use in subsequent API calls
-        user:
-          $ref: '#/components/schemas/UserDTO'
+
+    RefreshResponse:
+      type: object
+      required:
+        - accessToken
+      properties:
+        accessToken:
+          type: string
+          description: New access token derived from the refresh cookie.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          example: up
+
+    AuthErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - message
+        - timestamp
+        - path
+        - status
+      properties:
+        errorCode:
+          type: string
+          example: INVALID_LOGIN
+        message:
+          type: string
+          example: invalid username or password
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-10-08T10:15:30Z
+        path:
+          type: string
+          example: /api/auth/login
+        status:
+          type: integer
+          format: int32
+          example: 401
+
+    ServiceErrorResponse:
+      type: object
+      required:
+        - timestamp
+        - errorCode
+        - message
+        - status
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-10-08T10:15:30Z
+        errorCode:
+          type: string
+          example: RESOURCE_NOT_FOUND
+        message:
+          type: string
+          example: Transaction 401 not found.
+        status:
+          type: integer
+          format: int32
+          example: 404
 
     UserDTO:
       type: object
@@ -1534,38 +1722,66 @@ components:
           type: integer
           format: int32
           example: 1
-          description: Unique user identifier
         username:
           type: string
           example: john_doe
-          description: User's login username
         email:
           type: string
           format: email
           example: john@example.com
-          description: User's email address
         phoneNumber:
           type: string
-          example: +1-555-0123
-          description: User's contact phone number
+          example: 5550123
         rewardPoints:
           type: integer
           format: int32
           example: 150
-          description: Accumulated reward points
+        dateOfBirth:
+          type: string
+          format: date
+          example: 1990-04-15
 
-    UserUpdateDTO:
+    ChangePasswordDTO:
       type: object
+      required:
+        - currentPassword
+        - newPassword
+        - confirmPassword
       properties:
-        email:
+        currentPassword:
           type: string
-          format: email
-          example: john.updated@example.com
-          description: Updated user email address
-        phoneNumber:
+          format: password
+          example: OldPass123
+        newPassword:
           type: string
-          example: +1-555-0142
-          description: Updated user contact phone number
+          format: password
+          example: NewPass123
+        confirmPassword:
+          type: string
+          format: password
+          example: NewPass123
+
+    EmailChangeRequest:
+      type: string
+      format: email
+      example: trader.updated@example.com
+      description: Raw string request body used by `PATCH /api/users/{userId}/change-email`.
+
+    PhoneNumberChangeRequest:
+      type: string
+      example: 5550142
+      description: Raw string request body used by `PATCH /api/users/{userId}/change-phone-number`.
+
+    AccountNicknameRequest:
+      type: string
+      example: Main Trading Account
+      description: Raw string request body used by account create and rename routes.
+
+    AmountRequest:
+      type: number
+      format: double
+      example: 1000.0
+      description: Raw numeric request body used by deposit and withdraw routes.
 
     AccountDTO:
       type: object
@@ -1574,26 +1790,87 @@ components:
           type: integer
           format: int32
           example: 101
-          description: Unique account identifier
         userId:
           type: integer
           format: int32
           example: 1
-          description: Associated user ID
         nickname:
           type: string
           example: Main Trading Account
-          description: User-defined account nickname
         cashBalance:
           type: number
           format: double
-          example: 50000.00
-          description: Available cash balance in the account
+          example: 50000.0
 
-    AccountNicknameRequest:
-      type: string
-      example: Main Trading Account
-      description: Raw account nickname request body
+    AccountHoldingDTO:
+      type: object
+      properties:
+        holdingId:
+          type: integer
+          format: int32
+          example: 301
+        instrumentId:
+          type: integer
+          format: int32
+          example: 201
+        quantity:
+          type: number
+          format: double
+          example: 50.25
+        amountInvested:
+          type: number
+          format: double
+          example: 6287.5
+
+    AccountTransactionDTO:
+      type: object
+      properties:
+        transactionId:
+          type: integer
+          format: int32
+          example: 401
+        orderId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 501
+        amount:
+          type: number
+          format: double
+          example: 1000.0
+        transactionType:
+          $ref: '#/components/schemas/TransactionType'
+
+    OrderRequest:
+      type: object
+      required:
+        - instrumentId
+        - quantity
+        - stockPrice
+        - orderType
+      properties:
+        accountId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 101
+          description: Optional in the request body; client-service overwrites it from the path parameter.
+        instrumentId:
+          type: integer
+          format: int32
+          example: 201
+        quantity:
+          type: number
+          format: double
+          example: 10.0
+        stockPrice:
+          type: number
+          format: double
+          example: 189.22
+        orderType:
+          $ref: '#/components/schemas/OrderType'
+        status:
+          $ref: '#/components/schemas/OrderStatus'
 
     OrderResponseDTO:
       type: object
@@ -1602,17 +1879,14 @@ components:
           type: integer
           format: int32
           example: 501
-          description: Unique order identifier
         quantity:
           type: number
           format: double
-          example: 100.5
-          description: Number of units to trade
+          example: 10.0
         price:
           type: number
           format: double
-          example: 125.75
-          description: Price per unit at order time
+          example: 189.22
         orderType:
           type: string
           example: BUY
@@ -1626,137 +1900,6 @@ components:
           items:
             $ref: '#/components/schemas/OrderStatusHistoryDTO'
 
-    InstrumentDTO:
-      type: object
-      properties:
-        instrumentId:
-          type: integer
-          format: int32
-          example: 201
-          description: Unique instrument identifier
-        ticker:
-          type: string
-          example: AAPL
-          description: Stock ticker symbol
-        name:
-          type: string
-          example: Apple Inc.
-          description: Full instrument name
-        type:
-          $ref: '#/components/schemas/InstrumentType'
-        exchange:
-          type: string
-          example: NASDAQ
-          description: Trading exchange
-
-    AccountHoldingDTO:
-      type: object
-      properties:
-        holdingId:
-          type: integer
-          format: int32
-          example: 301
-          description: Unique holding identifier
-        instrumentId:
-          type: integer
-          format: int32
-          example: 201
-          description: Instrument identifier
-        quantity:
-          type: number
-          format: double
-          example: 50.25
-          description: Number of units held
-        amountInvested:
-          type: number
-          format: double
-          example: 6287.50
-          description: Total amount invested in this holding
-
-    AccountTransactionDTO:
-      type: object
-      properties:
-        transactionId:
-          type: integer
-          format: int32
-          example: 401
-          description: Unique transaction identifier
-        orderId:
-          type: integer
-          format: int32
-          example: 501
-          description: Related order ID (if applicable)
-        amount:
-          type: number
-          format: double
-          example: 1000.00
-          description: Transaction amount
-        transactionType:
-          $ref: '#/components/schemas/TransactionType'
-
-    AmountRequest:
-      type: number
-      format: double
-      example: 1000.0
-      description: Raw numeric amount request body
-
-    RoleDTO:
-      type: object
-      properties:
-        roleId:
-          type: integer
-          format: int32
-          example: 1
-          description: Unique role identifier
-        name:
-          $ref: '#/components/schemas/RoleType'
-
-    ChangePasswordDTO:
-      type: object
-      required:
-        - currentPassword
-        - newPassword
-        - confirmPassword
-      properties:
-        currentPassword:
-          type: string
-          format: password
-          description: Current password for verification
-        newPassword:
-          type: string
-          format: password
-          description: New password to set
-        confirmPassword:
-          type: string
-          format: password
-          description: Confirmation of new password (must match newPassword)
-
-    ErrorResponseDTO:
-      type: object
-      properties:
-        errorCode:
-          type: string
-          example: ERR_USER_NOT_FOUND
-          description: Machine-readable error code
-        message:
-          type: string
-          example: User with ID 999 not found
-          description: Human-readable error message
-        timestamp:
-          type: string
-          format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Error occurrence timestamp
-        path:
-          type: string
-          example: /api/users/999
-          description: API path where error occurred
-        status:
-          type: integer
-          format: int32
-          example: 404
-          description: HTTP status code
-
     OrderStatusHistoryDTO:
       type: object
       properties:
@@ -1764,24 +1907,41 @@ components:
           type: integer
           format: int32
           example: 601
-          description: Unique history entry identifier
         changedAt:
           type: string
           format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Status change timestamp
+          example: 2026-10-08T10:15:30Z
         oldStatus:
           $ref: '#/components/schemas/OrderStatus'
         newStatus:
           $ref: '#/components/schemas/OrderStatus'
+
+    InstrumentDTO:
+      type: object
+      properties:
+        instrumentId:
+          type: integer
+          format: int32
+          example: 201
+        ticker:
+          type: string
+          example: AAPL
+        name:
+          type: string
+          example: Apple Inc.
+        type:
+          $ref: '#/components/schemas/InstrumentType'
+        exchange:
+          type: string
+          example: NASDAQ
 
     PricingBatchResponseDTO:
       type: object
       properties:
         asOf:
           type: string
-          example: 2024-09-22T14:45:30Z
-          description: Timestamp for the returned quote snapshot
+          format: date-time
+          example: 2026-10-08T10:15:30Z
         quotes:
           type: array
           items:
@@ -1793,45 +1953,58 @@ components:
         instrumentId:
           type: integer
           format: int32
+          nullable: true
           example: 201
         symbol:
           type: string
+          nullable: true
           example: AAPL
         price:
           type: number
           format: double
+          nullable: true
           example: 189.22
         change:
           type: number
           format: double
+          nullable: true
           example: 1.35
         bid:
           type: number
           format: double
+          nullable: true
           example: 189.2
         ask:
           type: number
           format: double
+          nullable: true
           example: 189.25
         changePercent:
           type: number
           format: double
+          nullable: true
           example: 0.72
         prevClose:
           type: number
           format: double
+          nullable: true
           example: 187.87
         currency:
           type: string
+          nullable: true
           example: USD
         asOf:
           type: string
-          example: 2024-09-22T14:45:30Z
+          format: date-time
+          nullable: true
+          example: 2026-10-08T10:15:30Z
         stale:
           type: boolean
+          nullable: true
           example: false
         source:
           type: string
+          nullable: true
           example: yahoo
         errorCode:
           type: string
@@ -1856,8 +2029,9 @@ components:
           example: USD
         asOf:
           type: string
+          format: date-time
           nullable: true
-          example: 2024-09-22T14:45:30Z
+          example: 2026-10-08T10:15:30Z
         source:
           type: string
           example: yahoo
@@ -1866,8 +2040,9 @@ components:
           example: false
         availableFrom:
           type: string
+          format: date
           nullable: true
-          example: 2024-01-01
+          example: 2026-01-01
         candles:
           type: array
           items:
@@ -1878,7 +2053,8 @@ components:
       properties:
         date:
           type: string
-          example: 2024-09-22
+          format: date
+          example: 2026-10-08
         open:
           type: number
           format: double
@@ -1907,326 +2083,283 @@ components:
           type: boolean
           example: false
 
-    # ==================== ENTITIES ====================
-    User:
+    AdminUserDTO:
       type: object
-      required:
-        - username
-        - email
-        - phoneNumber
-        - passwordHash
-        - roleId
       properties:
         userId:
           type: integer
           format: int32
           example: 1
-          description: Unique user identifier (auto-generated)
-        roleId:
-          type: integer
-          format: int32
-          example: 1
-          description: User's role ID
         username:
           type: string
           example: john_doe
-          description: Unique username for login
         email:
           type: string
           format: email
           example: john@example.com
-          description: Unique email address
-        passwordHash:
+        phoneNumber:
           type: string
-          format: password
-          description: Hashed password (never returned in responses)
+          example: 5550123
         createdAt:
           type: string
           format: date-time
-          example: 2024-01-15T10:30:00Z
-          description: Account creation timestamp (auto-generated)
-        phoneNumber:
-          type: string
-          example: +1-555-0123
-          description: User's contact phone number
+          example: 2026-01-15T10:30:00Z
         lastLogin:
           type: string
           format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Last login timestamp
+          nullable: true
+          example: 2026-10-08T10:15:30Z
         rewardPoints:
           type: integer
           format: int32
           example: 150
-          description: Accumulated reward points
+        dateOfBirth:
+          type: string
+          format: date
+          example: 1990-04-15
+        roleId:
+          type: integer
+          format: int32
+          example: 1
+        roleName:
+          $ref: '#/components/schemas/RoleType'
 
-    Account:
+    AdminAccountDTO:
       type: object
-      required:
-        - userId
       properties:
         accountId:
           type: integer
           format: int32
           example: 101
-          description: Unique account identifier (auto-generated)
         userId:
           type: integer
           format: int32
           example: 1
-          description: Associated user ID
         nickname:
           type: string
           example: Main Trading Account
-          description: User-defined account nickname
         cashBalance:
           type: number
           format: double
-          example: 50000.00
-          description: Available cash balance
+          example: 50000.0
         createdAt:
           type: string
           format: date-time
-          example: 2024-01-15T10:30:00Z
-          description: Account creation timestamp (auto-generated)
+          example: 2026-01-15T10:30:00Z
 
-    Order:
-      type: object
-      required:
-        - accountId
-        - instrumentId
-        - quantity
-        - stockPrice
-        - orderType
-      properties:
-        orderId:
-          type: integer
-          format: int32
-          example: 501
-          description: Unique order identifier (auto-generated)
-        accountId:
-          type: integer
-          format: int32
-          example: 101
-          description: Associated account ID
-        instrumentId:
-          type: integer
-          format: int32
-          example: 201
-          description: Instrument being traded
-        quantity:
-          type: number
-          format: double
-          example: 100.5
-          description: Number of units to trade
-        stockPrice:
-          type: number
-          format: double
-          example: 125.75
-          description: Price per unit
-        orderType:
-          $ref: '#/components/schemas/OrderType'
-        status:
-          $ref: '#/components/schemas/OrderStatus'
-        lastUpdatedAt:
-          type: string
-          format: date-time
-          description: Last status update timestamp
-
-    Instrument:
-      type: object
-      required:
-        - ticker
-        - name
-        - type
-      properties:
-        instrumentId:
-          type: integer
-          format: int32
-          example: 201
-          description: Unique instrument identifier (auto-generated)
-        ticker:
-          type: string
-          example: AAPL
-          description: Stock ticker symbol
-        name:
-          type: string
-          example: Apple Inc.
-          description: Full instrument name
-        type:
-          $ref: '#/components/schemas/InstrumentType'
-        market:
-          type: string
-          example: NASDAQ
-          description: Trading market/exchange
-
-    AccountHolding:
+    AdminDashboardDTO:
       type: object
       properties:
-        holdingId:
+        totalUsers:
           type: integer
-          format: int32
-          example: 301
-          description: Unique holding identifier
-        accountId:
+          format: int64
+          example: 128
+        totalAccounts:
           type: integer
-          format: int32
-          example: 101
-          description: Associated account ID
-        instrumentId:
+          format: int64
+          example: 274
+        totalUserLogs:
           type: integer
-          format: int32
-          example: 201
-          description: Instrument identifier
-        quantity:
-          type: number
-          format: double
-          example: 50.25
-          description: Number of units held
-        amountInvested:
-          type: number
-          format: double
-          example: 6287.50
-          description: Total amount invested
-        lastUpdated:
-          type: string
-          format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Last update timestamp
+          format: int64
+          example: 4893
+        totalTransactionLogs:
+          type: integer
+          format: int64
+          example: 9012
 
-    AccountTransaction:
+    RoleDTO:
       type: object
-      required:
-        - accountId
-        - amount
-        - transactionType
-      properties:
-        transactionId:
-          type: integer
-          format: int32
-          example: 401
-          description: Unique transaction identifier (auto-generated)
-        accountId:
-          type: integer
-          format: int32
-          example: 101
-          description: Associated account ID
-        orderId:
-          type: integer
-          format: int32
-          example: 501
-          description: Related order ID (if applicable)
-        amount:
-          type: number
-          format: double
-          example: 1000.00
-          description: Transaction amount
-        transactionType:
-          $ref: '#/components/schemas/TransactionType'
-        createdAt:
-          type: string
-          format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Transaction creation timestamp (auto-generated)
-
-    OrderStatusHistory:
-      type: object
-      properties:
-        historyId:
-          type: integer
-          format: int32
-          example: 601
-          description: Unique history entry identifier
-        orderId:
-          type: integer
-          format: int32
-          example: 501
-          description: Associated order ID
-        status:
-          $ref: '#/components/schemas/OrderStatus'
-        changedAt:
-          type: string
-          format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Status change timestamp
-
-    Role:
-      type: object
-      required:
-        - name
       properties:
         roleId:
           type: integer
           format: int32
           example: 1
-          description: Unique role identifier (auto-generated)
         name:
           $ref: '#/components/schemas/RoleType'
 
-    TransactionLog:
+    UserRoleUpdateRequest:
+      type: object
+      description: Either `roleId`, `roleName`, or both can be supplied.
+      properties:
+        roleId:
+          type: integer
+          format: int32
+          example: 4
+        roleName:
+          $ref: '#/components/schemas/RoleType'
+
+    UserLogWriteRequest:
       type: object
       properties:
-        logId:
+        userId:
           type: integer
           format: int32
-          example: 701
-          description: Unique log identifier
-        accountId:
-          type: integer
-          format: int32
-          example: 101
-          description: Associated account ID
-        transactionId:
-          type: integer
-          format: int32
-          example: 401
-          description: Associated transaction ID
-        amount:
-          type: number
-          format: double
-          example: 1000.00
-          description: Transaction amount
-        type:
-          $ref: '#/components/schemas/TransactionType'
-        createdAt:
+          nullable: true
+          example: 1
+        username:
+          type: string
+          nullable: true
+          example: john_doe
+        ipAddress:
+          type: string
+          nullable: true
+          example: 203.0.113.10
+        event:
+          type: string
+          nullable: true
+          example: LOGIN
+        status:
+          $ref: '#/components/schemas/LogStatus'
+        happenedAt:
           type: string
           format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Log creation timestamp
+          nullable: true
+          example: 2026-10-08T10:15:30Z
 
-    UserLog:
+    UserLogDTO:
       type: object
       properties:
         logId:
           type: integer
           format: int32
           example: 801
-          description: Unique log identifier
         userId:
           type: integer
           format: int32
+          nullable: true
           example: 1
-          description: Associated user ID
-        action:
+        username:
           type: string
+          nullable: true
+          example: john_doe
+        ipAddress:
+          type: string
+          nullable: true
+          example: 203.0.113.10
+        event:
+          type: string
+          nullable: true
           example: LOGIN
-          description: User action logged
         status:
           $ref: '#/components/schemas/LogStatus'
-        createdAt:
+        happenedAt:
           type: string
           format: date-time
-          example: 2024-09-22T14:45:30Z
-          description: Log creation timestamp
+          example: 2026-10-08T10:15:30Z
 
-    # ==================== ENUMS ====================
+    TransactionLogCreateRequest:
+      type: object
+      properties:
+        stockPrice:
+          type: number
+          format: double
+          nullable: true
+          example: 189.22
+        userId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 1
+        accountId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 101
+        event:
+          type: string
+          nullable: true
+          example: ORDER_FILLED
+        amount:
+          type: number
+          format: double
+          nullable: true
+          example: 1892.2
+        orderId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 501
+        transactionId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 401
+        status:
+          $ref: '#/components/schemas/LogStatus'
+        happenedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-08T10:15:30Z
+
+    TransactionLogDTO:
+      type: object
+      properties:
+        logId:
+          type: integer
+          format: int32
+          example: 701
+        userId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 1
+        accountId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 101
+        instrumentId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 201
+        orderType:
+          type: string
+          nullable: true
+          example: BUY
+        quantity:
+          type: number
+          format: double
+          nullable: true
+          example: 10.0
+        event:
+          type: string
+          nullable: true
+          example: ORDER_FILLED
+        amount:
+          type: number
+          format: double
+          nullable: true
+          example: 1892.2
+        orderId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 501
+        stockPrice:
+          type: number
+          format: double
+          nullable: true
+          example: 189.22
+        transactionId:
+          type: integer
+          format: int32
+          nullable: true
+          example: 401
+        status:
+          $ref: '#/components/schemas/LogStatus'
+        happenedAt:
+          type: string
+          format: date-time
+          example: 2026-10-08T10:15:30Z
+
     OrderType:
       type: string
       enum:
         - BUY
         - SELL
       example: BUY
-      description: Type of order
 
     OrderStatus:
       type: string
@@ -2239,7 +2372,6 @@ components:
         - CANCELED
         - REJECTED
       example: PLACED
-      description: Current order status
 
     TransactionType:
       type: string
@@ -2248,8 +2380,7 @@ components:
         - SELL
         - DEPOSIT
         - WITHDRAW
-      example: BUY
-      description: Type of transaction
+      example: DEPOSIT
 
     InstrumentType:
       type: string
@@ -2258,25 +2389,20 @@ components:
         - crypto
         - fx
         - etf
-        - COMMODITY
-      example: STOCK
-      description: Type of trading instrument
+      example: equity
 
     RoleType:
       type: string
       enum:
+        - CLIENT
+        - AUDITOR
+        - REPORTER
         - ADMIN
-        - USER
-        - TRADER
-        - ANALYST
-      example: USER
-      description: User role type
+      example: CLIENT
 
     LogStatus:
       type: string
       enum:
         - SUCCESS
         - FAILURE
-        - PENDING
       example: SUCCESS
-      description: Status of logged action

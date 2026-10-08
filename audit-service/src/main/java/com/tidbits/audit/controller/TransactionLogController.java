@@ -1,8 +1,10 @@
 package com.tidbits.audit.controller;
 
 import com.tidbits.audit.model.dto.TransactionLogDTO;
+import com.tidbits.audit.model.entity.InstrumentRef;
 import com.tidbits.audit.model.entity.OrderRef;
 import com.tidbits.audit.model.entity.TransactionLog;
+import com.tidbits.audit.repository.InstrumentRefRepository;
 import com.tidbits.audit.repository.OrderRefRepository;
 import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.audit.service.TransactionLogService;
@@ -24,6 +26,9 @@ public class TransactionLogController {
 
     @Autowired
     private OrderRefRepository orderRefRepository;
+
+    @Autowired
+    private InstrumentRefRepository instrumentRefRepository;
 
     @PostMapping
     public ResponseEntity<TransactionLogDTO> createTransactionLog(@RequestBody TransactionLog transactionLog) {
@@ -54,6 +59,8 @@ public class TransactionLogController {
 
     private TransactionLogDTO toDto(TransactionLog log) {
         Optional<OrderRef> order = resolveOrder(log.getOrderId());
+        Integer instrumentId = order.map(OrderRef::getInstrumentId).orElse(null);
+        String ticker = resolveTicker(instrumentId);
         String orderType = order.map(OrderRef::getOrderType)
                 .map(value -> value.toUpperCase(Locale.ROOT))
                 .orElse(null);
@@ -66,7 +73,8 @@ public class TransactionLogController {
                 log.getLogId(),
                 log.getUserId(),
                 log.getAccountId(),
-                order.map(OrderRef::getInstrumentId).orElse(null),
+                instrumentId,
+                ticker,
                 orderType,
                 quantity,
                 log.getEvent(),
@@ -85,5 +93,15 @@ public class TransactionLogController {
         }
 
         return orderRefRepository.findById(orderId);
+    }
+
+    private String resolveTicker(Integer instrumentId) {
+        if (instrumentId == null || instrumentRefRepository == null) {
+            return null;
+        }
+
+        return instrumentRefRepository.findById(instrumentId)
+                .map(InstrumentRef::getTicker)
+                .orElse(null);
     }
 }

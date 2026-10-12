@@ -24,6 +24,17 @@ type ChangePasswordBody = {
   confirmPassword?: string;
 };
 
+type WhoAmIUser = {
+  userId: number;
+  username: string;
+  email: string;
+  phoneNumber: string | null;
+  rewardPoints: number;
+  dateOfBirth: string;
+  lastLogin: string;
+  role: string;
+};
+
 @Injectable()
 export class AuthService implements OnModuleDestroy {
   private readonly secret = process.env.JWT_SECRET as string;
@@ -369,6 +380,49 @@ export class AuthService implements OnModuleDestroy {
     }
   }
 
+  async whoAmI(req: Request, res: Response) {
+    let userId: number;
+
+    try {
+      userId = this.getUserIdFromAuthorizationHeader(req.headers.authorization);
+    } catch (error) {
+      const authErrorResponse = this.handleAuthenticationError(req, res, error);
+      if (authErrorResponse) {
+        return authErrorResponse;
+      }
+
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+
+    try {
+      const result = await this.pool.query<WhoAmIUser>(
+        `
+        SELECT
+          u.user_id AS "userId",
+          u.username,
+          u.email,
+          u.phone_number AS "phoneNumber",
+          u.reward_points AS "rewardPoints",
+          u.date_of_birth AS "dateOfBirth",
+          u.last_login AS "lastLogin",
+          UPPER(r.name::text) AS role
+        FROM users u
+        JOIN roles r ON r.role_id = u.role_id
+        WHERE u.user_id = $1
+        `,
+        [userId],
+      );
+
+      if (result.rows.length === 0) {
+        return sendError(res, req, 404, 'USER_NOT_FOUND', 'user not found');
+      }
+
+      return res.json(result.rows[0]);
+    } catch {
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+  }
+
   health() {
     return { status: 'up' };
   }
@@ -393,9 +447,42 @@ export class AuthService implements OnModuleDestroy {
     );
   }
 
+  private handleAuthenticationError(req: Request, res: Response, error: unknown) {
+    if ((error as { name?: string }).name === 'TokenExpiredError') {
+      return sendError(res, req, 401, 'UNAUTHORIZED', 'token has expired');
+    }
+
+    if (error instanceof Error && error.message === 'MISSING_AUTHORIZATION_HEADER') {
+      return sendError(res, req, 401, 'UNAUTHORIZED', 'authorization token is required');
+    }
+
+    if (error instanceof Error && error.message === 'INVALID_AUTHORIZATION_HEADER') {
+      return sendError(res, req, 401, 'UNAUTHORIZED', 'authorization header must use Bearer token');
+    }
+
+    if ((error as { name?: string }).name === 'JsonWebTokenError') {
+      return sendError(res, req, 401, 'UNAUTHORIZED', 'invalid token');
+    }
+
+    return null;
+  }
+
   private getUserId(token: string) {
     const payload = jwt.verify(token, this.secret) as jwt.JwtPayload;
     return Number(payload.sub);
+  }
+
+  private getUserIdFromAuthorizationHeader(authorizationHeader: string | undefined) {
+    if (!authorizationHeader) {
+      throw new Error('MISSING_AUTHORIZATION_HEADER');
+    }
+
+    const [scheme, token] = authorizationHeader.split(' ', 2);
+    if (scheme !== 'Bearer' || !token) {
+      throw new Error('INVALID_AUTHORIZATION_HEADER');
+    }
+
+    return this.getUserId(token);
   }
 
   private getRefreshCookieOptions() {

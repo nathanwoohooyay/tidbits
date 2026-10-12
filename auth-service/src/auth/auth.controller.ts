@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Patch, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Patch, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 
@@ -18,6 +18,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @HttpCode(200)
   async login(@Req() req: Request, @Res() res: Response, @Body() body: unknown) {
     return this.authService.login(req, res, body);
   }
@@ -35,6 +36,11 @@ export class AuthController {
   @Patch('change-password')
   async changePassword(@Req() req: Request, @Res() res: Response, @Body() body: ChangePasswordBody) {
     return this.authService.changePassword(req, res, body);
+  }
+
+  @Get('whoami')
+  async whoAmI(@Req() req: Request, @Res() res: Response) {
+    return this.authService.whoAmI(req, res);
   }
 
   @Get('health')

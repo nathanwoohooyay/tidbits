@@ -79,13 +79,12 @@ export class AccountPageComponent implements OnInit {
     try {
       let updatedUser = user;
 
-
       if (emailChanged) {
-        updatedUser = await firstValueFrom(this.userApi.changeEmail(user.userId, nextEmail));
+        updatedUser = await firstValueFrom(this.userApi.changeEmail(user.userId, { newEmail: nextEmail }));
       }
 
       if (phoneChanged) {
-        updatedUser = await firstValueFrom(this.userApi.changePhoneNumber(user.userId, nextPhoneNumber));
+        updatedUser = await firstValueFrom(this.userApi.changePhoneNumber(user.userId, { newPhoneNumber: nextPhoneNumber }));
       }
 
       //update stored user
@@ -100,6 +99,8 @@ export class AccountPageComponent implements OnInit {
       this.currentUsername = updatedUser.username;
       this.currentEmail = updatedUser.email;
       this.currentPhoneNumber = updatedUser.phoneNumber ?? nextPhoneNumber;
+      this.updateEmail = this.currentEmail;
+      this.updatePhoneNumber = this.currentPhoneNumber;
       this.updateSuccess = 'Account updated successfully.';
     } catch (err: any) {
       this.updateError = err?.error?.error ?? err?.error?.message ?? 'Failed to update account.';

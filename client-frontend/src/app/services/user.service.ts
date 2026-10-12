@@ -17,6 +17,14 @@ export interface ChangePasswordDTO {
   confirmPassword: string;
 }
 
+export interface ChangeEmailDTO {
+  newEmail: string;
+}
+
+export interface ChangePhoneNumberDTO {
+  newPhoneNumber: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -28,12 +36,12 @@ export class UserService {
     return this.http.get<UserDTO>(`${this.apiBase}/${userId}`);
   }
 
-  changeEmail(userId: number, newEmail: string): Observable<UserDTO> {
-    return this.http.patch<UserDTO>(`${this.apiBase}/${userId}/change-email`, newEmail);
+  changeEmail(userId: number, payload: ChangeEmailDTO): Observable<UserDTO> {
+    return this.http.patch<UserDTO>(`${this.apiBase}/${userId}/change-email`, payload);
   }
 
-  changePhoneNumber(userId: number, newPhoneNumber: string): Observable<UserDTO> {
-    return this.http.patch<UserDTO>(`${this.apiBase}/${userId}/change-phone-number`, newPhoneNumber);
+  changePhoneNumber(userId: number, payload: ChangePhoneNumberDTO): Observable<UserDTO> {
+    return this.http.patch<UserDTO>(`${this.apiBase}/${userId}/change-phone-number`, payload);
   }
 
   changePassword(userId: number, payload: ChangePasswordDTO): Observable<UserDTO> {

@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2022",
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "ignoreDeprecations": "6.0",
+    "skipLibCheck": true,
+    "allowJs": true,
+    "outDir": "dist",
+    "types": ["node"]
+  },
+  "include": ["src/**/*", "test/**/*"]
+}

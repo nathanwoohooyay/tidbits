@@ -164,6 +164,38 @@ paths:
         '500':
           $ref: '#/components/responses/AuthInternalServerError'
 
+  /api/auth/change-password:
+    patch:
+      tags:
+        - Users
+      summary: Change the authenticated user's password
+      description: |
+        Updates the password for the target user in the JWT.
+      operationId: changePassword
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordDTO'
+      responses:
+        '204':
+          description: Password changed successfully. No content is returned.
+        '400':
+          $ref: '#/components/responses/ServiceBadRequest'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
   /api/auth/health:
     get:
       tags:
@@ -206,46 +238,6 @@ paths:
           $ref: '#/components/responses/ServiceForbidden'
         '404':
           $ref: '#/components/responses/ServiceNotFound'
-        '500':
-          $ref: '#/components/responses/ServiceInternalServerError'
-
-  /api/users/{userId}/change-password:
-    patch:
-      tags:
-        - Users
-      summary: Change the authenticated user's password
-      description: |
-        Updates the password for the target user.
-
-        Authorization rule: the JWT subject must equal the `userId` path parameter.
-      operationId: changePassword
-      security:
-        - BearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChangePasswordDTO'
-      responses:
-        '200':
-          description: Password changed successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserDTO'
-        '400':
-          $ref: '#/components/responses/ServiceBadRequest'
-        '401':
-          $ref: '#/components/responses/ServiceUnauthorized'
-        '403':
-          $ref: '#/components/responses/ServiceForbidden'
-        '404':
-          $ref: '#/components/responses/ServiceNotFound'
-        '422':
-          $ref: '#/components/responses/ServiceUnprocessableEntity'
         '500':
           $ref: '#/components/responses/ServiceInternalServerError'
 

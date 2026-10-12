@@ -24,7 +24,7 @@ public class AdminController {
     @PostMapping("/users/{userId}/revoke")
     public ResponseEntity<String> revokeAccess(@PathVariable int userId) {
         accessRevocationService.revokeUserAccess(userId);
-        return ResponseEntity.ok("User access revoked");
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/admin/users")

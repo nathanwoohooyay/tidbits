@@ -83,6 +83,10 @@ function createAccessToken(userId, roleName, tokenVersion) {
   );
 }
 
+function getUserId(token) {
+  return jwt.verify(token, SECRET).sub;
+}
+
 function getRefreshCookieOptions() {
   return {
     httpOnly: true,
@@ -341,6 +345,80 @@ app.post('/api/auth/logout', async (req, res) => {
     res.clearCookie(REFRESH_COOKIE_NAME, getRefreshCookieOptions());
     return res.status(204).send();
   } catch (error) {
+    return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+  }
+});
+
+app.patch('/api/auth/change-password', async (req, res) => {
+
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return sendError(res, req, 400, 'MISSING_FIELDS', 'current password, new password, and confirm password are required');
+  }
+
+  if (newPassword !== confirmPassword) {
+    return sendError(res, req, 400, 'PASSWORD_MISMATCH', 'new password and confirm password do not match');
+  }
+
+  try {
+    const userId = getUserId(req.headers.authorization.split(' ')[1]);
+
+    const result = await pool.query(
+      `
+      SELECT password_hash, username
+      FROM users
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return sendError(res, req, 404, 'USER_NOT_FOUND', 'user not found');
+    }
+
+    const { password_hash: storedPassword, username } = result.rows[0];
+
+    if (!(await bcrypt.compare(currentPassword, storedPassword))) {
+      return sendError(res, req, 422, 'INVALID_CURRENT_PASSWORD', 'current password is incorrect');
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    await pool.query(
+      `
+      UPDATE users
+      SET password_hash = $1, token_version = token_version + 1
+      WHERE user_id = $2
+      `,
+      [hashedNewPassword, userId]
+    );
+
+    await publishUserAuditEvent({
+      eventType: 'CHANGE_PASSWORD',
+      userId: userId,
+      username: username,
+      status: 'SUCCESS',
+      ipAddress: resolveIpAddress(req),
+      details: null,
+    });
+
+    return res.status(204).send();
+  } catch (error) {
+
+    await publishUserAuditEvent({
+      eventType: 'CHANGE_PASSWORD',
+      userId: userId,
+      username: username,
+      status: 'FAILURE',
+      ipAddress: resolveIpAddress(req),
+      details: null,
+    });
+
+    if (error.name === 'TokenExpiredError') {
+      return sendError(res, req, 401, 'UNAUTHORIZED', 'token has expired');
+    }
+    console.error(error);
     return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
   }
 });

@@ -11,7 +11,6 @@
     <!-- Update Account Section -->
     <section class="account-card">
       <h2>Update Account Information</h2>
-      <p class="section-subtitle">Change your username or email address</p>
 
       @if (updateError) {
         <div class="error-message" role="alert">{{ updateError }}</div>
@@ -21,17 +20,7 @@
       }
 
       <form (ngSubmit)="updateAccount()" class="form-grid">
-        <div class="form-group">
-          <label for="update-username">Username</label>
-          <input
-            id="update-username"
-            type="text"
-            [(ngModel)]="updateUsername"
-            name="updateUsername"
-            placeholder="Enter new username"
-          />
-        </div>
-
+<br>
         <div class="form-group">
           <label for="update-email">Email</label>
           <input
@@ -40,6 +29,17 @@
             [(ngModel)]="updateEmail"
             name="updateEmail"
             placeholder="Enter new email"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="update-phone-number">Phone Number</label>
+          <input
+            id="update-phone-number"
+            type="text"
+            [(ngModel)]="updatePhoneNumber"
+            name="updatePhoneNumber"
+            placeholder="Enter new phone number"
           />
         </div>
 
@@ -56,8 +56,7 @@
     <!-- Change Password Section -->
     <section class="account-card">
       <h2>Change Password</h2>
-      <p class="section-subtitle">Update your password to keep your account secure</p>
-
+     <br>
       @if (passwordError) {
         <div class="error-message" role="alert">{{ passwordError }}</div>
       }
@@ -71,8 +70,8 @@
           <input
             id="old-password"
             type="password"
-            [(ngModel)]="oldPassword"
-            name="oldPassword"
+            [(ngModel)]="currentPassword"
+            name="currentPassword"
             placeholder="Enter current password"
             autocomplete="current-password"
           />
@@ -112,55 +111,5 @@
       </form>
     </section>
 
-    <!-- Delete Account Section -->
-    <section class="account-card danger">
-      <h2>Danger Zone</h2>
-      <p class="section-subtitle">Permanently delete your account and all associated data</p>
-
-      @if (deleteError) {
-        <div class="error-message" role="alert">{{ deleteError }}</div>
-      }
-
-      @if (!showDeleteConfirm) {
-        <button
-          type="button"
-          class="btn-danger"
-          (click)="toggleDeleteConfirm()"
-        >
-          Delete My Account
-        </button>
-      } @else {
-        <div class="delete-confirmation">
-          <p class="warning-text">
-            ⚠️ This action cannot be undone. All your data will be permanently deleted.
-          </p>
-          <p>Please type your username to confirm:</p>
-          <input
-            type="text"
-            [(ngModel)]="deleteConfirmation"
-            placeholder="Type your username"
-            class="delete-confirm-input"
-          />
-          <div class="delete-actions">
-            <button
-              type="button"
-              class="btn-danger-confirm"
-              [disabled]="deleteLoading || deleteConfirmation !== currentUsername"
-              (click)="deleteAccount()"
-            >
-              {{ deleteLoading ? 'Deleting…' : 'Permanently Delete Account' }}
-            </button>
-            <button
-              type="button"
-              class="btn-cancel"
-              (click)="toggleDeleteConfirm()"
-              [disabled]="deleteLoading"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      }
-    </section>
   </main>
 </div>

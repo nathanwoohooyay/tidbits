@@ -1,10 +1,10 @@
 import { computed, Injectable, signal } from '@angular/core';
 
 export interface SessionUser {
-  user_id: number;
+  userId: number;
   username: string;
   email: string;
-  role_id: number;
+  phoneNumber?: string;
   reward_points: number;
 }
 

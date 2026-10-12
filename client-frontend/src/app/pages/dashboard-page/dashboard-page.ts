@@ -22,6 +22,7 @@ import { DashboardMarketSnapshotComponent } from '../../components/dashboard/das
 import { DashboardHoldingsComponent } from '../../components/dashboard/dashboard-holdings.component';
 import { DashboardTradeDeskComponent } from '../../components/dashboard/dashboard-trade-desk.component';
 import { DashboardTradeHistoryComponent } from '../../components/dashboard/dashboard-trade-history.component';
+import {UserDTO, UserService} from '../../services/user.service';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -49,8 +50,11 @@ export class DashboardPageComponent implements OnInit {
   private readonly session = inject(SessionService);
   private readonly themeStorageKey = 'tidbits_theme_mode';
   private readonly mockData = getMockDashboardData();
+  private readonly userId = 1;
+  private readonly userService = inject(UserService);
 
-  currentUser = signal(this.mockData.user);
+  currentUser = signal<UserDTO | null>(null);
+
   accounts = signal(this.mockData.accounts);
   selectedAccountId = signal(this.mockData.accounts[0]?.account_id ?? 0);
   instruments = signal(this.mockData.instruments);
@@ -89,7 +93,13 @@ export class DashboardPageComponent implements OnInit {
 
   ngOnInit() {
     this.restoreThemePreference();
-    this.session.setCurrentUser(this.currentUser());
+
+    this.userService.getUser(this.userId).subscribe(user => {
+      this.currentUser.set(user);
+      this.session.setCurrentUser(user);
+      console.log(user);
+    });
+
     this.session.setAccounts(this.accounts());
     this.session.setSelectedAccountId(this.selectedAccountId());
   }

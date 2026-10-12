@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { SessionService } from '../../services/session.service';
 import { UserService } from '../../services/user.service';
 
@@ -18,46 +19,56 @@ export class AccountPageComponent implements OnInit {
   private readonly router = inject(Router);
 
   currentUsername = '';
+  currentEmail = '';
+  currentPhoneNumber = '';
 
-  // Update form state
-  updateUsername = '';
+  // Profile form state
   updateEmail = '';
+  updatePhoneNumber = '';
   updateLoading = false;
   updateError = '';
   updateSuccess = '';
 
   // Password change form state
-  oldPassword = '';
+  currentPassword = '';
   newPassword = '';
   confirmPassword = '';
   passwordLoading = false;
   passwordError = '';
   passwordSuccess = '';
 
-  // Delete account state
-  deleteLoading = false;
-  deleteError = '';
-  deleteConfirmation = '';
-  showDeleteConfirm = false;
-
   ngOnInit() {
     const user = this.session.currentUser();
+    console.log(user);
     if (!user) {
       void this.router.navigateByUrl('/login');
       return;
     }
 
     this.currentUsername = user.username;
-    this.updateUsername = user.username;
-    this.updateEmail = user.email;
+    this.currentEmail = user.email;
+    this.currentPhoneNumber = user.phoneNumber ?? '';
+    this.updateEmail = this.currentEmail;
+    this.updatePhoneNumber = this.currentPhoneNumber;
   }
 
-  updateAccount() {
+  async updateAccount() {
     const user = this.session.currentUser();
     if (!user) return;
 
-    if (!this.updateUsername.trim() || !this.updateEmail.trim()) {
-      this.updateError = 'Username and email are required.';
+    const nextEmail = this.updateEmail.trim();
+    const nextPhoneNumber = this.updatePhoneNumber.trim();
+
+    if (!nextEmail || !nextPhoneNumber) {
+      this.updateError = 'Email and phone number are required.';
+      return;
+    }
+
+    const emailChanged = nextEmail !== this.currentEmail.trim();
+    const phoneChanged = nextPhoneNumber !== this.currentPhoneNumber.trim();
+
+    if (!emailChanged && !phoneChanged) {
+      this.updateError = 'No changes to save.';
       return;
     }
 
@@ -65,25 +76,40 @@ export class AccountPageComponent implements OnInit {
     this.updateError = '';
     this.updateSuccess = '';
 
-    this.userApi.updateUser(user.user_id, {
-      username: this.updateUsername.trim(),
-      email: this.updateEmail.trim()
-    }).subscribe({
-      next: (updatedUser) => {
-        this.updateLoading = false;
-        this.updateSuccess = 'Account updated successfully.';
-        this.session.setCurrentUser(updatedUser as any);
-        this.currentUsername = updatedUser.username;
-      },
-      error: err => {
-        this.updateLoading = false;
-        this.updateError = err?.error?.error ?? err?.error?.message ?? 'Failed to update account.';
+    try {
+      let updatedUser = user;
+
+
+      if (emailChanged) {
+        updatedUser = await firstValueFrom(this.userApi.changeEmail(user.userId, nextEmail));
       }
-    });
+
+      if (phoneChanged) {
+        updatedUser = await firstValueFrom(this.userApi.changePhoneNumber(user.userId, nextPhoneNumber));
+      }
+
+      //update stored user
+      this.session.setCurrentUser({
+        ...updatedUser,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        phoneNumber: updatedUser.phoneNumber,
+      });
+
+// Update form values
+      this.currentUsername = updatedUser.username;
+      this.currentEmail = updatedUser.email;
+      this.currentPhoneNumber = updatedUser.phoneNumber ?? nextPhoneNumber;
+      this.updateSuccess = 'Account updated successfully.';
+    } catch (err: any) {
+      this.updateError = err?.error?.error ?? err?.error?.message ?? 'Failed to update account.';
+    } finally {
+      this.updateLoading = false;
+    }
   }
 
   changePassword() {
-    if (!this.oldPassword || !this.newPassword || !this.confirmPassword) {
+    if (!this.currentPassword || !this.newPassword || !this.confirmPassword) {
       this.passwordError = 'All password fields are required.';
       return;
     }
@@ -105,52 +131,21 @@ export class AccountPageComponent implements OnInit {
     this.passwordError = '';
     this.passwordSuccess = '';
 
-    this.userApi.changePassword(user.user_id,  {
-      oldPassword: this.oldPassword,
+    this.userApi.changePassword(user.userId,  {
+      currentPassword: this.currentPassword,
       newPassword: this.newPassword,
       confirmPassword: this.confirmPassword
     }).subscribe({
       next: () => {
         this.passwordLoading = false;
         this.passwordSuccess = 'Password changed successfully.';
-        this.oldPassword = '';
+        this.currentPassword = '';
         this.newPassword = '';
         this.confirmPassword = '';
       },
       error: err => {
         this.passwordLoading = false;
         this.passwordError = err?.error?.error ?? err?.error?.message ?? 'Failed to change password.';
-      }
-    });
-  }
-
-  toggleDeleteConfirm() {
-    this.showDeleteConfirm = !this.showDeleteConfirm;
-    this.deleteConfirmation = '';
-    this.deleteError = '';
-  }
-
-  deleteAccount() {
-    const user = this.session.currentUser();
-    if (!user) return;
-
-    if (this.deleteConfirmation !== user.username) {
-      this.deleteError = 'Please type your username to confirm deletion.';
-      return;
-    }
-
-    this.deleteLoading = true;
-    this.deleteError = '';
-
-    this.userApi.deleteUser(user.user_id).subscribe({
-      next: () => {
-        this.deleteLoading = false;
-        this.session.clearSession();
-        void this.router.navigateByUrl('/login');
-      },
-      error: err => {
-        this.deleteLoading = false;
-        this.deleteError = err?.error?.error ?? err?.error?.message ?? 'Failed to delete account.';
       }
     });
   }

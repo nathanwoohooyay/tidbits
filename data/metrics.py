@@ -114,12 +114,26 @@ class MetricsCalculator:
     def trade_volume_over_time():
         """Trade volume over time (by day/time period)"""
         transactions = DataExtractor.extract_transactions()
+        orders = DataExtractor.extract_orders()
         
         if transactions.empty:
             return pd.DataFrame()
         
         # Convert amount to float
         transactions['amount'] = transactions['amount'].astype(float)
+
+        # Bring in quantities when transaction is tied to an order.
+        if not orders.empty:
+            orders['quantity'] = orders['quantity'].astype(float)
+            transactions = transactions.merge(
+                orders[['order_id', 'quantity']],
+                on='order_id',
+                how='left'
+            )
+        else:
+            transactions['quantity'] = 0.0
+
+        transactions['quantity'] = transactions['quantity'].fillna(0).astype(float)
         
         # Convert created_at to date
         transactions['date'] = pd.to_datetime(transactions['created_at']).dt.date
@@ -127,10 +141,17 @@ class MetricsCalculator:
         # Calculate volume over time
         volume_over_time = transactions.groupby('date').agg({
             'transaction_id': 'count',
+            'quantity': 'sum',
             'amount': 'sum'
         }).reset_index()
         
-        volume_over_time.columns = ['date', 'transaction_count', 'total_amount']
+        volume_over_time.columns = ['trade_date', 'order_count', 'total_quantity', 'total_value']
+        volume_over_time['time_bucket'] = volume_over_time['trade_date'].astype(str)
+
+        # Backward-compatible aliases for any existing consumers.
+        volume_over_time['transaction_count'] = volume_over_time['order_count']
+        volume_over_time['total_amount'] = volume_over_time['total_value']
+
         volume_over_time['metric_type'] = 'trade_volume_over_time'
         volume_over_time['calculated_at'] = datetime.now()
         
@@ -151,24 +172,39 @@ class MetricsCalculator:
         orders['quantity'] = orders['quantity'].astype(float)
         
         # Calculate trade value
-        orders['trade_value'] = orders['quantity'] * orders['stock_price']
+        orders['order_value'] = orders['quantity'] * orders['stock_price']
         
         # Calculate statistics per account
-        account_stats = orders.groupby('account_id')['trade_value'].agg(['mean', 'std']).reset_index()
+        account_stats = orders.groupby('account_id')['order_value'].agg(['mean', 'std']).reset_index()
         account_stats['mean'] = account_stats['mean'].astype(float)
         account_stats['std'] = account_stats['std'].astype(float)
         
         # Merge stats back to orders
         merged = orders.merge(account_stats, on='account_id')
         
-        # Identify outliers (trades > 2 standard deviations from mean)
-        merged['is_outlier'] = (merged['trade_value'] > merged['mean'] + 2 * merged['std'])
-        
+        # Compute z-score and flag both high/low outliers.
+        merged['z_score'] = (merged['order_value'] - merged['mean']) / merged['std'].replace(0, np.nan)
+        merged['z_score'] = merged['z_score'].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        merged['is_outlier'] = merged['z_score'].abs() > 2.5
+
         outliers = merged[merged['is_outlier']][
-            ['order_id', 'account_id', 'trade_value', 'mean', 'std', 'order_type', 'status']
+            [
+                'order_id',
+                'account_id',
+                'instrument_id',
+                'ticker',
+                'order_type',
+                'quantity',
+                'stock_price',
+                'order_value',
+                'z_score',
+                'is_outlier',
+                'status'
+            ]
         ].copy()
-        
-        outliers['deviation_from_mean'] = (outliers['trade_value'] - outliers['mean']) / (outliers['std'] + 1)
+
+        # Backward-compatible alias.
+        outliers['trade_value'] = outliers['order_value']
         outliers['metric_type'] = 'outlier_trades'
         outliers['calculated_at'] = datetime.now()
         
@@ -207,7 +243,11 @@ class MetricsCalculator:
         )
         
         outlier_pnl = account_pnl[account_pnl['is_outlier']].copy()
-        outlier_pnl['pnl_zscore'] = (outlier_pnl['net_pnl'] - pnl_mean) / (pnl_std + 1)
+        outlier_pnl['z_score'] = (outlier_pnl['net_pnl'] - pnl_mean) / (pnl_std + 1)
+        outlier_pnl['total_pnl'] = outlier_pnl['net_pnl']
+
+        # Backward-compatible alias.
+        outlier_pnl['pnl_zscore'] = outlier_pnl['z_score']
         outlier_pnl['metric_type'] = 'pnl_outliers'
         outlier_pnl['calculated_at'] = datetime.now()
         
@@ -231,19 +271,23 @@ class MetricsCalculator:
         if not holdings.empty:
             holdings['amount_invested'] = holdings['amount_invested'].astype(float)
             aum_from_holdings = holdings.groupby('account_id')['amount_invested'].sum().reset_index()
-            aum_from_holdings.columns = ['account_id', 'invested_assets']
+            aum_from_holdings.columns = ['account_id', 'holdings_value']
         else:
-            aum_from_holdings = pd.DataFrame({'account_id': [], 'invested_assets': []})
+            aum_from_holdings = pd.DataFrame({'account_id': [], 'holdings_value': []})
         
         # Merge with cash balance
         aum = accounts[['account_id', 'user_id', 'cash_balance']].merge(aum_from_holdings, on='account_id', how='left')
-        aum['invested_assets'] = aum['invested_assets'].fillna(0).astype(float)
-        aum['total_aum'] = aum['cash_balance'] + aum['invested_assets']
+        aum['holdings_value'] = aum['holdings_value'].fillna(0).astype(float)
+        aum['total_value'] = aum['cash_balance'] + aum['holdings_value']
+
+        # Backward-compatible aliases.
+        aum['invested_assets'] = aum['holdings_value']
+        aum['total_aum'] = aum['total_value']
         
         aum['metric_type'] = 'aum'
         aum['calculated_at'] = datetime.now()
         
-        return aum[['account_id', 'user_id', 'cash_balance', 'invested_assets', 'total_aum', 'metric_type', 'calculated_at']]
+        return aum[['account_id', 'user_id', 'cash_balance', 'holdings_value', 'total_value', 'invested_assets', 'total_aum', 'metric_type', 'calculated_at']]
     
     @staticmethod
     def revenue_from_fees():

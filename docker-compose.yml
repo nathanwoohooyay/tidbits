@@ -165,6 +165,7 @@ services:
       GATEWAY_CORS_ORIGINS: ${GATEWAY_CORS_ORIGINS:-http://localhost:8084,http://localhost:4200,http://localhost:8080,http://localhost:9875}
       CLIENT_SERVICE_URL: http://client-service:8082
       AUDIT_SERVICE_URL: http://audit-service:8083
+      METRICS_SERVICE_URL: http://metrics-service:8085
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
@@ -194,8 +195,6 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "8085:8085"
     depends_on:
       postgres:
         condition: service_healthy

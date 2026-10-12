@@ -165,7 +165,7 @@ app.post('/api/auth/signup', async (req, res) => {
       });
       return sendError(res, req, 400, 'DATABASE_CONSTRAINT_VIOLATION', 'a required database constraint was violated');
     }
-    console.error('signup failed', error);
+    
     await publishUserAuditEvent({
       eventType: 'SIGNUP',
       userId: null,
@@ -269,7 +269,7 @@ app.post('/api/auth/login', async (req, res) => {
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, getRefreshCookieOptions());
     return res.json({ token });
   } catch (error) {
-    console.error('login failed', error);
+    
     await publishUserAuditEvent({
       eventType: 'LOGIN',
       userId: null,
@@ -315,7 +315,6 @@ app.post('/api/auth/refresh', async (req, res) => {
 
     return res.json({ accessToken: newToken });
   } catch (error) {
-    console.error('refresh token failed', error);
     return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
   }
 });
@@ -342,7 +341,6 @@ app.post('/api/auth/logout', async (req, res) => {
     res.clearCookie(REFRESH_COOKIE_NAME, getRefreshCookieOptions());
     return res.status(204).send();
   } catch (error) {
-    console.error('logout failed', error);
     return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
   }
 });

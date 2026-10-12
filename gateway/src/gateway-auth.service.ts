@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 type JwtPayload = {
   sub?: string | number;
   tokenVersion?: string | number;
+  roles?: string[];
 };
 
 export class GatewayAuthError extends Error {
@@ -37,11 +38,20 @@ export class GatewayAuthService implements OnModuleDestroy {
     const token = this.extractBearerToken(request.headers.authorization);
     const payload = this.verifyToken(token);
     const userId = this.parseIntegerClaim(payload.sub, 'subject', 401);
+    const role = payload.roles?.[0];
     const tokenVersion = this.parseIntegerClaim(payload.tokenVersion, 'tokenVersion', 401);
 
     const persistedTokenVersion = await this.lookupTokenVersion(userId);
     if (persistedTokenVersion !== tokenVersion) {
       throw new GatewayAuthError(401, 'Unauthorized');
+    }
+console.log(role);
+    if ((routePrefix === "/audit" || routePrefix === "/metrics") && role !== "ADMIN" && role !== "AUDITOR") {
+      throw new GatewayAuthError(403, 'Forbidden');
+    }
+
+    if (routePrefix === "/client" && role !== "CLIENT") {
+      throw new GatewayAuthError(403, 'Forbidden');
     }
   }
 

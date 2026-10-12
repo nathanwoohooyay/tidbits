@@ -8,7 +8,7 @@ async function bootstrap() {
   // Allow JSON primitives (e.g. 25.25) for proxied APIs that accept raw numeric bodies.
   app.use(express.json({ strict: false }));
 
-  const corsOrigins = (process.env.GATEWAY_CORS_ORIGINS || 'http://localhost:8084,http://localhost:4200,http://localhost:8080,http://localhost:9875')
+  const corsOrigins = (process.env.GATEWAY_CORS_ORIGINS || 'http://localhost:8084,http://localhost:4200,http://localhost:8080,http://localhost:9875,http://localhost:9878,http://localhost:8090')
     .split(',')
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);

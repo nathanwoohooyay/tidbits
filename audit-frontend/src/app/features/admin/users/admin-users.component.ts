@@ -91,8 +91,8 @@ import { AdminUser, AdminAccount } from '../../../core/models/models';
                 <td class="mono-font text-secondary">{{ user.phone || '—' }}</td>
                 <td class="mono-font text-emerald">{{ (user.rewardPoints || 0) | number }} pts</td>
                 <td>
-                  <span class="badge" [ngClass]="getRoleBadgeClass(user.role)">
-                    {{ user.role }}
+                  <span class="badge" [ngClass]="getRoleBadgeClass(getUserRole(user))">
+                    {{ getUserRole(user) }}
                   </span>
                 </td>
                 <td class="mono-font text-muted">{{ user.createdAt | date:'mediumDate' }}</td>
@@ -592,7 +592,7 @@ export class AdminUsersComponent implements OnInit {
     const role = this.roleFilter;
 
     if (query) {
-      list = list.filter(u =>
+      list = list.filter((u: AdminUser) =>
         u.username.toLowerCase().includes(query) ||
         (u.email && u.email.toLowerCase().includes(query)) ||
         u.userId.toString() === query
@@ -600,7 +600,7 @@ export class AdminUsersComponent implements OnInit {
     }
 
     if (role !== 'ALL') {
-      list = list.filter(u => u.role === role);
+      list = list.filter((u: AdminUser) => this.getUserRole(u) === role);
     }
 
     return list;
@@ -613,9 +613,19 @@ export class AdminUsersComponent implements OnInit {
   }
 
   loadUsers() {
-    this.adminService.getAllUsers().subscribe(users => {
+    this.adminService.getAllUsers().subscribe((users: AdminUser[]) => {
       this.users.set(users);
     });
+  }
+
+  getUserRole(user: AdminUser): string {
+    const role = ((user as any).role ?? (user as any).roleName ?? '')
+      .toString()
+      .trim()
+      .toUpperCase();
+
+    if (!role || role === 'CLIENT') return 'USER';
+    return role;
   }
 
   getRoleBadgeClass(role: string): string {
@@ -628,7 +638,7 @@ export class AdminUsersComponent implements OnInit {
   viewAccounts(user: AdminUser) {
     this.selectedUserForAccounts.set(user);
     this.loadingAccounts.set(true);
-    this.adminService.getUserAccounts(user.userId).subscribe(accounts => {
+    this.adminService.getUserAccounts(user.userId).subscribe((accounts: AdminAccount[]) => {
       this.userAccounts.set(accounts);
       this.loadingAccounts.set(false);
     });

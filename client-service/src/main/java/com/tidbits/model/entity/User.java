@@ -13,17 +13,11 @@ public class User {
     @Column(name = "user_id")
     private Integer userId;
 
-    @Column(name = "role_id", nullable = false)
-    private Integer roleId;
-
     @Column(name = "username", nullable = false, unique = true)
     private String username;
 
     @Column(name = "email", nullable = false, unique = true)
     private String email;
-
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -37,44 +31,32 @@ public class User {
     @Column(name = "reward_points")
     private Integer rewardPoints;
 
-    @Column(name = "token_version", nullable = false)
-    private Integer tokenVersion;
-
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
     public User() {
     }
 
-    public User(Integer userId, Integer roleId, String username, String email, String passwordHash,
-                LocalDateTime createdAt, String phoneNumber, LocalDateTime lastLogin, Integer rewardPoints, Integer tokenVersion, LocalDate dateOfBirth) {
+    public User(Integer userId, String username, String email,
+                LocalDateTime createdAt, String phoneNumber, LocalDateTime lastLogin, Integer rewardPoints, LocalDate dateOfBirth) {
         this.userId = userId;
-        this.roleId = roleId;
         this.username = username;
         this.email = email;
-        this.passwordHash = passwordHash;
         this.createdAt = createdAt;
         this.phoneNumber = phoneNumber;
         this.lastLogin = lastLogin;
         this.rewardPoints = rewardPoints;
-        this.tokenVersion = tokenVersion;
         this.dateOfBirth = dateOfBirth;
     }
 
     public Integer getUserId() { return userId; }
     public void setUserId(Integer userId) { this.userId = userId; }
 
-    public Integer getRoleId() { return roleId; }
-    public void setRoleId(Integer roleId) { this.roleId = roleId; }
-
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
@@ -87,9 +69,6 @@ public class User {
 
     public Integer getRewardPoints() { return rewardPoints; }
     public void setRewardPoints(Integer rewardPoints) { this.rewardPoints = rewardPoints; }
-
-    public Integer getTokenVersion() { return tokenVersion; }
-    public void setTokenVersion(Integer tokenVersion) { this.tokenVersion = tokenVersion; }
 
     public LocalDate getDateOfBirth() { return dateOfBirth; }
     public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }

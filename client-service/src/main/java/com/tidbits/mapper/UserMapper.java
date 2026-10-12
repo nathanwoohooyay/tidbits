@@ -34,7 +34,6 @@ public final class UserMapper {
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber());
-        user.setPasswordHash(request.getPassword());
         user.setDateOfBirth(request.getDateOfBirth());
         return user;
     }

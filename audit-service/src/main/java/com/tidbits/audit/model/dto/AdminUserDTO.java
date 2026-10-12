@@ -1,6 +1,4 @@
 package com.tidbits.audit.model.dto;
-
-import com.tidbits.audit.model.enums.RoleType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -13,14 +11,12 @@ public class AdminUserDTO {
     private LocalDateTime lastLogin;
     private Integer rewardPoints;
     private LocalDate dateOfBirth;
-    private Integer roleId;
-    private RoleType roleName;
 
     public AdminUserDTO() {}
 
     public AdminUserDTO(Integer userId, String username, String email, String phoneNumber,
                         LocalDateTime createdAt, LocalDateTime lastLogin, Integer rewardPoints,
-                        LocalDate dateOfBirth, Integer roleId, RoleType roleName) {
+                        LocalDate dateOfBirth) {
         this.userId = userId;
         this.username = username;
         this.email = email;
@@ -29,8 +25,6 @@ public class AdminUserDTO {
         this.lastLogin = lastLogin;
         this.rewardPoints = rewardPoints;
         this.dateOfBirth = dateOfBirth;
-        this.roleId = roleId;
-        this.roleName = roleName;
     }
 
     public Integer getUserId() { return userId; }
@@ -49,8 +43,4 @@ public class AdminUserDTO {
     public void setRewardPoints(Integer rewardPoints) { this.rewardPoints = rewardPoints; }
     public LocalDate getDateOfBirth() { return dateOfBirth; }
     public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
-    public Integer getRoleId() { return roleId; }
-    public void setRoleId(Integer roleId) { this.roleId = roleId; }
-    public RoleType getRoleName() { return roleName; }
-    public void setRoleName(RoleType roleName) { this.roleName = roleName; }
 }

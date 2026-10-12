@@ -37,6 +37,11 @@ export class AuthController {
     return this.authService.changePassword(req, res, body);
   }
 
+  @Post('users/:userId/revoke')
+  async revokeAccess(@Req() req: Request, @Res() res: Response) {
+    return this.authService.revokeAccess(req, res, Number(req.params.userId));
+  }
+
   @Get('health')
   health() {
     return this.authService.health();

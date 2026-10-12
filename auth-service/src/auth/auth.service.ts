@@ -24,11 +24,27 @@ type ChangePasswordBody = {
   confirmPassword?: string;
 };
 
+type ProfileUserRow = {
+  user_id: number;
+  username: string;
+};
+
+type AuthUserRow = {
+  password_hash: string;
+  token_version: number;
+  role_name?: string;
+};
+
+type RoleRow = {
+  role_id: number;
+  name: string;
+};
+
 @Injectable()
 export class AuthService implements OnModuleDestroy {
   private readonly secret = process.env.JWT_SECRET as string;
 
-  private readonly pool = new Pool({
+  private readonly profilePool = new Pool({
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT || 5432),
     user: process.env.DB_USER,
@@ -36,8 +52,16 @@ export class AuthService implements OnModuleDestroy {
     database: process.env.DB_NAME,
   });
 
+  private readonly authPool = new Pool({
+    host: process.env.DB_AUTH_HOST || process.env.DB_HOST,
+    port: Number(process.env.DB_AUTH_PORT || process.env.DB_PORT || 5432),
+    user: process.env.DB_AUTH_USER || process.env.DB_USER,
+    password: process.env.DB_AUTH_PASSWORD || process.env.DB_PASSWORD,
+    database: process.env.DB_AUTH_NAME || 'tidbits_auth',
+  });
+
   async onModuleDestroy() {
-    await this.pool.end();
+    await Promise.all([this.profilePool.end(), this.authPool.end()]);
   }
 
   async signup(req: Request, res: Response, body: unknown) {
@@ -56,24 +80,35 @@ export class AuthService implements OnModuleDestroy {
 
     const { normalizedUsername, normalizedEmail, normalizedPhoneNumber, password, dateOfBirth } = validation.data;
 
+    let createdUserId: number | null = null;
+    let authUserCreated = false;
+    const profileClient = await this.profilePool.connect();
+
     try {
       const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+      const defaultRole = await this.lookupRoleByName(DEFAULT_SIGNUP_ROLE);
 
-      const result = await this.pool.query(
+      await profileClient.query('BEGIN');
+
+      const result = await profileClient.query(
         `
-        INSERT INTO users (role_id, username, email, password_hash, phone_number, date_of_birth)
-        VALUES (
-          (SELECT role_id FROM roles WHERE name = $1),
-          $2,
-          $3,
-          $4,
-          $5,
-          $6
-        )
+        INSERT INTO users (username, email, phone_number, date_of_birth)
+        VALUES ($1, $2, $3, $4)
         RETURNING user_id, username, email, phone_number AS "phoneNumber", created_at
         `,
-        [DEFAULT_SIGNUP_ROLE, normalizedUsername, normalizedEmail, passwordHash, normalizedPhoneNumber, dateOfBirth],
+        [normalizedUsername, normalizedEmail, normalizedPhoneNumber, dateOfBirth],
       );
+
+      createdUserId = result.rows[0].user_id;
+      await this.authPool.query(
+        `
+        INSERT INTO users (user_id, password_hash, role_id)
+        VALUES ($1, $2, $3)
+        `,
+        [createdUserId, passwordHash, defaultRole.role_id],
+      );
+      authUserCreated = true;
+      await profileClient.query('COMMIT');
 
       await publishUserAuditEvent({
         eventType: 'SIGNUP',
@@ -89,6 +124,12 @@ export class AuthService implements OnModuleDestroy {
         user: result.rows[0],
       });
     } catch (error) {
+      await profileClient.query('ROLLBACK').catch(() => undefined);
+
+      if (authUserCreated && createdUserId !== null) {
+        await this.authPool.query('DELETE FROM users WHERE user_id = $1', [createdUserId]).catch(() => undefined);
+      }
+
       const dbError = error as { code?: string; constraint?: string; detail?: string };
 
       if (dbError.code === '23505') {
@@ -125,6 +166,8 @@ export class AuthService implements OnModuleDestroy {
         details: 'INTERNAL_SERVER_ERROR',
       });
       return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    } finally {
+      profileClient.release();
     }
   }
 
@@ -145,17 +188,16 @@ export class AuthService implements OnModuleDestroy {
     const { normalizedUsername, password } = validation.data;
 
     try {
-      const result = await this.pool.query(
+      const profileResult = await this.profilePool.query<ProfileUserRow>(
         `
-        SELECT u.user_id, u.password_hash, u.token_version, r.name AS role_name
+        SELECT u.user_id, u.username
         FROM users u
-        JOIN roles r ON r.role_id = u.role_id
         WHERE u.username = $1
         `,
         [normalizedUsername],
       );
 
-      if (result.rows.length === 0) {
+      if (profileResult.rows.length === 0) {
         await publishUserAuditEvent({
           eventType: 'LOGIN',
           userId: null,
@@ -167,12 +209,21 @@ export class AuthService implements OnModuleDestroy {
         return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
       }
 
-      const user = result.rows[0];
-      const passwordMatches = await bcrypt.compare(password || '', user.password_hash);
-      if (!passwordMatches) {
+      const profileUser = profileResult.rows[0];
+      const authResult = await this.authPool.query<AuthUserRow>(
+        `
+        SELECT u.password_hash, u.token_version, r.name::text AS role_name
+        FROM users u
+        JOIN roles r ON r.role_id = u.role_id
+        WHERE user_id = $1
+        `,
+        [profileUser.user_id],
+      );
+
+      if (authResult.rows.length === 0) {
         await publishUserAuditEvent({
           eventType: 'LOGIN',
-          userId: user.user_id,
+          userId: profileUser.user_id,
           username: (body as Record<string, unknown> | undefined)?.username,
           status: 'FAILURE',
           ipAddress: resolveIpAddress(req),
@@ -181,35 +232,50 @@ export class AuthService implements OnModuleDestroy {
         return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
       }
 
-      const token = this.createAccessToken(user.user_id, user.role_name, user.token_version);
+      const authUser = authResult.rows[0];
+      const passwordMatches = await bcrypt.compare(password || '', authUser.password_hash);
+      if (!passwordMatches) {
+        await publishUserAuditEvent({
+          eventType: 'LOGIN',
+          userId: profileUser.user_id,
+          username: (body as Record<string, unknown> | undefined)?.username,
+          status: 'FAILURE',
+          ipAddress: resolveIpAddress(req),
+          details: 'INVALID_LOGIN',
+        });
+        return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
+      }
+
+      const token = this.createAccessToken(profileUser.user_id, authUser.role_name || DEFAULT_SIGNUP_ROLE, authUser.token_version);
       const refreshToken = this.generateRefreshToken();
       const refreshTokenHash = this.hashRefreshToken(refreshToken);
       const refreshTokenExpiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
 
-      await this.pool.query(
-        `
-        INSERT INTO refresh_tokens (user_id, refresh_token, expires_at)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (user_id)
-        DO UPDATE SET
-          refresh_token = EXCLUDED.refresh_token,
-          expires_at = EXCLUDED.expires_at
-        `,
-        [user.user_id, refreshTokenHash, refreshTokenExpiresAt],
-      );
-
-      await this.pool.query(
-        `
-        UPDATE users
-        SET last_login = CURRENT_TIMESTAMP
-        WHERE user_id = $1
-        `,
-        [user.user_id],
-      );
+      await Promise.all([
+        this.authPool.query(
+          `
+          INSERT INTO refresh_tokens (user_id, refresh_token, expires_at)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (user_id)
+          DO UPDATE SET
+            refresh_token = EXCLUDED.refresh_token,
+            expires_at = EXCLUDED.expires_at
+          `,
+          [profileUser.user_id, refreshTokenHash, refreshTokenExpiresAt],
+        ),
+        this.profilePool.query(
+          `
+          UPDATE users
+          SET last_login = CURRENT_TIMESTAMP
+          WHERE user_id = $1
+          `,
+          [profileUser.user_id],
+        ),
+      ]);
 
       await publishUserAuditEvent({
         eventType: 'LOGIN',
-        userId: user.user_id,
+        userId: profileUser.user_id,
         username: (body as Record<string, unknown> | undefined)?.username,
         status: 'SUCCESS',
         ipAddress: resolveIpAddress(req),
@@ -240,26 +306,40 @@ export class AuthService implements OnModuleDestroy {
 
     try {
       const refreshTokenHash = this.hashRefreshToken(refreshToken);
-      const result = await this.pool.query(
+      const authResult = await this.authPool.query<{ user_id: number; expires_at: string; token_version: number }>(
         `
-        SELECT r.user_id, r.expires_at, u.token_version, role.name AS role_name
+        SELECT r.user_id, r.expires_at, u.token_version
         FROM refresh_tokens r
         JOIN users u ON r.user_id = u.user_id
-        JOIN roles role ON role.role_id = u.role_id
         WHERE r.refresh_token = $1
         `,
         [refreshTokenHash],
       );
 
-      if (result.rows.length === 0) {
+      if (authResult.rows.length === 0) {
         return sendError(res, req, 401, 'INVALID_REFRESH_TOKEN', 'invalid refresh token');
       }
 
-      const { user_id: userId, expires_at: tokenExpiresAt, role_name: roleName, token_version: tokenVersion } = result.rows[0];
+      const { user_id: userId, expires_at: tokenExpiresAt, token_version: tokenVersion } = authResult.rows[0];
       if (new Date(tokenExpiresAt) < new Date()) {
         return sendError(res, req, 401, 'EXPIRED_REFRESH_TOKEN', 'refresh token has expired');
       }
 
+      const roleResult = await this.authPool.query<{ role_name: string }>(
+        `
+        SELECT role.name::text AS role_name
+        FROM users u
+        JOIN roles role ON role.role_id = u.role_id
+        WHERE u.user_id = $1
+        `,
+        [userId],
+      );
+
+      if (roleResult.rows.length === 0) {
+        return sendError(res, req, 401, 'INVALID_REFRESH_TOKEN', 'invalid refresh token');
+      }
+
+      const roleName = roleResult.rows[0].role_name;
       const newToken = this.createAccessToken(userId, roleName, tokenVersion);
       return res.json({ accessToken: newToken });
     } catch {
@@ -277,7 +357,7 @@ export class AuthService implements OnModuleDestroy {
 
     try {
       const refreshTokenHash = this.hashRefreshToken(refreshToken);
-      await this.pool.query(
+      await this.authPool.query(
         `
         DELETE FROM refresh_tokens
         WHERE refresh_token = $1
@@ -309,21 +389,31 @@ export class AuthService implements OnModuleDestroy {
     try {
       userId = this.getUserId(String(req.headers.authorization).split(' ')[1]);
 
-      const result = await this.pool.query(
-        `
-        SELECT password_hash, username
-        FROM users
-        WHERE user_id = $1
-        `,
-        [userId],
-      );
+      const [authResult, profileResult] = await Promise.all([
+        this.authPool.query<{ password_hash: string }>(
+          `
+          SELECT password_hash
+          FROM users
+          WHERE user_id = $1
+          `,
+          [userId],
+        ),
+        this.profilePool.query<{ username: string }>(
+          `
+          SELECT username
+          FROM users
+          WHERE user_id = $1
+          `,
+          [userId],
+        ),
+      ]);
 
-      if (result.rows.length === 0) {
+      if (authResult.rows.length === 0 || profileResult.rows.length === 0) {
         return sendError(res, req, 404, 'USER_NOT_FOUND', 'user not found');
       }
 
-      const { password_hash: storedPassword, username: resolvedUsername } = result.rows[0];
-      username = resolvedUsername;
+      const { password_hash: storedPassword } = authResult.rows[0];
+      username = profileResult.rows[0].username;
 
       if (!(await bcrypt.compare(currentPassword, storedPassword))) {
         return sendError(res, req, 422, 'INVALID_CURRENT_PASSWORD', 'current password is incorrect');
@@ -331,7 +421,7 @@ export class AuthService implements OnModuleDestroy {
 
       const hashedNewPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
 
-      await this.pool.query(
+      await this.authPool.query(
         `
         UPDATE users
         SET password_hash = $1, token_version = token_version + 1
@@ -369,6 +459,209 @@ export class AuthService implements OnModuleDestroy {
     }
   }
 
+  async revokeAccess(req: Request, res: Response, userId: number) {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return sendError(res, req, 400, 'INVALID_USER_ID', 'user id must be a positive integer');
+    }
+
+    try {
+      this.requireAdminRole(req);
+
+      const profileResult = await this.profilePool.query<{ username: string }>(
+        `
+        SELECT username
+        FROM users
+        WHERE user_id = $1
+        `,
+        [userId],
+      );
+
+      if (profileResult.rows.length === 0) {
+        return sendError(res, req, 404, 'USER_NOT_FOUND', 'user not found');
+      }
+
+      const updateResult = await this.authPool.query(
+        `
+        UPDATE users
+        SET token_version = token_version + 1
+        WHERE user_id = $1
+        `,
+        [userId],
+      );
+
+      if ((updateResult.rowCount ?? 0) === 0) {
+        return sendError(res, req, 404, 'USER_NOT_FOUND', 'user not found');
+      }
+
+      await this.authPool.query(
+        `
+        DELETE FROM refresh_tokens
+        WHERE user_id = $1
+        `,
+        [userId],
+      );
+
+      await publishUserAuditEvent({
+        eventType: 'ACCESS_REVOKED',
+        userId,
+        username: profileResult.rows[0].username,
+        status: 'SUCCESS',
+        ipAddress: resolveIpAddress(req),
+        details: null,
+      });
+
+      return res.status(204).send();
+    } catch (error) {
+      if ((error as { name?: string }).name === 'TokenExpiredError') {
+        return sendError(res, req, 401, 'UNAUTHORIZED', 'token has expired');
+      }
+
+      if (error instanceof Error && error.message === 'FORBIDDEN') {
+        return sendError(res, req, 403, 'FORBIDDEN', 'forbidden');
+      }
+
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+  }
+
+  async getAllRoles(req: Request, res: Response) {
+    try {
+      this.requireAdminOrAuditorRole(req);
+      const result = await this.authPool.query<RoleRow>(
+        `
+        SELECT role_id, UPPER(name::text) AS name
+        FROM roles
+        ORDER BY role_id
+        `,
+      );
+
+      return res.json(result.rows.map((row) => ({ roleId: row.role_id, name: row.name })));
+    } catch (error) {
+      if ((error as { name?: string }).name === 'TokenExpiredError') {
+        return sendError(res, req, 401, 'UNAUTHORIZED', 'token has expired');
+      }
+
+      if (error instanceof Error && error.message === 'FORBIDDEN') {
+        return sendError(res, req, 403, 'FORBIDDEN', 'forbidden');
+      }
+
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+  }
+
+  async getRoleById(req: Request, res: Response, roleId: number) {
+    if (!Number.isInteger(roleId) || roleId <= 0) {
+      return sendError(res, req, 400, 'INVALID_ROLE_ID', 'role id must be a positive integer');
+    }
+
+    try {
+      this.requireAdminOrAuditorRole(req);
+      const role = await this.lookupRoleById(roleId);
+      return res.json({ roleId: role.role_id, name: role.name.toUpperCase() });
+    } catch (error) {
+      if ((error as { name?: string }).name === 'TokenExpiredError') {
+        return sendError(res, req, 401, 'UNAUTHORIZED', 'token has expired');
+      }
+
+      if (error instanceof Error && error.message === 'FORBIDDEN') {
+        return sendError(res, req, 403, 'FORBIDDEN', 'forbidden');
+      }
+
+      if (error instanceof Error && error.message === 'ROLE_NOT_FOUND') {
+        return sendError(res, req, 404, 'ROLE_NOT_FOUND', 'role not found');
+      }
+
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+  }
+
+  async getUserRole(req: Request, res: Response, userId: number) {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return sendError(res, req, 400, 'INVALID_USER_ID', 'user id must be a positive integer');
+    }
+
+    try {
+      this.requireAdminOrAuditorRole(req);
+      const result = await this.authPool.query<RoleRow>(
+        `
+        SELECT r.role_id, UPPER(r.name::text) AS name
+        FROM users u
+        JOIN roles r ON r.role_id = u.role_id
+        WHERE u.user_id = $1
+        `,
+        [userId],
+      );
+
+      if (result.rows.length === 0) {
+        return sendError(res, req, 404, 'USER_NOT_FOUND', 'user not found');
+      }
+
+      const role = result.rows[0];
+      return res.json({ roleId: role.role_id, name: role.name });
+    } catch (error) {
+      if ((error as { name?: string }).name === 'TokenExpiredError') {
+        return sendError(res, req, 401, 'UNAUTHORIZED', 'token has expired');
+      }
+
+      if (error instanceof Error && error.message === 'FORBIDDEN') {
+        return sendError(res, req, 403, 'FORBIDDEN', 'forbidden');
+      }
+
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+  }
+
+  async updateUserRole(req: Request, res: Response, userId: number, body: unknown) {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return sendError(res, req, 400, 'INVALID_USER_ID', 'user id must be a positive integer');
+    }
+
+    const payload = body as { roleId?: number; roleName?: string } | null;
+    const requestedRoleId = typeof payload?.roleId === 'number' ? payload.roleId : null;
+    const requestedRoleName = typeof payload?.roleName === 'string' ? payload.roleName.trim() : '';
+
+    if (requestedRoleId == null && requestedRoleName.length === 0) {
+      return sendError(res, req, 400, 'MISSING_ROLE', 'either roleId or roleName is required');
+    }
+
+    try {
+      this.requireAdminRole(req);
+
+      const role = requestedRoleId != null
+        ? await this.lookupRoleById(requestedRoleId)
+        : await this.lookupRoleByName(requestedRoleName);
+
+      const updateResult = await this.authPool.query(
+        `
+        UPDATE users
+        SET role_id = $1
+        WHERE user_id = $2
+        `,
+        [role.role_id, userId],
+      );
+
+      if ((updateResult.rowCount ?? 0) === 0) {
+        return sendError(res, req, 404, 'USER_NOT_FOUND', 'user not found');
+      }
+
+      return res.json({ roleId: role.role_id, name: role.name.toUpperCase() });
+    } catch (error) {
+      if ((error as { name?: string }).name === 'TokenExpiredError') {
+        return sendError(res, req, 401, 'UNAUTHORIZED', 'token has expired');
+      }
+
+      if (error instanceof Error && error.message === 'FORBIDDEN') {
+        return sendError(res, req, 403, 'FORBIDDEN', 'forbidden');
+      }
+
+      if (error instanceof Error && error.message === 'ROLE_NOT_FOUND') {
+        return sendError(res, req, 404, 'ROLE_NOT_FOUND', 'role not found');
+      }
+
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+  }
+
   health() {
     return { status: 'up' };
   }
@@ -396,6 +689,70 @@ export class AuthService implements OnModuleDestroy {
   private getUserId(token: string) {
     const payload = jwt.verify(token, this.secret) as jwt.JwtPayload;
     return Number(payload.sub);
+  }
+
+  private async lookupRoleById(roleId: number) {
+    const result = await this.authPool.query<RoleRow>(
+      `
+      SELECT role_id, name::text AS name
+      FROM roles
+      WHERE role_id = $1
+      `,
+      [roleId],
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('ROLE_NOT_FOUND');
+    }
+
+    return result.rows[0];
+  }
+
+  private async lookupRoleByName(roleName: string) {
+    const normalizedRoleName = roleName.trim().toLowerCase();
+    const result = await this.authPool.query<RoleRow>(
+      `
+      SELECT role_id, name::text AS name
+      FROM roles
+      WHERE name = $1::role_type
+      `,
+      [normalizedRoleName],
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('ROLE_NOT_FOUND');
+    }
+
+    return result.rows[0];
+  }
+
+  private requireAdminRole(req: Request) {
+    const roles = this.getRequestRoles(req);
+    if (!roles.includes('ADMIN')) {
+      throw new Error('FORBIDDEN');
+    }
+  }
+
+  private requireAdminOrAuditorRole(req: Request) {
+    const roles = this.getRequestRoles(req);
+    if (!roles.includes('ADMIN') && !roles.includes('AUDITOR')) {
+      throw new Error('FORBIDDEN');
+    }
+  }
+
+  private getRequestRoles(req: Request) {
+    const authorization = req.headers.authorization;
+    if (!authorization) {
+      throw new Error('FORBIDDEN');
+    }
+
+    const [scheme, token] = authorization.split(' ', 2);
+    if (scheme !== 'Bearer' || !token) {
+      throw new Error('FORBIDDEN');
+    }
+
+    const payload = jwt.verify(token, this.secret) as jwt.JwtPayload;
+    return Array.isArray(payload.roles) ? payload.roles.map((role: unknown) => String(role).toUpperCase()) : [];
   }
 
   private getRefreshCookieOptions() {

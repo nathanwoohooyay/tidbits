@@ -15,9 +15,6 @@ public class UserFullRef {
     @Column(name = "user_id")
     private Integer userId;
 
-    @Column(name = "role_id", nullable = false)
-    private Integer roleId;
-
     @Column(name = "username", nullable = false)
     private String username;
 
@@ -39,12 +36,8 @@ public class UserFullRef {
     @Column(name = "date_of_birth", nullable = false)
     private LocalDate dateOfBirth;
 
-    @Column(name = "token_version", nullable = false)
-    private Integer tokenVersion;
-
     // Getters
     public Integer getUserId() { return userId; }
-    public Integer getRoleId() { return roleId; }
     public String getUsername() { return username; }
     public String getEmail() { return email; }
     public String getPhoneNumber() { return phoneNumber; }
@@ -52,5 +45,4 @@ public class UserFullRef {
     public LocalDateTime getLastLogin() { return lastLogin; }
     public Integer getRewardPoints() { return rewardPoints; }
     public LocalDate getDateOfBirth() { return dateOfBirth; }
-    public Integer getTokenVersion() { return tokenVersion; }
 }

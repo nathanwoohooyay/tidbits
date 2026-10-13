@@ -21,7 +21,7 @@ export interface AdminUser {
   userId: number;
   username: string;
   email: string;
-  phone: string;
+  phoneNumber: string;
   rewardPoints: number;
   role: string;
   createdAt: string;

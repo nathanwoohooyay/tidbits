@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { AdminUser, AdminAccount } from '../../../core/models/models';
+import { PhoneFormatPipe } from './phoneformat.pipe';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PhoneFormatPipe],
   template: `
     <div class="users-container animate-fade-in">
       <div class="page-header">
@@ -88,7 +89,7 @@ import { AdminUser, AdminAccount } from '../../../core/models/models';
                   <span class="user-name-cell">{{ user.username }}</span>
                 </td>
                 <td class="text-secondary">{{ user.email || '—' }}</td>
-                <td class="mono-font text-secondary">{{ user.phone || '—' }}</td>
+                <td class="mono-font text-secondary">{{ (user.phoneNumber | phoneFormat) || '—' }}</td>
                 <td class="mono-font text-emerald">{{ (user.rewardPoints || 0) | number }} pts</td>
                 <td>
                   <span class="badge" [ngClass]="getRoleBadgeClass(getUserRole(user))">

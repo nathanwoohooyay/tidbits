@@ -235,6 +235,12 @@ body::after {
   border: 1px solid rgba(138, 78, 35, 0.32);
 }
 
+.badge-reporter {
+  background: rgba(47, 95, 119, 0.13);
+  color: #2f5f77;
+  border: 1px solid rgba(47, 95, 119, 0.3);
+}
+
 .badge-user {
   background: rgba(87, 64, 50, 0.1);
   color: #574032;

@@ -655,7 +655,8 @@ export class AdminUsersComponent implements OnInit {
 
   getRoleBadgeClass(role: string): string {
     if (role === 'ADMIN') return 'badge-admin';
-    if (role === 'AUDITOR' || role === 'REPORTER') return 'badge-auditor';
+    if (role === 'AUDITOR') return 'badge-auditor';
+    if (role === 'REPORTER') return 'badge-reporter';
     return 'badge-user';
   }
 

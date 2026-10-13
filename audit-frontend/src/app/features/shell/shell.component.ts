@@ -42,8 +42,11 @@ import { AuthService } from '../../core/services/auth.service';
             </div>
             <div class="user-details">
               <div class="user-name">{{ authService.currentUser()?.username || 'Examiner' }}</div>
-              <div class="badge" [ngClass]="authService.isAdmin() ? 'badge-admin' : 'badge-auditor'">
-                {{ authService.userRole() || 'AUDITOR' }}
+              <div
+                class="badge"
+                [ngClass]="authService.roleBadgeClass()"
+              >
+                {{ authService.userRole() }}
               </div>
             </div>
           </div>

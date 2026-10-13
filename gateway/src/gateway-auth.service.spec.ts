@@ -65,6 +65,21 @@ describe('GatewayAuthService', () => {
     );
   });
 
+  it('allows reporter tokens on audit routes', async () => {
+    const service = new GatewayAuthService();
+    const token = jwt.sign({ sub: 42, roles: ['REPORTER'], tokenVersion: 3 }, 'test-secret', {
+      algorithm: 'HS256',
+    });
+    const request = {
+      originalUrl: '/audit/api/logs/users',
+      headers: { authorization: `Bearer ${token}` },
+    } as Request;
+
+    queryMock.mockResolvedValue({ rows: [{ token_version: 3 }] });
+
+    await expect(service.authorizeRequest(request, '/audit')).resolves.toBeUndefined();
+  });
+
   it('rejects a mismatched token version with forbidden', async () => {
     const service = new GatewayAuthService();
     const token = jwt.sign({ sub: '42', roles: ['CLIENT'], tokenVersion: '2' }, 'test-secret', {

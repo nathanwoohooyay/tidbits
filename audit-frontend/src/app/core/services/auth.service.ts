@@ -17,7 +17,7 @@ export class AuthService {
   readonly isAuthenticated = computed(() => !!this.currentUser());
   readonly userRole = computed<UserRole | null>(() => this.currentUser()?.role || null);
   readonly isAdmin = computed(() => this.userRole() === 'ADMIN');
-  readonly isAuditor = computed(() => this.userRole() === 'AUDITOR' || this.userRole() === 'ADMIN');
+  readonly isAuditor = computed(() => ['ADMIN', 'AUDITOR', 'REPORTER'].includes(this.userRole() || ''));
 
   constructor(
     private http: HttpClient,
@@ -70,6 +70,8 @@ export class AuthService {
             parsedRole = 'ADMIN';
           } else if (decoded.roles.includes('AUDITOR') || decoded.roles.includes('ROLE_AUDITOR')) {
             parsedRole = 'AUDITOR';
+          } else if (decoded.roles.includes('REPORTER') || decoded.roles.includes('ROLE_REPORTER')) {
+            parsedRole = 'REPORTER';
           }
         }
         username = usernameFallback || username;

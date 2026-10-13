@@ -1,6 +1,6 @@
 // Core Models
 
-export type UserRole = 'ADMIN' | 'AUDITOR' | 'USER';
+export type UserRole = 'ADMIN' | 'AUDITOR' | 'REPORTER' | 'USER';
 
 export interface AuthUser {
   userId?: number;

@@ -67,6 +67,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
             <option value="ALL">All Roles</option>
             <option value="ADMIN">ADMIN</option>
             <option value="AUDITOR">AUDITOR</option>
+            <option value="REPORTER">REPORTER</option>
             <option value="USER">USER</option>
           </select>
         </div>
@@ -213,6 +214,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               <select class="input-control" [(ngModel)]="newRoleSelection">
                 <option value="USER">USER (Standard Trader)</option>
                 <option value="AUDITOR">AUDITOR (Compliance & Surveillance)</option>
+                <option value="REPORTER">REPORTER (Read-Only Reporting)</option>
                 <option value="ADMIN">ADMIN (Full Administrative Control)</option>
               </select>
             </div>
@@ -653,7 +655,7 @@ export class AdminUsersComponent implements OnInit {
 
   getRoleBadgeClass(role: string): string {
     if (role === 'ADMIN') return 'badge-admin';
-    if (role === 'AUDITOR') return 'badge-auditor';
+    if (role === 'AUDITOR' || role === 'REPORTER') return 'badge-auditor';
     return 'badge-user';
   }
 

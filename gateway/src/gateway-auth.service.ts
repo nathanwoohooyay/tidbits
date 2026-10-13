@@ -46,7 +46,7 @@ export class GatewayAuthService implements OnModuleDestroy {
       throw new GatewayAuthError(401, 'Unauthorized');
     }
 
-    if ((routePrefix === "/audit" || routePrefix === "/metrics") && role !== "ADMIN" && role !== "AUDITOR") {
+    if ((routePrefix === "/audit" || routePrefix === "/metrics") && !["ADMIN", "AUDITOR", "REPORTER"].includes(role || "")) {
       throw new GatewayAuthError(403, 'Forbidden');
     }
 

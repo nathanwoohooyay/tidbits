@@ -721,7 +721,7 @@ export class AdminUsersComponent implements OnInit {
     this.adminService.revokeUserAccess(user.userId).subscribe({
       next: () => {
         this.revoking.set(false);
-        this.showToast(`Access revoked for ${user.username}. Active sessions terminated and auth tokens invalidated.`, 'danger');
+          this.showToast(`Access revoked for ${user.username}. Active sessions terminated and auth tokens invalidated.`, 'success');
         this.closeRevokeModal();
       },
       error: () => {

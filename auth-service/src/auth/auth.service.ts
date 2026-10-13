@@ -387,7 +387,7 @@ export class AuthService implements OnModuleDestroy {
     let username: string | null = null;
 
     try {
-      userId = this.getUserId(String(req.headers.authorization).split(' ')[1]);
+      userId = this.getUser(String(req.headers.authorization).split(' ')[1]).userId;
 
       const [authResult, profileResult] = await Promise.all([
         this.authPool.query<{ password_hash: string }>(
@@ -465,8 +465,6 @@ export class AuthService implements OnModuleDestroy {
     }
 
     try {
-      this.requireAdminRole(req);
-
       const profileResult = await this.profilePool.query<{ username: string }>(
         `
         SELECT username
@@ -517,6 +515,7 @@ export class AuthService implements OnModuleDestroy {
       }
 
       if (error instanceof Error && error.message === 'FORBIDDEN') {
+        console.log("FORBIDDEN error here", error)
         return sendError(res, req, 403, 'FORBIDDEN', 'forbidden');
       }
 
@@ -526,7 +525,6 @@ export class AuthService implements OnModuleDestroy {
 
   async getAllRoles(req: Request, res: Response) {
     try {
-      this.requireAdminOrAuditorRole(req);
       const result = await this.authPool.query<RoleRow>(
         `
         SELECT role_id, UPPER(name::text) AS name
@@ -555,7 +553,6 @@ export class AuthService implements OnModuleDestroy {
     }
 
     try {
-      this.requireAdminOrAuditorRole(req);
       const role = await this.lookupRoleById(roleId);
       return res.json({ roleId: role.role_id, name: role.name.toUpperCase() });
     } catch (error) {
@@ -581,7 +578,6 @@ export class AuthService implements OnModuleDestroy {
     }
 
     try {
-      this.requireAdminOrAuditorRole(req);
       const result = await this.authPool.query<RoleRow>(
         `
         SELECT r.role_id, UPPER(r.name::text) AS name
@@ -625,7 +621,6 @@ export class AuthService implements OnModuleDestroy {
     }
 
     try {
-      this.requireAdminRole(req);
 
       const role = requestedRoleId != null
         ? await this.lookupRoleById(requestedRoleId)
@@ -686,9 +681,12 @@ export class AuthService implements OnModuleDestroy {
     );
   }
 
-  private getUserId(token: string) {
+  private getUser(token: string) {
     const payload = jwt.verify(token, this.secret) as jwt.JwtPayload;
-    return Number(payload.sub);
+    return {
+      userId: Number(payload.sub),
+      roles: Array.isArray(payload.roles) ? payload.roles.map((role: unknown) => String(role).toUpperCase()) : [],
+    };
   }
 
   private async lookupRoleById(roleId: number) {
@@ -724,35 +722,6 @@ export class AuthService implements OnModuleDestroy {
     }
 
     return result.rows[0];
-  }
-
-  private requireAdminRole(req: Request) {
-    const roles = this.getRequestRoles(req);
-    if (!roles.includes('ADMIN')) {
-      throw new Error('FORBIDDEN');
-    }
-  }
-
-  private requireAdminOrAuditorRole(req: Request) {
-    const roles = this.getRequestRoles(req);
-    if (!roles.includes('ADMIN') && !roles.includes('AUDITOR')) {
-      throw new Error('FORBIDDEN');
-    }
-  }
-
-  private getRequestRoles(req: Request) {
-    const authorization = req.headers.authorization;
-    if (!authorization) {
-      throw new Error('FORBIDDEN');
-    }
-
-    const [scheme, token] = authorization.split(' ', 2);
-    if (scheme !== 'Bearer' || !token) {
-      throw new Error('FORBIDDEN');
-    }
-
-    const payload = jwt.verify(token, this.secret) as jwt.JwtPayload;
-    return Array.isArray(payload.roles) ? payload.roles.map((role: unknown) => String(role).toUpperCase()) : [];
   }
 
   private getRefreshCookieOptions() {

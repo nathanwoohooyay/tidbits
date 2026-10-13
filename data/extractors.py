@@ -12,10 +12,9 @@ class DataExtractor:
     def extract_users():
         """Extract user data"""
         query = """
-        SELECT u.user_id, u.username, u.email, r.name as role, 
-               u.created_at, u.reward_points, u.last_login
+         SELECT u.user_id, u.username, u.email,
+             u.created_at, u.reward_points, u.last_login
         FROM users u
-        JOIN roles r ON u.role_id = r.role_id
         ORDER BY u.user_id
         """
         with db.get_cursor(dict_cursor=True) as cursor:

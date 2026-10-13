@@ -23,7 +23,7 @@ public class AccountHoldingController {
                 .orElseThrow(() -> new ResourceNotFoundException("Holding " + holdingId + " not found for account " + accountId + "."))));
     }
     
-    @GetMapping("/")
+    @GetMapping("")
     public ResponseEntity<List<AccountHoldingDTO>> getAllAccountHoldings(@PathVariable Integer accountId) {
         return ResponseEntity.ok(accountHoldingService.getAllAccountHoldingsByAccountId(accountId)
                 .stream()

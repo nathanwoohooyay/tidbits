@@ -12,7 +12,6 @@ import {
   validateLoginInput,
   validateSignupInput,
 } from '../validation/authValidation';
-import { isAuditLoginRole } from './rolePolicy';
 
 const SALT_ROUNDS = 10;
 const DEFAULT_SIGNUP_ROLE = 'client';
@@ -247,18 +246,6 @@ export class AuthService implements OnModuleDestroy {
         return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
       }
 
-      if (!isAuditLoginRole(authUser.role_name)) {
-        await publishUserAuditEvent({
-          eventType: 'LOGIN',
-          userId: profileUser.user_id,
-          username: (body as Record<string, unknown> | undefined)?.username,
-          status: 'FAILURE',
-          ipAddress: resolveIpAddress(req),
-          details: 'ROLE_NOT_ALLOWED',
-        });
-        return sendError(res, req, 403, 'ROLE_NOT_ALLOWED', 'this account is not authorized to access the audit portal');
-      }
-
       const token = this.createAccessToken(profileUser.user_id, authUser.role_name || DEFAULT_SIGNUP_ROLE, authUser.token_version);
       const refreshToken = this.generateRefreshToken();
       const refreshTokenHash = this.hashRefreshToken(refreshToken);
@@ -353,9 +340,6 @@ export class AuthService implements OnModuleDestroy {
       }
 
       const roleName = roleResult.rows[0].role_name;
-      if (!isAuditLoginRole(roleName)) {
-        return sendError(res, req, 403, 'ROLE_NOT_ALLOWED', 'this account is not authorized to access the audit portal');
-      }
 
       const newToken = this.createAccessToken(userId, roleName, tokenVersion);
       return res.json({ accessToken: newToken });

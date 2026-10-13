@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { AdminUser, AdminAccount } from '../../../core/models/models';
-import { PhoneFormatPipe } from './phoneformat.pipe';
+import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
 
 @Component({
   selector: 'app-admin-users',
@@ -51,13 +51,18 @@ import { PhoneFormatPipe } from './phoneformat.pipe';
             type="text"
             class="input-control search-input"
             placeholder="Search by username, email, or user ID..."
-            [(ngModel)]="searchQuery"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
           />
         </div>
 
         <div class="role-filter-group">
           <label>Filter Role:</label>
-          <select class="input-control select-role" [(ngModel)]="roleFilter">
+          <select
+            class="input-control select-role"
+            [ngModel]="roleFilter()"
+            (ngModelChange)="roleFilter.set($event)"
+          >
             <option value="ALL">All Roles</option>
             <option value="ADMIN">ADMIN</option>
             <option value="AUDITOR">AUDITOR</option>
@@ -568,8 +573,8 @@ import { PhoneFormatPipe } from './phoneformat.pipe';
 })
 export class AdminUsersComponent implements OnInit {
   users = signal<AdminUser[]>([]);
-  searchQuery = '';
-  roleFilter = 'ALL';
+  searchQuery = signal('');
+  roleFilter = signal('ALL');
 
   // Modals state
   selectedUserForAccounts = signal<AdminUser | null>(null);
@@ -589,8 +594,8 @@ export class AdminUsersComponent implements OnInit {
 
   filteredUsers = computed(() => {
     let list = this.users();
-    const query = this.searchQuery.toLowerCase().trim();
-    const role = this.roleFilter;
+    const query = this.searchQuery().toLowerCase().trim();
+    const role = this.roleFilter();
 
     if (query) {
       list = list.filter((u: AdminUser) =>

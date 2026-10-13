@@ -93,11 +93,11 @@ export class AuthService {
       console.warn('Could not decode JWT payload:', e);
     }
 
-    if (!parsedRole) {
+    if (!parsedRole || !['ADMIN', 'AUDITOR', 'REPORTER'].includes(parsedRole)) {
       localStorage.removeItem(this.TOKEN_KEY);
       localStorage.removeItem(this.USER_KEY);
       this.currentUser.set(null);
-      return;
+      throw new Error('AUDIT_ROLE_REQUIRED');
     }
 
     const authUser: AuthUser = {

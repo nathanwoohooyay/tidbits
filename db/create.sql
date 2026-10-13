@@ -1,26 +1,17 @@
-CREATE TYPE role_type AS ENUM('client', 'auditor', 'reporter', 'admin');
 CREATE TYPE order_type_enum AS ENUM('buy', 'sell');
 CREATE TYPE order_status_type AS ENUM('created', 'pending', 'placed', 'accepted', 'filled', 'canceled', 'rejected');
 CREATE TYPE transaction_type AS ENUM('buy', 'sell', 'deposit', 'withdraw');
 CREATE TYPE log_status_type AS ENUM('success', 'failure');
 
-CREATE TABLE roles (
-    role_id SERIAL PRIMARY KEY,
-    name role_type NOT NULL
-);
-
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
-    role_id INT NOT NULL REFERENCES roles(role_id),
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     phone_number TEXT UNIQUE,
     last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     reward_points INT DEFAULT 0 NOT NULL,
-    date_of_birth DATE NOT NULL,
-    token_version INT DEFAULT 0 NOT NULL
+    date_of_birth DATE NOT NULL
 );
 
 CREATE TABLE accounts (
@@ -101,12 +92,4 @@ CREATE TABLE transaction_logs(
     order_id INT REFERENCES orders(order_id),
     status log_status_type,
     happened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-CREATE TABLE refresh_tokens (
-    token_id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL UNIQUE REFERENCES users(user_id),
-    refresh_token TEXT NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP NOT NULL
 );

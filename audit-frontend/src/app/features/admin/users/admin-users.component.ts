@@ -1,8 +1,9 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { catchError, forkJoin, of } from 'rxjs';
 import { AdminService } from '../../../core/services/admin.service';
-import { AdminUser, AdminAccount } from '../../../core/models/models';
+import { AdminUser, AdminAccount, RoleDefinition } from '../../../core/models/models';
 import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
 
 @Component({
@@ -252,7 +253,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
             </p>
             <div class="revoke-consequences">
               <ul>
-                <li>Increments token_version in user_roles table</li>
+                <li>Increments the auth token version and clears the active refresh token</li>
                 <li>Immediately rejects all existing JWT tokens</li>
                 <li>Forces immediate logout across all active browser sessions</li>
               </ul>
@@ -620,12 +621,28 @@ export class AdminUsersComponent implements OnInit {
 
   loadUsers() {
     this.adminService.getAllUsers().subscribe((users: AdminUser[]) => {
-      this.users.set(users);
+      if (users.length === 0) {
+        this.users.set(users);
+        return;
+      }
+
+      forkJoin(
+        users.map((user) =>
+          this.adminService.getUserRole(user.userId).pipe(catchError(() => of(null)))
+        )
+      ).subscribe((roles: Array<RoleDefinition | null>) => {
+        this.users.set(
+          users.map((user, index) => ({
+            ...user,
+            role: this.normalizeRoleName(roles[index]?.name),
+          }))
+        );
+      });
     });
   }
 
   getUserRole(user: AdminUser): string {
-    const role = ((user as any).role ?? (user as any).roleName ?? '')
+    const role = (user.role ?? '')
       .toString()
       .trim()
       .toUpperCase();
@@ -701,7 +718,7 @@ export class AdminUsersComponent implements OnInit {
     this.adminService.revokeUserAccess(user.userId).subscribe({
       next: () => {
         this.revoking.set(false);
-        this.showToast(`Access revoked for ${user.username}. Active sessions terminated and token_version incremented.`, 'danger');
+        this.showToast(`Access revoked for ${user.username}. Active sessions terminated and auth tokens invalidated.`, 'danger');
         this.closeRevokeModal();
       },
       error: () => {
@@ -717,5 +734,14 @@ export class AdminUsersComponent implements OnInit {
     setTimeout(() => {
       this.toastMessage.set(null);
     }, 4500);
+  }
+
+  private normalizeRoleName(roleName?: string) {
+    if (!roleName) {
+      return 'USER';
+    }
+
+    const normalized = roleName.trim().toUpperCase();
+    return normalized === 'CLIENT' ? 'USER' : normalized;
   }
 }

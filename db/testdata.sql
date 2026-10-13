@@ -6,50 +6,38 @@ BEGIN;
 -- =========================================================
 
 WITH user_seed(
-    role_name,
     username,
     email,
-    password_hash,
     phone_number,
     date_of_birth
 ) AS (
     VALUES
-        ('client'::role_type,   'johnsmith', 'john@example.com',      'hash1',  '5551000001', DATE '1990-05-15'),
-        ('client'::role_type,   'janedoe',   'jane@example.com',      'hash2',  '5551000002', DATE '1988-02-20'),
-        ('client'::role_type,   'mikebrown', 'mike@example.com',      'hash3',  '5551000003', DATE '1995-08-11'),
-        ('client'::role_type,   'alicegreen','alice@example.com',     'hash4',  '5551000004', DATE '1992-03-05'),
-        ('client'::role_type,   'bobwilson', 'bob@example.com',       'hash5',  '5551000005', DATE '1987-09-28'),
-        ('auditor'::role_type,  'auditor1',  'auditor1@example.com',  'hash6',  '5551000006', DATE '1985-01-01'),
-        ('auditor'::role_type,  'auditor2',  'auditor2@example.com',  'hash7',  '5551000007', DATE '1983-04-10'),
-        ('reporter'::role_type, 'reporter1', 'reporter1@example.com', 'hash8',  '5551000008', DATE '1991-07-12'),
-        ('reporter'::role_type, 'reporter2', 'reporter2@example.com', 'hash9',  '5551000009', DATE '1994-12-25'),
-        ('admin'::role_type,    'admin1',    'admin@example.com',     'hash10', '5551000010', DATE '1980-06-15')
+        ('johnsmith', 'john@example.com',      '5551000001', DATE '1990-05-15'),
+        ('janedoe',   'jane@example.com',      '5551000002', DATE '1988-02-20'),
+        ('mikebrown', 'mike@example.com',      '5551000003', DATE '1995-08-11'),
+        ('alicegreen','alice@example.com',     '5551000004', DATE '1992-03-05'),
+        ('bobwilson', 'bob@example.com',       '5551000005', DATE '1987-09-28'),
+        ('auditor1',  'auditor1@example.com',  '5551000006', DATE '1985-01-01'),
+        ('auditor2',  'auditor2@example.com',  '5551000007', DATE '1983-04-10'),
+        ('reporter1', 'reporter1@example.com', '5551000008', DATE '1991-07-12'),
+        ('reporter2', 'reporter2@example.com', '5551000009', DATE '1994-12-25'),
+        ('admin1',    'admin@example.com',     '5551000010', DATE '1980-06-15')
 )
 INSERT INTO users (
-    role_id,
     username,
     email,
-    password_hash,
     phone_number,
     date_of_birth
 )
 SELECT
-    (
-        SELECT MIN(r.role_id)
-        FROM roles r
-        WHERE r.name = s.role_name
-    ),
     s.username,
     s.email,
-    s.password_hash,
     s.phone_number,
     s.date_of_birth
 FROM user_seed s
 ON CONFLICT (username) DO UPDATE
 SET
-    role_id = EXCLUDED.role_id,
     email = EXCLUDED.email,
-    password_hash = EXCLUDED.password_hash,
     phone_number = EXCLUDED.phone_number,
     date_of_birth = EXCLUDED.date_of_birth;
 
@@ -1051,41 +1039,5 @@ WHERE NOT EXISTS (
       AND existing_log.status
             IS NOT DISTINCT FROM 'success'::log_status_type
 );
-
-
--- =========================================================
--- REFRESH TOKENS
--- Upsert by unique user_id
--- =========================================================
-
-WITH token_seed(
-    username,
-    refresh_token,
-    expires_at
-) AS (
-    VALUES
-        ('johnsmith', 'rtoken1',   CURRENT_TIMESTAMP + INTERVAL '30 days'),
-        ('janedoe',   'rtoken2',   CURRENT_TIMESTAMP + INTERVAL '30 days'),
-        ('mikebrown', 'rtoken3',   CURRENT_TIMESTAMP + INTERVAL '30 days'),
-        ('alicegreen','rtoken4',   CURRENT_TIMESTAMP + INTERVAL '30 days'),
-        ('bobwilson', 'rtoken5',   CURRENT_TIMESTAMP + INTERVAL '30 days'),
-        ('admin1',    'admintoken', CURRENT_TIMESTAMP + INTERVAL '30 days')
-)
-INSERT INTO refresh_tokens (
-    user_id,
-    refresh_token,
-    expires_at
-)
-SELECT
-    u.user_id,
-    s.refresh_token,
-    s.expires_at
-FROM token_seed s
-JOIN users u
-    ON u.username = s.username
-ON CONFLICT (user_id) DO UPDATE
-SET
-    refresh_token = EXCLUDED.refresh_token,
-    expires_at = EXCLUDED.expires_at;
 
 COMMIT;

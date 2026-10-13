@@ -3,7 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
-const allowedOrigins = (process.env.AUTH_CORS_ORIGINS || 'http://localhost:8084,http://localhost:4200,http://localhost:8080')
+const allowedOrigins = (process.env.AUTH_CORS_ORIGINS || 'http://localhost:8084,http://localhost:4200,http://localhost:8080,http://localhost:9875')
   .split(',')
   .map((origin) => origin.trim())
   .filter((origin) => origin.length > 0);

@@ -23,11 +23,11 @@ export class GatewayAuthService implements OnModuleDestroy {
   private readonly jwtSecret = process.env.JWT_SECRET;
 
   private readonly pool = new Pool({
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT ?? 5432),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: process.env.DB_AUTH_HOST || process.env.DB_HOST,
+    port: Number(process.env.DB_AUTH_PORT ?? process.env.DB_PORT ?? 5432),
+    user: process.env.DB_AUTH_USER || process.env.DB_USER,
+    password: process.env.DB_AUTH_PASSWORD || process.env.DB_PASSWORD,
+    database: process.env.DB_AUTH_NAME || 'tidbits_auth',
   });
 
   async authorizeRequest(request: Request, routePrefix: string): Promise<void> {
@@ -45,7 +45,7 @@ export class GatewayAuthService implements OnModuleDestroy {
     if (persistedTokenVersion !== tokenVersion) {
       throw new GatewayAuthError(401, 'Unauthorized');
     }
-console.log(role);
+
     if ((routePrefix === "/audit" || routePrefix === "/metrics") && role !== "ADMIN" && role !== "AUDITOR") {
       throw new GatewayAuthError(403, 'Forbidden');
     }

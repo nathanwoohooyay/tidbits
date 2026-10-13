@@ -23,8 +23,13 @@ export interface AdminUser {
   email: string;
   phoneNumber: string;
   rewardPoints: number;
-  role: string;
+  role?: string;
   createdAt: string;
+}
+
+export interface RoleDefinition {
+  roleId: number;
+  name: string;
 }
 
 export interface AdminAccount {

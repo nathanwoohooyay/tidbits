@@ -197,6 +197,30 @@ paths:
         '500':
           $ref: '#/components/responses/ServiceInternalServerError'
 
+  /api/auth/whoami:
+    get:
+      tags:
+        - Authentication
+      summary: Get the authenticated user's identity and profile
+      description: |
+        Resolves the bearer token subject to a user record and returns the current authenticated user's profile together with their platform role and last login timestamp.
+      operationId: whoAmI
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhoAmIResponse'
+        '401':
+          $ref: '#/components/responses/AuthUnauthorized'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/AuthInternalServerError'
+
   /api/auth/health:
     get:
       tags:
@@ -1758,6 +1782,19 @@ components:
           type: string
           format: date
           example: 1990-04-15
+
+    WhoAmIResponse:
+      allOf:
+        - $ref: '#/components/schemas/UserDTO'
+        - type: object
+          properties:
+            role:
+              type: string
+              example: CLIENT
+            lastLogin:
+              type: string
+              format: date-time
+              example: 2026-10-12T09:30:00Z
 
     ChangePasswordDTO:
       type: object

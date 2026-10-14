@@ -56,6 +56,31 @@ test('login route preserves body and refresh cookie handling', async () => {
   await app.close();
 });
 
+test('whoami route stays on /api/auth/whoami and forwards authorization', async () => {
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule],
+  })
+    .overrideProvider(AuthService)
+    .useValue({
+      whoAmI: (req: { headers: { authorization?: string } }, res: { json: (value: unknown) => unknown }) => {
+        return res.json({ authorization: req.headers.authorization });
+      },
+    })
+    .compile();
+
+  const app = moduleRef.createNestApplication();
+  configureApp(app);
+  await app.init();
+
+  await request(app.getHttpServer())
+    .get('/api/auth/whoami')
+    .set('Authorization', 'Bearer stub-token')
+    .expect(200)
+    .expect({ authorization: 'Bearer stub-token' });
+
+  await app.close();
+});
+
 test('allowed origins still get auth CORS headers and OPTIONS 204', async () => {
   const app = await createApp();
   await app.init();

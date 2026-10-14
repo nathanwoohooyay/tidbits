@@ -24,6 +24,23 @@ type ChangePasswordBody = {
   confirmPassword?: string;
 };
 
+type WhoAmIUser = {
+  userId: number;
+  username: string;
+  email: string;
+  phoneNumber: string | null;
+  rewardPoints: number;
+  dateOfBirth: string;
+  lastLogin: string;
+  role: string;
+};
+
+type WhoAmIProfileRow = Omit<WhoAmIUser, 'role'>;
+
+type WhoAmIRoleRow = {
+  role: string;
+};
+
 type ProfileUserRow = {
   user_id: number;
   username: string;
@@ -460,6 +477,61 @@ export class AuthService implements OnModuleDestroy {
     }
   }
 
+  async whoAmI(req: Request, res: Response) {
+    let userId: {userId: number, roles: string[] };
+
+    try {
+      userId = this.getUserFromAuthorizationHeader(req.headers.authorization);
+    } catch (error) {
+      const authErrorResponse = this.handleAuthenticationError(req, res, error);
+      if (authErrorResponse) {
+        return authErrorResponse;
+      }
+
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+
+    try {
+      const [profileResult, roleResult] = await Promise.all([
+        this.profilePool.query<WhoAmIProfileRow>(
+          `
+          SELECT
+            u.user_id AS "userId",
+            u.username,
+            u.email,
+            u.phone_number AS "phoneNumber",
+            u.reward_points AS "rewardPoints",
+            u.date_of_birth AS "dateOfBirth",
+            u.last_login AS "lastLogin"
+          FROM users u
+          WHERE u.user_id = $1
+          `,
+          [userId.userId],
+        ),
+        this.authPool.query<WhoAmIRoleRow>(
+          `
+          SELECT UPPER(r.name::text) AS role
+          FROM users u
+          JOIN roles r ON r.role_id = u.role_id
+          WHERE u.user_id = $1
+          `,
+          [userId.userId],
+        ),
+      ]);
+
+      if (profileResult.rows.length === 0 || roleResult.rows.length === 0) {
+        return sendError(res, req, 404, 'USER_NOT_FOUND', 'user not found');
+      }
+
+      return res.json({
+        ...profileResult.rows[0],
+        role: roleResult.rows[0].role,
+      });
+    } catch {
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+  }
+
   async revokeAccess(req: Request, res: Response, userId: number) {
     if (!Number.isInteger(userId) || userId <= 0) {
       return sendError(res, req, 400, 'INVALID_USER_ID', 'user id must be a positive integer');
@@ -682,6 +754,26 @@ export class AuthService implements OnModuleDestroy {
     );
   }
 
+  private handleAuthenticationError(req: Request, res: Response, error: unknown) {
+    if ((error as { name?: string }).name === 'TokenExpiredError') {
+      return sendError(res, req, 401, 'UNAUTHORIZED', 'token has expired');
+    }
+
+    if (error instanceof Error && error.message === 'MISSING_AUTHORIZATION_HEADER') {
+      return sendError(res, req, 401, 'UNAUTHORIZED', 'authorization token is required');
+    }
+
+    if (error instanceof Error && error.message === 'INVALID_AUTHORIZATION_HEADER') {
+      return sendError(res, req, 401, 'UNAUTHORIZED', 'authorization header must use Bearer token');
+    }
+
+    if ((error as { name?: string }).name === 'JsonWebTokenError') {
+      return sendError(res, req, 401, 'UNAUTHORIZED', 'invalid token');
+    }
+
+    return null;
+  }
+
   private getUser(token: string) {
     const payload = jwt.verify(token, this.secret) as jwt.JwtPayload;
     return {
@@ -723,6 +815,19 @@ export class AuthService implements OnModuleDestroy {
     }
 
     return result.rows[0];
+  }
+
+  private getUserFromAuthorizationHeader(authorizationHeader: string | undefined) {
+    if (!authorizationHeader) {
+      throw new Error('MISSING_AUTHORIZATION_HEADER');
+    }
+
+    const [scheme, token] = authorizationHeader.split(' ', 2);
+    if (scheme !== 'Bearer' || !token) {
+      throw new Error('INVALID_AUTHORIZATION_HEADER');
+    }
+
+    return this.getUser(token);
   }
 
   private getRefreshCookieOptions() {

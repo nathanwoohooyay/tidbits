@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Patch, Post, Req, Res, UseGuards, HttpCode  } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../authorization/auth.guard';
@@ -22,6 +22,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @HttpCode(200)
   async login(@Req() req: Request, @Res() res: Response, @Body() body: unknown) {
     return this.authService.login(req, res, body);
   }
@@ -47,6 +48,11 @@ export class AuthController {
   @UseGuards(AuthGuard, RoleGuard)
   async revokeAccess(@Req() req: Request, @Res() res: Response) {
     return this.authService.revokeAccess(req, res, Number(req.params.userId));
+  }
+
+  @Get('whoami')
+  async whoAmI(@Req() req: Request, @Res() res: Response) {
+    return this.authService.whoAmI(req, res);
   }
 
   @Get('health')

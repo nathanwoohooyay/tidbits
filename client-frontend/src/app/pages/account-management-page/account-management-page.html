@@ -1,0 +1,230 @@
+<div class="account-page">
+  <header class="account-header">
+    <div>
+      <h1>Trading Account Management</h1>
+      <p class="subtitle">Create, rename, fund, withdraw from, and remove your trading accounts</p>
+    </div>
+    <button type="button" class="btn-back" (click)="goBack()">← Back to Dashboard</button>
+  </header>
+
+  <main class="account-content">
+    <aside class="account-sidebar">
+      <div class="account-list-panel">
+        <div class="account-list-header">
+          <div>
+            <h2>Trading Accounts</h2>
+            <p class="section-subtitle sidebar-subtitle">Choose a trading account to manage.</p>
+          </div>
+          @if (accountsLoading) {
+            <span class="muted-text">Loading…</span>
+          }
+        </div>
+
+        @if (accounts.length) {
+          <div class="account-list-grid">
+            @for (account of accounts; track account.accountId) {
+              <button
+                type="button"
+                class="account-option"
+                [class.selected]="account.accountId === selectedManagedAccountId"
+                (click)="selectManagedAccount(account.accountId)"
+              >
+                <span class="account-option-name">{{ account.nickname }}</span>
+                <span class="account-option-meta">Account #{{ account.accountId }}</span>
+                <span class="account-option-balance">${{ account.cashBalance | number:'1.2-2' }}</span>
+              </button>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <p>No trading accounts are available yet.</p>
+          </div>
+        }
+      </div>
+    </aside>
+
+    <div class="account-main">
+      <section class="account-card">
+        <div class="section-heading">
+          <div>
+            <h2>Account Settings</h2>
+            <p class="section-subtitle">Create a new trading account and manage your selected account details.</p>
+          </div>
+        </div>
+
+        @if (accountsError) {
+          <div class="error-message" role="alert">{{ accountsError }}</div>
+        }
+        @if (accountsSuccess) {
+          <div class="success-message" role="status">{{ accountsSuccess }}</div>
+        }
+
+        <div class="account-create-panel">
+          <h3>Create Trading Account</h3>
+          <form (ngSubmit)="createTradingAccount()" class="form-grid">
+            <div class="form-group">
+              <label for="new-account-nickname">Account Nickname</label>
+              <input
+                id="new-account-nickname"
+                type="text"
+                [(ngModel)]="newAccountNickname"
+                name="newAccountNickname"
+                placeholder="Enter an account nickname"
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="btn-primary"
+              [disabled]="createAccountLoading"
+            >
+              {{ createAccountLoading ? 'Creating…' : 'Create Account' }}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section class="account-card">
+        <h2>Selected Trading Account</h2>
+        <p class="section-subtitle">Update the selected account, move cash in or out, or remove the account</p>
+
+        @if (selectedManagedAccount; as account) {
+          <div class="selected-account-summary">
+            <div>
+              <p class="summary-label">Active account</p>
+              <h3>{{ account.nickname }}</h3>
+              <p class="summary-meta">Account #{{ account.accountId }}</p>
+            </div>
+            <div class="summary-balance-block">
+              <p class="summary-label">Cash balance</p>
+              <p class="summary-balance">${{ account.cashBalance | number:'1.2-2' }}</p>
+            </div>
+          </div>
+
+          @if (cashError) {
+            <div class="error-message" role="alert">{{ cashError }}</div>
+          }
+          @if (cashSuccess) {
+            <div class="success-message" role="status">{{ cashSuccess }}</div>
+          }
+
+          <div class="action-grid">
+            <form (ngSubmit)="renameTradingAccount()" class="account-subcard form-grid">
+              <h3>Rename Account</h3>
+              <div class="form-group">
+                <label for="rename-account-nickname">Nickname</label>
+                <input
+                  id="rename-account-nickname"
+                  type="text"
+                  [(ngModel)]="renameNickname"
+                  name="renameNickname"
+                  placeholder="Update account nickname"
+                />
+              </div>
+
+              <button
+                type="submit"
+                class="btn-primary"
+                [disabled]="renameLoading"
+              >
+                {{ renameLoading ? 'Saving…' : 'Save Account Name' }}
+              </button>
+            </form>
+
+            <div class="account-subcard">
+              <h3>Cash Management</h3>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="cash-amount">Amount</label>
+                  <input
+                    id="cash-amount"
+                    type="number"
+                    [(ngModel)]="cashAmount"
+                    name="cashAmount"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div class="cash-actions">
+                  <button
+                    type="button"
+                    class="btn-primary"
+                    [disabled]="cashLoading"
+                    (click)="depositToAccount()"
+                  >
+                    {{ cashLoading ? 'Processing…' : 'Deposit Funds' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    [disabled]="cashLoading"
+                    (click)="withdrawFromAccount()"
+                  >
+                    {{ cashLoading ? 'Processing…' : 'Withdraw Funds' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="account-subcard danger-panel">
+            <h3>Delete Trading Account</h3>
+            <p class="section-subtitle compact">Remove only the selected trading account. This does not delete your user profile.</p>
+
+            @if (tradingDeleteError) {
+              <div class="error-message" role="alert">{{ tradingDeleteError }}</div>
+            }
+
+            @if (!showTradingDeleteConfirm) {
+              <button
+                type="button"
+                class="btn-outline-danger"
+                (click)="toggleTradingDeleteConfirm()"
+              >
+                Delete Selected Trading Account
+              </button>
+            } @else {
+              <div class="delete-confirmation">
+                <p class="warning-text">
+                  ⚠️ Type <strong>{{ account.nickname }}</strong> to confirm deletion of this trading account.
+                </p>
+                <input
+                  type="text"
+                  [(ngModel)]="tradingDeleteConfirmation"
+                  name="tradingDeleteConfirmation"
+                  placeholder="Type the account nickname"
+                  class="delete-confirm-input"
+                />
+                <div class="delete-actions">
+                  <button
+                    type="button"
+                    class="btn-danger-confirm"
+                    [disabled]="tradingDeleteLoading || tradingDeleteConfirmation.trim() !== account.nickname"
+                    (click)="deleteTradingAccount()"
+                  >
+                    {{ tradingDeleteLoading ? 'Deleting…' : 'Delete Trading Account' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-cancel"
+                    [disabled]="tradingDeleteLoading"
+                    (click)="toggleTradingDeleteConfirm()"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <p>Select or create a trading account to manage it here.</p>
+          </div>
+        }
+      </section>
+    </div>
+  </main>
+</div>
+

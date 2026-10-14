@@ -79,7 +79,7 @@ export class AppService {
         value === null ||
         this.isHopByHopHeader(key) ||
         key === 'host' 
-        // || this.isCorsRequestHeader(key)
+         || this.isCorsRequestHeader(key)
       ) {
         continue;
       }

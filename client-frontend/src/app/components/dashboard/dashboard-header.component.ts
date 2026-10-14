@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { Account, ThemeMode } from './dashboard.models';
+import { ThemeMode } from './dashboard.models';
+import { AccountDto } from '../../services/account.service';
 import { formatCurrency } from './dashboard.utils';
 
 @Component({
@@ -10,7 +11,7 @@ import { formatCurrency } from './dashboard.utils';
   templateUrl: './dashboard-header.component.html'
 })
 export class DashboardHeaderComponent {
-  @Input() accounts: Account[] = [];
+  @Input() accounts: AccountDto[] = [];
   @Input() selectedAccountId = 0;
   @Input() themeMode: ThemeMode = 'light';
 
@@ -20,6 +21,7 @@ export class DashboardHeaderComponent {
 
   readonly formatCurrency = formatCurrency;
   @Output() goToAccount = new EventEmitter<void>();
+  @Output() goToAccountManagement = new EventEmitter<void>();
 
   onAccountSelect(event: Event) {
     const value = Number((event.target as HTMLSelectElement).value);

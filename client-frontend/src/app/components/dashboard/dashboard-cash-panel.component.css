@@ -1,0 +1,84 @@
+.dashboard-cash-panel {
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 16px;
+  background: rgba(16, 24, 40, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.dashboard-cash-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-cash-heading h2 {
+  margin: 0;
+}
+
+.dashboard-cash-subtitle {
+  margin: 0.35rem 0 0;
+  opacity: 0.78;
+}
+
+.dashboard-cash-balance {
+  text-align: right;
+}
+
+.dashboard-cash-label {
+  display: block;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin-bottom: 0.25rem;
+}
+
+.dashboard-cash-balance strong {
+  font-size: 1.3rem;
+}
+
+.dashboard-cash-message {
+  margin-bottom: 0.85rem;
+}
+
+.dashboard-cash-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-cash-input {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.dashboard-cash-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .dashboard-cash-heading,
+  .dashboard-cash-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboard-cash-balance {
+    text-align: left;
+  }
+
+  .dashboard-cash-actions {
+    width: 100%;
+  }
+
+  .dashboard-cash-actions button {
+    flex: 1 1 0;
+  }
+}

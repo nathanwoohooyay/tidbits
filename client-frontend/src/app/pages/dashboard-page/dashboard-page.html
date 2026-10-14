@@ -6,6 +6,7 @@
     (accountChange)="onAccountChange($event)"
     (toggleTheme)="toggleTheme()"
     (goToAccount)="goToAccount()"
+    (goToAccountManagement)="goToAccountManagement()"
     (signOut)="signOut()">
   </app-dashboard-header>
 
@@ -27,6 +28,21 @@
         [portfolioValue]="portfolioValue()"
         [portfolioGainLoss]="portfolioGainLoss()">
       </app-dashboard-metrics>
+
+      <app-dashboard-cash-panel
+        [selectedAccountId]="selectedAccountId()"
+        [cashBalance]="cashBalance()"
+        [cashAmount]="cashAmount"
+        [cashLoading]="cashLoading"
+        [cashError]="cashError"
+        [cashSuccess]="cashSuccess"
+        (cashAmountChange)="cashAmount = $event"
+        (deposit)="depositToSelectedAccount()"
+        (withdraw)="withdrawFromSelectedAccount()">
+      </app-dashboard-cash-panel>
+
+
+
 
       <app-dashboard-insight-feed
         [reportingOverview]="reportingOverview()"

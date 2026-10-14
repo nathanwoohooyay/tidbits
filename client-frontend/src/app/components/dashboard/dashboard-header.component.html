@@ -8,9 +8,9 @@
     @if (accounts.length > 1) {
       <div class="account-selector">
         <select [value]="selectedAccountId" (change)="onAccountSelect($event)" aria-label="Select account">
-          @for (acc of accounts; track acc.account_id) {
-            <option [value]="acc.account_id">
-              {{ acc.nickname }} — {{ formatCurrency(acc.cash_balance) }}
+          @for (acc of accounts; track acc.accountId) {
+            <option [value]="acc.accountId">
+              {{ acc.nickname }} — {{ formatCurrency(acc.cashBalance) }}
             </option>
           }
         </select>
@@ -32,6 +32,13 @@
             title="Account settings">
       ⚙
     </button>
+
+    <button class="theme-toggle" type="button" (click)="goToAccountManagement.emit()"
+            aria-label="Trading account management"
+            title="Trading account management">
+      ⛃
+    </button>
+
 
     <button class="btn-signout" type="button" (click)="signOut.emit()">Sign Out</button>
   </div>

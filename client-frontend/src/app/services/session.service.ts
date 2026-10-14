@@ -40,6 +40,21 @@ export class SessionService {
     return this.authToken();
   }
 
+  getAuthenticatedUserId(): number | null {
+    const token = this.authToken();
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1])) as { sub?: string | number };
+      const userId = Number(payload.sub);
+      return Number.isInteger(userId) && userId > 0 ? userId : null;
+    } catch {
+      return null;
+    }
+  }
+
   clearAuthToken() {
     this.authToken.set(null);
     localStorage.removeItem(this.tokenStorageKey);

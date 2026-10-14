@@ -13,13 +13,29 @@
         </div>
 
         <div class="trade-input-group">
-          <label for="trade-instrument-select">Select Instrument</label>
-          <select id="trade-instrument-select" [(ngModel)]="tradeInstrumentId" (ngModelChange)="onTradeInstrumentChange()">
-            <option [ngValue]="null" disabled>-- Choose a stock --</option>
-            @for (inst of instruments; track inst.instrument_id) {
-              <option [ngValue]="inst.instrument_id">{{ inst.ticker }} — {{ inst.name }}</option>
-            }
-          </select>
+          <label for="trade-instrument-search">Search Instrument</label>
+          <input
+            id="trade-instrument-search"
+            type="search"
+            [(ngModel)]="tradeSearchTerm"
+            (ngModelChange)="onSearchTermChange()"
+            placeholder="Search ticker or company name"
+            autocomplete="off">
+
+          @if (tradeSearchTerm.trim()) {
+            <div class="trade-search-results" role="listbox" aria-label="Matching stocks">
+              @for (stock of filteredStockOptions; track stock.instrumentId) {
+                <button type="button" class="trade-search-result" role="option" (click)="selectStock(stock)">
+                  <strong>{{ stock.ticker }}</strong>
+                  <span>{{ stock.name }}</span>
+                </button>
+              }
+
+              @if (!filteredStockOptions.length) {
+                <div class="trade-search-result empty">No matching stocks found.</div>
+              }
+            </div>
+          }
         </div>
 
         <div class="trade-input-group">
@@ -27,11 +43,11 @@
           <input id="trade-quantity" type="number" min="0.001" step="0.001" [(ngModel)]="tradeQuantity" placeholder="0" (ngModelChange)="tradeError='';tradeSuccess=''">
         </div>
 
-        @if (selectedInstrument() && tradeQuantity && tradeQuantity > 0) {
+        @if (selectedQuote && tradeQuantity && tradeQuantity > 0) {
           <div class="trade-summary">
             <div class="trade-summary-row">
               <span class="trade-summary-label">Price per share</span>
-              <span>{{ formatCurrency(selectedInstrument()!.price) }}</span>
+              <span>{{ formatCurrency(selectedQuote.price) }}</span>
             </div>
             <div class="trade-summary-row">
               <span class="trade-summary-label">Quantity</span>
@@ -58,50 +74,62 @@
         }
 
         @if (tradeMode === 'buy') {
-          <button class="btn-execute-buy" type="button" (click)="executeTrade()" [disabled]="!canExecuteTrade() || tradeLoading">
+          <button class="btn-execute-buy" type="button" (click)="executeTrade()" [disabled]="!canExecuteTrade() || tradeLoading || quoteLoading">
             {{ tradeLoading ? 'Executing…' : 'Execute Buy Order' }}
           </button>
         } @else {
-          <button class="btn-execute-sell" type="button" (click)="executeTrade()" [disabled]="!canExecuteTrade() || tradeLoading">
+          <button class="btn-execute-sell" type="button" (click)="executeTrade()" [disabled]="!canExecuteTrade() || tradeLoading || quoteLoading">
             {{ tradeLoading ? 'Executing…' : 'Execute Sell Order' }}
           </button>
         }
       </div>
 
       <div>
-        @if (selectedInstrument()) {
+        @if (quoteLoading) {
+          <div class="trade-stock-info" style="display:flex;align-items:center;justify-content:center;min-height:200px;flex-direction:column;gap:.75rem;color:var(--clr-sienna)">
+            <p style="font-size:.875rem;text-align:center">Loading latest quote...</p>
+          </div>
+        } @else if (selectedQuote && selectedStock) {
           <div class="trade-stock-info">
             <div class="stock-info-header">
               <div class="stock-info-meta">
-                <h3>{{ selectedInstrument()!.ticker }}</h3>
-                <p>{{ selectedInstrument()!.name }}</p>
-                <p style="margin-top:.25rem;font-size:.75rem">{{ selectedInstrument()!.market }} · {{ selectedInstrument()!.type }}</p>
+                <h3>{{ selectedStock.ticker }}</h3>
+                <p>{{ selectedStock.name }}</p>
+                <p style="margin-top:.25rem;font-size:.75rem">Quote preview</p>
               </div>
               <div class="stock-price-display">
-                <div class="price">{{ formatCurrency(selectedInstrument()!.price) }}</div>
-                <div class="price-change" [class.gain-text]="selectedInstrument()!.changePercent >= 0" [class.loss-text]="selectedInstrument()!.changePercent < 0">
-                  {{ selectedInstrument()!.changePercent >= 0 ? '▲' : '▼' }}
-                  {{ formatPercent(selectedInstrument()!.changePercent) }}
-                  ({{ formatCurrency(Math.abs(selectedInstrument()!.changeAmount)) }})
+                <div class="price">{{ formatCurrency(selectedQuote.price) }}</div>
+                <div class="price-change" [class.gain-text]="selectedQuote.changePercent >= 0" [class.loss-text]="selectedQuote.changePercent < 0">
+                  {{ selectedQuote.changePercent >= 0 ? '▲' : '▼' }}
+                  {{ formatPercent(selectedQuote.changePercent) }}
+                  ({{ formatCurrency(Math.abs(selectedQuote.change)) }})
                 </div>
               </div>
             </div>
             <div class="stock-info-stats">
               <div class="stat-item">
-                <span class="stat-label">Day High</span>
-                <span class="stat-value">{{ formatCurrency(selectedInstrument()!.dayHigh) }}</span>
+                <span class="stat-label">Symbol</span>
+                <span class="stat-value">{{ selectedQuote.symbol }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Day Low</span>
-                <span class="stat-value">{{ formatCurrency(selectedInstrument()!.dayLow) }}</span>
+                <span class="stat-label">Bid</span>
+                <span class="stat-value">{{ formatCurrency(selectedQuote.bid) }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Volume</span>
-                <span class="stat-value">{{ selectedInstrument()!.volumeFormatted }}</span>
+                <span class="stat-label">Ask</span>
+                <span class="stat-value">{{ formatCurrency(selectedQuote.ask) }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Market Cap</span>
-                <span class="stat-value">{{ selectedInstrument()!.marketCap }}</span>
+                <span class="stat-label">Prev Close</span>
+                <span class="stat-value">{{ formatCurrency(selectedQuote.prevClose) }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">As Of</span>
+                <span class="stat-value">{{ selectedQuote.asOf }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Source</span>
+                <span class="stat-value">{{ selectedQuote.source }}</span>
               </div>
               @if (tradeMode === 'sell') {
                 <div class="stat-item">
@@ -110,10 +138,14 @@
                 </div>
                 <div class="stat-item">
                   <span class="stat-label">Position Value</span>
-                  <span class="stat-value">{{ formatCurrency(heldQuantity() * selectedInstrument()!.price) }}</span>
+                  <span class="stat-value">{{ formatCurrency(heldQuantity() * selectedQuote.price) }}</span>
                 </div>
               }
             </div>
+          </div>
+        } @else if (quoteError) {
+          <div class="trade-stock-info" style="display:flex;align-items:center;justify-content:center;min-height:200px;flex-direction:column;gap:.75rem;color:var(--clr-sienna)">
+            <p style="font-size:.875rem;text-align:center">{{ quoteError }}</p>
           </div>
         } @else {
           <div class="trade-stock-info" style="display:flex;align-items:center;justify-content:center;min-height:200px;flex-direction:column;gap:.75rem;color:var(--clr-sienna)">

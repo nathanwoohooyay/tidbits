@@ -1,7 +1,24 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import {Component, EventEmitter, inject, Input, OnInit, Output, signal} from '@angular/core';
 import { Holding, TradeMode } from './dashboard.models';
 import { formatCurrency, formatPercent } from './dashboard.utils';
+import {AccountService, holdingDTO} from '../../services/account.service';
+import {PricingService, GetHoldingsResponseDTO, PricingQuoteDTO} from '../../services/pricing.service';
+import { tickerToName } from './stock';
+import { map } from 'rxjs';
+
+export interface HoldingDTO {
+  holding_id: number;
+  instrument_id: number;
+  quantity: number;
+  amount_invested: number;
+  ticker: string;
+  name: string;
+  currentPrice: number;
+  changePercent: number;
+  totalValue: number;
+  changeValue: number;
+}
 
 @Component({
   selector: 'app-dashboard-holdings',
@@ -9,11 +26,90 @@ import { formatCurrency, formatPercent } from './dashboard.utils';
   imports: [CommonModule],
   templateUrl: './dashboard-holdings.component.html'
 })
-export class DashboardHoldingsComponent {
+export class DashboardHoldingsComponent implements OnInit {
   @Input() holdings: Holding[] = [];
   @Output() quickTrade = new EventEmitter<{ instrumentId: number; mode: TradeMode }>();
 
   readonly formatCurrency = formatCurrency;
   readonly formatPercent = formatPercent;
-}
+
+  private readonly accountService = inject(AccountService);
+  private readonly pricingService = inject(PricingService);
+  private readonly accountId = 1;
+
+  stockTickers = Array.from(tickerToName.keys());
+  stockNames = Array.from(tickerToName.values());
+  expandedHoldingsArray = signal<HoldingDTO[]>([]);
+
+  holdingsArrayLoading = signal(false);
+  holdingsArrayError = signal('');
+
+  ngOnInit(){
+    this.holdingsArrayLoading.set(true);
+    this.accountService.getHoldings(this.accountId).subscribe({
+      next: holdingsArray => {
+        console.log(holdingsArray);
+
+        holdingsArray.forEach(holding => {
+          const ticker = this.stockTickers[holding.instrumentId - 1];
+
+          this.getMarketData(ticker).subscribe({
+            next: marketInfo => {
+              const calculatedInfo = this.calculateHoldingGains(
+                holding.quantity,
+                holding.amountInvested,
+                marketInfo.marketPrice
+              );
+
+              const expandedHolding: HoldingDTO = {
+                holding_id: holding.holdingId,
+                instrument_id: holding.instrumentId,
+                quantity: holding.quantity,
+                ticker: ticker,
+                name: this.stockNames[holding.instrumentId - 1],
+                amount_invested: holding.amountInvested,
+                currentPrice: marketInfo.marketPrice,
+                totalValue: calculatedInfo.marketValue,
+                changeValue: calculatedInfo.changeValue,
+                changePercent: calculatedInfo.changePercent
+              };
+
+              this.expandedHoldingsArray.update(array => [...array, expandedHolding]);
+              console.log(expandedHolding);
+            },
+            error: err => {
+              console.log('Failed to fetch market price', err);
+            }
+          });
+        });
+
+      },
+    error:err=>{
+      this.holdingsArrayError.set(err?.error?.message ?? 'Failed to load holdings.');
+      this.expandedHoldingsArray.set([]);
+      },
+    complete:()=>{
+              this.holdingsArrayLoading.set(false);
+      }
+    });
+  }
+
+  getMarketData(symbols:string ){
+    console.log("Getting market data...");
+      return this.pricingService.getQuotes(symbols).pipe(
+        map((resp: GetHoldingsResponseDTO) => ({
+          marketPrice: resp.quotes[0].price,
+          ticker: resp.quotes[0].symbol
+        }))
+      );
+  }
+
+  calculateHoldingGains(quantity:number, amountInvested:number, marketPrice:number){
+      const marketValue = marketPrice*quantity;
+      const changeValue = marketValue-amountInvested;
+      const changePercent = ((marketValue-amountInvested)/amountInvested)*100;
+      return  { marketValue, changeValue, changePercent };
+      }
+
+  }
 

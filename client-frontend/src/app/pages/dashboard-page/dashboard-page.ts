@@ -158,7 +158,8 @@ export class DashboardPageComponent implements OnInit {
   }
 
   onTradeExecuted(execution: TradeExecution) {
-    window.location.reload();
+      console.log('Trade executed:', execution);
+//     window.location.reload();
 //     const instrument = this.instruments().find(item => item.instrument_id === execution.instrumentId);
 //     const accountId = this.selectedAccountId();
 //     if (!instrument || !accountId) {

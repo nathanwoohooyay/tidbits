@@ -43,21 +43,16 @@ export class AccountService {
   }
 
   listHoldings(accountId: number): Observable<AccountHoldingDto[]> {
-    return this.http.get<AccountHoldingDto[]>(`${this.accountApiBase}/${accountId}/holdings/`);
+    return this.http.get<AccountHoldingDto[]>(`${this.accountApiBase}/${accountId}/holdings`);
   }
 
   createAccount(userId: number, nickname: string): Observable<AccountDto> {
-    return this.http.post<AccountDto>(`${this.userApiBase}/${userId}/accounts`, nickname, {
-      headers: this.plainTextHeaders,
-    });
+    return this.http.post<AccountDto>(`${this.userApiBase}/${userId}/accounts`, {"nickname":nickname});
   }
 
   updateAccount(userId: number, accountId: number, nickname: string): Observable<void> {
     return this.http
-      .put(`${this.userApiBase}/${userId}/accounts/${accountId}`, nickname, {
-        headers: this.plainTextHeaders,
-        observe: 'response',
-      })
+      .put(`${this.userApiBase}/${userId}/accounts/${accountId}`, {"nickname":nickname})
       .pipe(map(() => void 0));
   }
 

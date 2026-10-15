@@ -71,6 +71,7 @@
       <app-dashboard-trade-desk
         [instruments]="instruments()"
         [holdings]="holdings()"
+        [selectedAccountId]="selectedAccountId()"
         [cashBalance]="cashBalance()"
         [selectedMode]="quickTradeSelection()?.mode ?? 'buy'"
         [selectedInstrumentId]="quickTradeSelection()?.instrumentId ?? null"

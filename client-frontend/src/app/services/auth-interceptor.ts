@@ -6,7 +6,7 @@ export const authInterceptor: HttpInterceptorFn =
   (req, next) => {
     const tokenStore = inject(SessionService);
     const token = tokenStore.getAuthToken();
-    if (token && !req.url.endsWith('login')) {
+    if (token && !req.url.endsWith('login')&& !req.url.endsWith('signup')) {
       const authedReq = req.clone({
         setHeaders: { Authorization: `Bearer ${token}` },
       });

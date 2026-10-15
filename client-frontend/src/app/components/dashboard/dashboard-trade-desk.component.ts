@@ -51,12 +51,22 @@ export class DashboardTradeDeskComponent implements OnChanges {
     name,
   }));
 
+  private _selectedAccountId: number | null = null;
+
+    @Input()
+    set selectedAccountId(value: number | null) {
+      this._selectedAccountId = value;
+    }
+
+    get selectedAccountId(): number | null {
+      return this._selectedAccountId;
+    }
+
   readonly formatCurrency = formatCurrency;
   readonly formatPercent = formatPercent;
   readonly Math = Math;
   private readonly orderService = inject(OrderService);
   private readonly pricingService = inject(PricingService);
-  private readonly accountId = 1;
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['selectedMode']) {
@@ -144,6 +154,10 @@ export class DashboardTradeDeskComponent implements OnChanges {
   }
 
   executeTrade() {
+      if (!this.selectedAccountId) {
+        this.tradeError = 'No account selected.';
+        return;
+      }
     const stock = this.selectedStock;
     const quote = this.selectedQuote;
     const quantity = this.tradeQuantity ?? 0;
@@ -168,15 +182,14 @@ export class DashboardTradeDeskComponent implements OnChanges {
       stockPrice: quote.price,
     });
 
-    //window.location.reload();
     const payload : OrderDTO  = {
-      accountId: this.accountId,
+      accountId: this.selectedAccountId,
       instrumentId: stock.instrumentId,
       quantity: quantity,
       stockPrice: quote.price, // get from pricer, load into selected instrument
       orderType: this.tradeMode.toUpperCase() as 'BUY' | 'SELL'
     }
-    this.orderService.placeOrder(this.accountId, payload).subscribe({
+    this.orderService.placeOrder(this.selectedAccountId, payload).subscribe({
       next: placedOrder => {
         console.log(placedOrder);
         this.tradeLoading = false;

@@ -23,6 +23,10 @@ export class MetricsService {
 
   constructor(private http: HttpClient) {}
 
+  refreshMetrics(): Observable<{ status: string; calculatedAt: string }> {
+    return this.http.post<{ status: string; calculatedAt: string }>(`${this.baseUrl}/refresh`, {});
+  }
+
   getAllMetrics(): Observable<AllMetricsResponse> {
     return this.http.get<AllMetricsResponse>(`${this.baseUrl}/all`);
   }

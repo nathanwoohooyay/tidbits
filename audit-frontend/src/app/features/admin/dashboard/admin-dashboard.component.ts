@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AdminService } from '../../../core/services/admin.service';
@@ -371,7 +371,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
     }
   `]
 })
-export class AdminDashboardComponent implements OnInit {
+export class AdminDashboardComponent implements OnInit, OnDestroy {
   stats = signal<AdminDashboardStats>({
     totalUsers: 0,
     totalAccounts: 0,
@@ -379,9 +379,24 @@ export class AdminDashboardComponent implements OnInit {
     totalTransactionLogs: 0
   });
 
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly autoRefreshMs = 15000;
+
   constructor(private adminService: AdminService) {}
 
   ngOnInit() {
+    this.loadStats();
+    this.refreshTimer = setInterval(() => this.loadStats(), this.autoRefreshMs);
+  }
+
+  ngOnDestroy() {
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+
+  private loadStats() {
     this.adminService.getDashboardStats().subscribe((s: AdminDashboardStats) => this.stats.set(s));
   }
 }

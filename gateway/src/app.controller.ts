@@ -14,4 +14,9 @@ export class AppController {
   proxyAudit(@Req() request: Request, @Res() response: Response): Promise<void> {
     return this.appService.proxyToAudit(request, response);
   }
+
+  @All(['metrics', 'metrics/*path'])
+  proxyMetrics(@Req() request: Request, @Res() response: Response): Promise<void> {
+    return this.appService.proxyToMetrics(request, response);
+  }
 }

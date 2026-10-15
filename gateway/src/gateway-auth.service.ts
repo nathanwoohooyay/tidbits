@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 type JwtPayload = {
   sub?: string | number;
   tokenVersion?: string | number;
+  roles?: string[];
 };
 
 export class GatewayAuthError extends Error {
@@ -22,11 +23,11 @@ export class GatewayAuthService implements OnModuleDestroy {
   private readonly jwtSecret = process.env.JWT_SECRET;
 
   private readonly pool = new Pool({
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT ?? 5432),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: process.env.DB_AUTH_HOST || process.env.DB_HOST,
+    port: Number(process.env.DB_AUTH_PORT ?? process.env.DB_PORT ?? 5432),
+    user: process.env.DB_AUTH_USER || process.env.DB_USER,
+    password: process.env.DB_AUTH_PASSWORD || process.env.DB_PASSWORD,
+    database: process.env.DB_AUTH_NAME || 'tidbits_auth',
   });
 
   async authorizeRequest(request: Request, routePrefix: string): Promise<void> {
@@ -37,11 +38,20 @@ export class GatewayAuthService implements OnModuleDestroy {
     const token = this.extractBearerToken(request.headers.authorization);
     const payload = this.verifyToken(token);
     const userId = this.parseIntegerClaim(payload.sub, 'subject', 401);
+    const role = payload.roles?.[0];
     const tokenVersion = this.parseIntegerClaim(payload.tokenVersion, 'tokenVersion', 401);
 
     const persistedTokenVersion = await this.lookupTokenVersion(userId);
     if (persistedTokenVersion !== tokenVersion) {
       throw new GatewayAuthError(401, 'Unauthorized');
+    }
+
+    if ((routePrefix === "/audit" || routePrefix === "/metrics") && !["ADMIN", "AUDITOR", "REPORTER"].includes(role || "")) {
+      throw new GatewayAuthError(403, 'Forbidden');
+    }
+
+    if (routePrefix === "/client" && role !== "CLIENT") {
+      throw new GatewayAuthError(403, 'Forbidden');
     }
   }
 

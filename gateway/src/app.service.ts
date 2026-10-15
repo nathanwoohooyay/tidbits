@@ -14,12 +14,20 @@ export class AppService {
     process.env.AUDIT_SERVICE_URL ?? 'http://localhost:9874',
   );
 
+  private readonly metricsServiceUrl = this.normalizeBaseUrl(
+    process.env.METRICS_SERVICE_URL ?? 'http://localhost:9873',
+  );
+
   proxyToClient(request: Request, response: Response): Promise<void> {
     return this.proxyRequest(request, response, this.clientServiceUrl, '/client');
   }
 
   proxyToAudit(request: Request, response: Response): Promise<void> {
     return this.proxyRequest(request, response, this.auditServiceUrl, '/audit');
+  }
+
+  proxyToMetrics(request: Request, response: Response): Promise<void> {
+    return this.proxyRequest(request, response, this.metricsServiceUrl, '/metrics');
   }
 
   private async proxyRequest(

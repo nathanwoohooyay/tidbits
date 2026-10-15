@@ -1,6 +1,4 @@
 package com.tidbits.audit.config;
-
-import com.tidbits.audit.repository.UserRoleRefRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,12 +23,6 @@ public class SecurityConfig {
     @Value("${security.jwt.shared-secret}")
     private String sharedSecret;
 
-    private final UserRoleRefRepository userRoleRefRepository;
-
-    public SecurityConfig(UserRoleRefRepository userRoleRefRepository) {
-        this.userRoleRefRepository = userRoleRefRepository;
-    }
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
@@ -46,8 +38,6 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> req
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    .requestMatchers(HttpMethod.PUT, "/api/roles/users/*").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.POST, "/api/users/*/revoke").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/admin/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "AUDITOR")
                     .anyRequest().denyAll())

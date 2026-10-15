@@ -1,13 +1,15 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { catchError, forkJoin, of } from 'rxjs';
 import { AdminService } from '../../../core/services/admin.service';
-import { AdminUser, AdminAccount } from '../../../core/models/models';
+import { AdminUser, AdminAccount, RoleDefinition } from '../../../core/models/models';
+import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PhoneFormatPipe],
   template: `
     <div class="users-container animate-fade-in">
       <div class="page-header">
@@ -50,16 +52,22 @@ import { AdminUser, AdminAccount } from '../../../core/models/models';
             type="text"
             class="input-control search-input"
             placeholder="Search by username, email, or user ID..."
-            [(ngModel)]="searchQuery"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
           />
         </div>
 
         <div class="role-filter-group">
           <label>Filter Role:</label>
-          <select class="input-control select-role" [(ngModel)]="roleFilter">
+          <select
+            class="input-control select-role"
+            [ngModel]="roleFilter()"
+            (ngModelChange)="roleFilter.set($event)"
+          >
             <option value="ALL">All Roles</option>
             <option value="ADMIN">ADMIN</option>
             <option value="AUDITOR">AUDITOR</option>
+            <option value="REPORTER">REPORTER</option>
             <option value="USER">USER</option>
           </select>
         </div>
@@ -88,11 +96,11 @@ import { AdminUser, AdminAccount } from '../../../core/models/models';
                   <span class="user-name-cell">{{ user.username }}</span>
                 </td>
                 <td class="text-secondary">{{ user.email || '—' }}</td>
-                <td class="mono-font text-secondary">{{ user.phone || '—' }}</td>
+                <td class="mono-font text-secondary">{{ (user.phoneNumber | phoneFormat) || '—' }}</td>
                 <td class="mono-font text-emerald">{{ (user.rewardPoints || 0) | number }} pts</td>
                 <td>
-                  <span class="badge" [ngClass]="getRoleBadgeClass(user.role)">
-                    {{ user.role }}
+                  <span class="badge" [ngClass]="getRoleBadgeClass(getUserRole(user))">
+                    {{ getUserRole(user) }}
                   </span>
                 </td>
                 <td class="mono-font text-muted">{{ user.createdAt | date:'mediumDate' }}</td>
@@ -206,6 +214,7 @@ import { AdminUser, AdminAccount } from '../../../core/models/models';
               <select class="input-control" [(ngModel)]="newRoleSelection">
                 <option value="USER">USER (Standard Trader)</option>
                 <option value="AUDITOR">AUDITOR (Compliance & Surveillance)</option>
+                <option value="REPORTER">REPORTER (Read-Only Reporting)</option>
                 <option value="ADMIN">ADMIN (Full Administrative Control)</option>
               </select>
             </div>
@@ -246,7 +255,7 @@ import { AdminUser, AdminAccount } from '../../../core/models/models';
             </p>
             <div class="revoke-consequences">
               <ul>
-                <li>Increments token_version in user_roles table</li>
+                <li>Increments the auth token version and clears the active refresh token</li>
                 <li>Immediately rejects all existing JWT tokens</li>
                 <li>Forces immediate logout across all active browser sessions</li>
               </ul>
@@ -567,8 +576,8 @@ import { AdminUser, AdminAccount } from '../../../core/models/models';
 })
 export class AdminUsersComponent implements OnInit {
   users = signal<AdminUser[]>([]);
-  searchQuery = '';
-  roleFilter = 'ALL';
+  searchQuery = signal('');
+  roleFilter = signal('ALL');
 
   // Modals state
   selectedUserForAccounts = signal<AdminUser | null>(null);
@@ -588,11 +597,11 @@ export class AdminUsersComponent implements OnInit {
 
   filteredUsers = computed(() => {
     let list = this.users();
-    const query = this.searchQuery.toLowerCase().trim();
-    const role = this.roleFilter;
+    const query = this.searchQuery().toLowerCase().trim();
+    const role = this.roleFilter();
 
     if (query) {
-      list = list.filter(u =>
+      list = list.filter((u: AdminUser) =>
         u.username.toLowerCase().includes(query) ||
         (u.email && u.email.toLowerCase().includes(query)) ||
         u.userId.toString() === query
@@ -600,7 +609,7 @@ export class AdminUsersComponent implements OnInit {
     }
 
     if (role !== 'ALL') {
-      list = list.filter(u => u.role === role);
+      list = list.filter((u: AdminUser) => this.getUserRole(u) === role);
     }
 
     return list;
@@ -613,14 +622,41 @@ export class AdminUsersComponent implements OnInit {
   }
 
   loadUsers() {
-    this.adminService.getAllUsers().subscribe(users => {
-      this.users.set(users);
+    this.adminService.getAllUsers().subscribe((users: AdminUser[]) => {
+      if (users.length === 0) {
+        this.users.set(users);
+        return;
+      }
+
+      forkJoin(
+        users.map((user) =>
+          this.adminService.getUserRole(user.userId).pipe(catchError(() => of(null)))
+        )
+      ).subscribe((roles: Array<RoleDefinition | null>) => {
+        this.users.set(
+          users.map((user, index) => ({
+            ...user,
+            role: this.normalizeRoleName(roles[index]?.name),
+          }))
+        );
+      });
     });
+  }
+
+  getUserRole(user: AdminUser): string {
+    const role = (user.role ?? '')
+      .toString()
+      .trim()
+      .toUpperCase();
+
+    if (!role || role === 'CLIENT') return 'USER';
+    return role;
   }
 
   getRoleBadgeClass(role: string): string {
     if (role === 'ADMIN') return 'badge-admin';
     if (role === 'AUDITOR') return 'badge-auditor';
+    if (role === 'REPORTER') return 'badge-reporter';
     return 'badge-user';
   }
 
@@ -628,7 +664,7 @@ export class AdminUsersComponent implements OnInit {
   viewAccounts(user: AdminUser) {
     this.selectedUserForAccounts.set(user);
     this.loadingAccounts.set(true);
-    this.adminService.getUserAccounts(user.userId).subscribe(accounts => {
+    this.adminService.getUserAccounts(user.userId).subscribe((accounts: AdminAccount[]) => {
       this.userAccounts.set(accounts);
       this.loadingAccounts.set(false);
     });
@@ -685,7 +721,7 @@ export class AdminUsersComponent implements OnInit {
     this.adminService.revokeUserAccess(user.userId).subscribe({
       next: () => {
         this.revoking.set(false);
-        this.showToast(`Access revoked for ${user.username}. Active sessions terminated and token_version incremented.`, 'danger');
+          this.showToast(`Access revoked for ${user.username}. Active sessions terminated and auth tokens invalidated.`, 'success');
         this.closeRevokeModal();
       },
       error: () => {
@@ -701,5 +737,14 @@ export class AdminUsersComponent implements OnInit {
     setTimeout(() => {
       this.toastMessage.set(null);
     }, 4500);
+  }
+
+  private normalizeRoleName(roleName?: string) {
+    if (!roleName) {
+      return 'USER';
+    }
+
+    const normalized = roleName.trim().toUpperCase();
+    return normalized === 'CLIENT' ? 'USER' : normalized;
   }
 }

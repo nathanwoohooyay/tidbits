@@ -1,6 +1,6 @@
 // Core Models
 
-export type UserRole = 'ADMIN' | 'AUDITOR' | 'USER';
+export type UserRole = 'ADMIN' | 'AUDITOR' | 'REPORTER' | 'USER';
 
 export interface AuthUser {
   userId?: number;
@@ -21,10 +21,15 @@ export interface AdminUser {
   userId: number;
   username: string;
   email: string;
-  phone: string;
+  phoneNumber: string;
   rewardPoints: number;
-  role: string;
+  role?: string;
   createdAt: string;
+}
+
+export interface RoleDefinition {
+  roleId: number;
+  name: string;
 }
 
 export interface AdminAccount {

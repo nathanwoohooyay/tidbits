@@ -15,6 +15,7 @@ info:
 
     Important behavior to understand before integrating:
 
+    - Credential state is split from profile data: password hashes, refresh tokens, and token versioning live in a dedicated auth database, while client and audit user reads expose profile data only.
     - Access tokens are JWT bearer tokens signed with a shared HS256 secret.
     - Refresh tokens are stored in an HTTP-only cookie named `refreshToken` and are only used by auth endpoints.
     - User self-service routes under `/api/users/{userId}` and `/api/users/{userId}/accounts` enforce that the JWT subject matches the path `userId`.
@@ -164,6 +165,62 @@ paths:
         '500':
           $ref: '#/components/responses/AuthInternalServerError'
 
+  /api/auth/change-password:
+    patch:
+      tags:
+        - Users
+      summary: Change the authenticated user's password
+      description: |
+        Updates the password for the target user in the JWT.
+      operationId: changePassword
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordDTO'
+      responses:
+        '204':
+          description: Password changed successfully. No content is returned.
+        '400':
+          $ref: '#/components/responses/ServiceBadRequest'
+        '401':
+          $ref: '#/components/responses/ServiceUnauthorized'
+        '403':
+          $ref: '#/components/responses/ServiceForbidden'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '422':
+          $ref: '#/components/responses/ServiceUnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServiceInternalServerError'
+
+  /api/auth/whoami:
+    get:
+      tags:
+        - Authentication
+      summary: Get the authenticated user's identity and profile
+      description: |
+        Resolves the bearer token subject to a user record and returns the current authenticated user's profile together with their platform role and last login timestamp.
+      operationId: whoAmI
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhoAmIResponse'
+        '401':
+          $ref: '#/components/responses/AuthUnauthorized'
+        '404':
+          $ref: '#/components/responses/ServiceNotFound'
+        '500':
+          $ref: '#/components/responses/AuthInternalServerError'
+
   /api/auth/health:
     get:
       tags:
@@ -206,46 +263,6 @@ paths:
           $ref: '#/components/responses/ServiceForbidden'
         '404':
           $ref: '#/components/responses/ServiceNotFound'
-        '500':
-          $ref: '#/components/responses/ServiceInternalServerError'
-
-  /api/users/{userId}/change-password:
-    patch:
-      tags:
-        - Users
-      summary: Change the authenticated user's password
-      description: |
-        Updates the password for the target user.
-
-        Authorization rule: the JWT subject must equal the `userId` path parameter.
-      operationId: changePassword
-      security:
-        - BearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UserId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChangePasswordDTO'
-      responses:
-        '200':
-          description: Password changed successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserDTO'
-        '400':
-          $ref: '#/components/responses/ServiceBadRequest'
-        '401':
-          $ref: '#/components/responses/ServiceUnauthorized'
-        '403':
-          $ref: '#/components/responses/ServiceForbidden'
-        '404':
-          $ref: '#/components/responses/ServiceNotFound'
-        '422':
-          $ref: '#/components/responses/ServiceUnprocessableEntity'
         '500':
           $ref: '#/components/responses/ServiceInternalServerError'
 
@@ -938,34 +955,29 @@ paths:
         '500':
           $ref: '#/components/responses/ServiceInternalServerError'
 
-  /api/users/{userId}/revoke:
+  /api/auth/users/{userId}/revoke:
     post:
       tags:
-        - Admin
+        - Authentication
       summary: Revoke a user's access
       description: |
-        Admin-only audit-service route that revokes access for the specified user and returns a plain-text confirmation message.
+        Admin-only auth-service route that revokes access for the specified user by incrementing the stored token version and deleting any active refresh token.
       operationId: revokeUserAccess
       security:
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserId'
       responses:
-        '200':
+        '204':
           description: Access revoked successfully.
-          content:
-            text/plain:
-              schema:
-                type: string
-                example: User access revoked
         '401':
-          $ref: '#/components/responses/ServiceUnauthorized'
+          $ref: '#/components/responses/AuthUnauthorized'
         '403':
           $ref: '#/components/responses/ServiceForbidden'
         '404':
           $ref: '#/components/responses/ServiceNotFound'
         '500':
-          $ref: '#/components/responses/ServiceInternalServerError'
+          $ref: '#/components/responses/AuthInternalServerError'
 
   /api/admin/users:
     get:
@@ -1077,9 +1089,9 @@ paths:
         - Roles
       summary: List all available roles
       description: |
-        Audit-service role lookup route.
+        Auth-service role lookup route.
 
-        Under the current security configuration, GET requests to `/api/**` are allowed for `ADMIN` and `AUDITOR` roles.
+        The route returns role definitions from the auth database and is available to `ADMIN` and `AUDITOR` callers.
       operationId: getAllRoles
       security:
         - BearerAuth: []
@@ -1093,18 +1105,18 @@ paths:
                 items:
                   $ref: '#/components/schemas/RoleDTO'
         '401':
-          $ref: '#/components/responses/ServiceUnauthorized'
+          $ref: '#/components/responses/AuthUnauthorized'
         '403':
           $ref: '#/components/responses/ServiceForbidden'
         '500':
-          $ref: '#/components/responses/ServiceInternalServerError'
+          $ref: '#/components/responses/AuthInternalServerError'
 
   /api/roles/{id}:
     get:
       tags:
         - Roles
       summary: Get one role by identifier
-      description: Audit-service role lookup route.
+      description: Auth-service role lookup route.
       operationId: getRoleById
       security:
         - BearerAuth: []
@@ -1116,21 +1128,51 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RoleDTO'
+                $ref: '#/components/responses/AuthUnauthorized'
         '401':
           $ref: '#/components/responses/ServiceUnauthorized'
         '403':
           $ref: '#/components/responses/ServiceForbidden'
         '404':
-          $ref: '#/components/responses/ServiceNotFound'
+                $ref: '#/components/responses/AuthInternalServerError'
+
+        /api/roles/users/{userId}:
+          get:
+            tags:
+              - Roles
+            summary: Get a user's current role
+            description: |
+              Auth-service role assignment lookup route.
+
+              Returns the current role stored for the user in the auth database.
+            operationId: getUserRole
+            security:
+              - BearerAuth: []
+            parameters:
+              - $ref: '#/components/parameters/UserId'
+            responses:
+              '200':
+                description: Role retrieved successfully.
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/RoleDTO'
+              '401':
+                $ref: '#/components/responses/AuthUnauthorized'
+              '403':
+                $ref: '#/components/responses/ServiceForbidden'
+              '404':
+                $ref: '#/components/responses/ServiceNotFound'
+              '500':
+                $ref: '#/components/responses/AuthInternalServerError'
         '500':
           $ref: '#/components/responses/ServiceInternalServerError'
 
   /api/roles/users/{userId}:
     put:
-      tags:
+              Admin-only auth-service route.
         - Roles
-      summary: Reassign a user's role
+              The request can identify the new role by `roleId`, `roleName`, or both.
       description: |
         Admin-only audit-service route.
 
@@ -1156,13 +1198,13 @@ paths:
         '400':
           $ref: '#/components/responses/ServiceBadRequest'
         '401':
-          $ref: '#/components/responses/ServiceUnauthorized'
+          $ref: '#/components/responses/AuthUnauthorized'
         '403':
           $ref: '#/components/responses/ServiceForbidden'
         '404':
           $ref: '#/components/responses/ServiceNotFound'
         '500':
-          $ref: '#/components/responses/ServiceInternalServerError'
+          $ref: '#/components/responses/AuthInternalServerError'
 
   /api/logs/users:
     get:
@@ -1741,6 +1783,19 @@ components:
           format: date
           example: 1990-04-15
 
+    WhoAmIResponse:
+      allOf:
+        - $ref: '#/components/schemas/UserDTO'
+        - type: object
+          properties:
+            role:
+              type: string
+              example: CLIENT
+            lastLogin:
+              type: string
+              format: date-time
+              example: 2026-10-12T09:30:00Z
+
     ChangePasswordDTO:
       type: object
       required:
@@ -2117,12 +2172,6 @@ components:
           type: string
           format: date
           example: 1990-04-15
-        roleId:
-          type: integer
-          format: int32
-          example: 1
-        roleName:
-          $ref: '#/components/schemas/RoleType'
 
     AdminAccountDTO:
       type: object

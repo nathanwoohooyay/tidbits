@@ -75,40 +75,4 @@ public class UserService {
             throw ex;
         }
     }
-
-    public User changePassword(Integer userId, String newPassword, String currentPassword, String confirmPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found."));
-
-        try {
-            if (currentPassword == null || currentPassword.isBlank()) {
-                throw new BadRequestException("Current password is required.");
-            }
-            if (newPassword == null || newPassword.isBlank()) {
-                throw new BadRequestException("New password is required.");
-            }
-            if (confirmPassword == null || confirmPassword.isBlank()) {
-                throw new BadRequestException("Confirm password is required.");
-            }
-            if (!newPassword.equals(confirmPassword)) {
-                throw new BadRequestException("New password and confirm password must match.");
-            }
-            if (newPassword.equals(currentPassword)) {
-                throw new BadRequestException("New password must differ from current password.");
-            }
-
-            if (user.getPasswordHash() == null || !BCrypt.checkpw(currentPassword, user.getPasswordHash())) {
-                throw new BadRequestException("Current password is incorrect.");
-            }
-
-            user.setPasswordHash(BCrypt.hashpw(newPassword, BCrypt.gensalt()));
-            User saved = userRepository.save(user);
-
-            userAuditEventPublisher.publish("CHANGE_PASSWORD", userId, saved.getUsername(), "SUCCESS", "Password changed");
-            return saved;
-        } catch (RuntimeException ex) {
-            userAuditEventPublisher.publish("CHANGE_PASSWORD", userId, user.getUsername(), "FAILURE", ex.getMessage());
-            throw ex;
-        }
-    }
 }

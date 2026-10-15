@@ -1,9 +1,11 @@
 import { Component, OnInit, ElementRef, ViewChild, AfterViewInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables } from 'chart.js';
+import { finalize, switchMap } from 'rxjs/operators';
 import { MetricsService } from '../../../core/services/metrics.service';
 import { ReportService } from '../../../core/services/report.service';
 import {
+  AllMetricsResponse,
   TradeVolumeByType,
   TradeVolumeByMarket,
   TradeVolumeBySide,
@@ -425,6 +427,9 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   aumValue = signal(0);
 
   private charts: Chart[] = [];
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly autoRefreshMs = 15000;
+  private viewReady = false;
 
   constructor(
     private metricsService: MetricsService,
@@ -432,45 +437,64 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.loadMetrics();
+    // Defer loading until canvas refs are ready in ngAfterViewInit.
   }
 
   ngAfterViewInit() {
-    // Initial chart rendering once canvas elements are present
-    this.renderCharts();
+    this.viewReady = true;
+    this.loadMetrics();
+    this.startAutoRefresh();
   }
 
   ngOnDestroy() {
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+      this.refreshTimer = null;
+    }
     this.destroyCharts();
   }
 
   loadMetrics() {
+    if (!this.viewReady) {
+      return;
+    }
+
     this.loading.set(true);
 
-    this.metricsService.getOutlierTrades().subscribe((outliers: OutlierTrade[]) => {
-      this.outlierList.set(outliers);
-    });
+    this.metricsService.refreshMetrics().pipe(
+      switchMap(() => this.metricsService.getAllMetrics()),
+      finalize(() => this.loading.set(false))
+    ).subscribe((response: AllMetricsResponse) => {
+      const all = response.data || {};
 
-    this.metricsService.getTradeVolumeOverTime().subscribe((timeData: TradeVolumeOverTime[]) => {
+      const outliers = (all.outlier_trades || []) as OutlierTrade[];
+      this.outlierList.set(outliers);
+
+      const timeData = ((all['trade_volume_over_time'] || all['volume_over_time'] || []) as TradeVolumeOverTime[])
+        .map(item => ({
+          ...item,
+          total_value: Number((item as any).total_value ?? (item as any).total_amount ?? 0),
+          order_count: Number((item as any).order_count ?? (item as any).transaction_count ?? 0)
+        }));
+
       const vol = timeData.reduce((acc: number, curr: TradeVolumeOverTime) => acc + curr.total_value, 0);
       const orders = timeData.reduce((acc: number, curr: TradeVolumeOverTime) => acc + curr.order_count, 0);
       this.totalVolume.set(vol);
       this.totalOrders.set(orders);
       this.updateLineChart(timeData);
-    });
 
-    this.metricsService.getAum().subscribe((aum: AumMetric[]) => {
-      const totalAum = aum.reduce((acc: number, item: AumMetric) => acc + (item.total_value || 0), 0);
+      const aum = (all['aum'] || []) as AumMetric[];
+      const totalAum = aum.reduce(
+        (acc: number, item: AumMetric) => acc + Number((item as any).total_value ?? (item as any).total_aum ?? 0),
+        0
+      );
       this.aumValue.set(totalAum);
-    });
 
-    this.metricsService.getTradeVolumeByType().subscribe((types: TradeVolumeByType[]) => {
+      const types = (all['trade_volume_by_type'] || all['volume_by_type'] || []) as TradeVolumeByType[];
       this.updateDoughnutChart(types);
-    });
 
-    this.metricsService.getTradeVolumeByMarket().subscribe((markets: TradeVolumeByMarket[]) => {
+      const markets = (all['trade_volume_by_market'] || all['volume_by_market'] || []) as TradeVolumeByMarket[];
       this.updateBarChart(markets);
-      this.loading.set(false);
     });
   }
 
@@ -496,8 +520,17 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private renderCharts() {
-    // Charts will be updated once canvas elements are present
-    this.loadMetrics();
+    // Charts are rendered by loadMetrics once data is received.
+  }
+
+  private startAutoRefresh() {
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+    }
+
+    this.refreshTimer = setInterval(() => {
+      this.loadMetrics();
+    }, this.autoRefreshMs);
   }
 
   private updateLineChart(data: TradeVolumeOverTime[]) {

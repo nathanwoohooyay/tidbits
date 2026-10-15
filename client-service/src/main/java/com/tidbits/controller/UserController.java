@@ -28,17 +28,6 @@ public class UserController {
     public ResponseEntity<UserDTO> getUserById(@PathVariable Integer userId) {
         return ResponseEntity.ok(UserMapper.toUserDTO(userService.getUserById(userId).orElse(null)));
     }
-    
-    @PatchMapping("/{userId}/change-password")
-    @PreAuthorize("#userId.toString().equals(authentication.name)")
-    public ResponseEntity<UserDTO> changePassword(@PathVariable Integer userId, @RequestBody ChangePasswordDTO changePasswordDTO) {
-        return ResponseEntity.ok(UserMapper.toUserDTO(userService.changePassword(
-                userId,
-                changePasswordDTO.getNewPassword(),
-                changePasswordDTO.getCurrentPassword(),
-                changePasswordDTO.getConfirmPassword()
-        )));
-    }
 
     @PatchMapping("/{userId}/change-email")
     @PreAuthorize("#userId.toString().equals(authentication.name)")

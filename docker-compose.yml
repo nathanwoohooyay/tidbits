@@ -6,13 +6,17 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      DB_AUTH_NAME: tidbits_auth
     ports:
       - "${DB_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./db/create.sql:/docker-entrypoint-initdb.d/01-create.sql
-      - ./db/instruments_inserts.sql:/docker-entrypoint-initdb.d/02-inserts.sql
-      - ./db/roles_insert.sql:/docker-entrypoint-initdb.d/03-role_insert.sql
+      - ./db/create_auth_db.sql:/docker-entrypoint-initdb.d/02-create-auth-db.sql
+      - ./db/instruments_inserts.sql:/docker-entrypoint-initdb.d/03-inserts.sql
+      - ./db/roles_insert.sql:/docker-entrypoint-initdb.d/04-role_insert.sql
+      - ./db/testdata.sql:/docker-entrypoint-initdb.d/05-testdata.sql
+      - ./db/seed_auth_db.sql:/docker-entrypoint-initdb.d/06-seed-auth-db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
@@ -88,6 +92,7 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+      DB_AUTH_NAME: tidbits_auth
       JWT_SECRET: ${JWT_SECRET}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_USER_AUDIT_TOPIC: ${KAFKA_USER_AUDIT_TOPIC:-user-audit-events}
@@ -164,11 +169,12 @@ services:
       GATEWAY_CORS_ORIGINS: ${GATEWAY_CORS_ORIGINS:-http://localhost:8084,http://localhost:4200,http://localhost:8080,http://localhost:9875}
       CLIENT_SERVICE_URL: http://client-service:8082
       AUDIT_SERVICE_URL: http://audit-service:8083
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
+      METRICS_SERVICE_URL: http://metrics-service:8085
+      DB_AUTH_HOST: ${DB_HOST}
+      DB_AUTH_PORT: ${DB_PORT}
+      DB_AUTH_NAME: tidbits_auth
+      DB_AUTH_USER: ${DB_USER}
+      DB_AUTH_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
     ports:
       - "3000:3000"
@@ -193,8 +199,6 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "8085:8085"
     depends_on:
       postgres:
         condition: service_healthy

@@ -233,6 +233,8 @@ export class LoginComponent {
         this.loading.set(false);
         if (err.status === 0 || err.status === 404 || err.status === 502) {
           this.errorMessage.set('Auth service unreachable. Please try again shortly.');
+        } else if (err.error?.code === 'ROLE_NOT_ALLOWED' || err.message === 'AUDIT_ROLE_REQUIRED') {
+          this.errorMessage.set('This account does not have access to the audit portal.');
         } else {
           this.errorMessage.set('Invalid credentials. Please verify your access.');
         }

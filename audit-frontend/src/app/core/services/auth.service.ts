@@ -17,7 +17,19 @@ export class AuthService {
   readonly isAuthenticated = computed(() => !!this.currentUser());
   readonly userRole = computed<UserRole | null>(() => this.currentUser()?.role || null);
   readonly isAdmin = computed(() => this.userRole() === 'ADMIN');
-  readonly isAuditor = computed(() => this.userRole() === 'AUDITOR' || this.userRole() === 'ADMIN');
+  readonly isAuditor = computed(() => ['ADMIN', 'AUDITOR', 'REPORTER'].includes(this.userRole() || ''));
+  readonly roleBadgeClass = computed(() => {
+    switch (this.userRole()) {
+      case 'ADMIN':
+        return 'badge-admin';
+      case 'AUDITOR':
+        return 'badge-auditor';
+      case 'REPORTER':
+        return 'badge-reporter';
+      default:
+        return 'badge-user';
+    }
+  });
 
   constructor(
     private http: HttpClient,
@@ -50,7 +62,7 @@ export class AuthService {
   private handleAuthSuccess(token: string, usernameFallback?: string, explicitRole?: UserRole) {
     localStorage.setItem(this.TOKEN_KEY, token);
 
-    let parsedRole: UserRole = explicitRole || 'AUDITOR';
+    let parsedRole: UserRole | null = explicitRole || null;
     let userId: number | undefined;
     let username = usernameFallback || 'user';
     let expiresAt: number | undefined;
@@ -70,6 +82,8 @@ export class AuthService {
             parsedRole = 'ADMIN';
           } else if (decoded.roles.includes('AUDITOR') || decoded.roles.includes('ROLE_AUDITOR')) {
             parsedRole = 'AUDITOR';
+          } else if (decoded.roles.includes('REPORTER') || decoded.roles.includes('ROLE_REPORTER')) {
+            parsedRole = 'REPORTER';
           }
         }
         username = usernameFallback || username;
@@ -77,6 +91,13 @@ export class AuthService {
       }
     } catch (e) {
       console.warn('Could not decode JWT payload:', e);
+    }
+
+    if (!parsedRole || !['ADMIN', 'AUDITOR', 'REPORTER'].includes(parsedRole)) {
+      localStorage.removeItem(this.TOKEN_KEY);
+      localStorage.removeItem(this.USER_KEY);
+      this.currentUser.set(null);
+      throw new Error('AUDIT_ROLE_REQUIRED');
     }
 
     const authUser: AuthUser = {

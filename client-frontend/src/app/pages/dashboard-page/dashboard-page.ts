@@ -158,16 +158,17 @@ export class DashboardPageComponent implements OnInit {
   }
 
   onTradeExecuted(execution: TradeExecution) {
-    const instrument = this.instruments().find(item => item.instrument_id === execution.instrumentId);
-    const accountId = this.selectedAccountId();
-    if (!instrument || !accountId) {
-      return;
-    }
-
-    this.addOrder(accountId, instrument, execution);
-    this.updateAccountCash(accountId, execution);
-    this.updateHoldings(accountId, instrument, execution);
-    this.syncSessionAccounts();
+    window.location.reload();
+//     const instrument = this.instruments().find(item => item.instrument_id === execution.instrumentId);
+//     const accountId = this.selectedAccountId();
+//     if (!instrument || !accountId) {
+//       return;
+//     }
+//
+//     this.addOrder(accountId, instrument, execution);
+//     this.updateAccountCash(accountId, execution);
+//     this.updateHoldings(accountId, instrument, execution);
+//     this.syncSessionAccounts();
   }
 
   goToAccount() {
@@ -321,8 +322,8 @@ export class DashboardPageComponent implements OnInit {
         this.selectedAccountId.set(nextAccountId);
         this.session.setAccounts(accounts.map(account => this.toSessionAccount(account)));
         this.session.setSelectedAccountId(nextAccountId);
-        this.loadOrders(accounts);
-        this.loadHoldings(accounts);
+//         this.loadOrders(accounts);
+//         this.loadHoldings(accounts);
       },
       error: err => {
         this.accounts.set([]);

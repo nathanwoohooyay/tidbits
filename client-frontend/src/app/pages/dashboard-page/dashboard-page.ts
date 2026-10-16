@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { SessionService } from '../../services/session.service';
@@ -55,6 +55,7 @@ import { ReportingService } from '../../services/reporting.service';
 export class DashboardPageComponent implements OnInit {
   readonly today = new Date();
 
+  readonly tradeHistoryRef = viewChild(DashboardTradeHistoryComponent);
   private readonly router = inject(Router);
   private readonly session = inject(SessionService);
   private readonly accountApi = inject(AccountService);
@@ -168,19 +169,13 @@ export class DashboardPageComponent implements OnInit {
     setTimeout(() => document.getElementById('trade-section')?.scrollIntoView({ behavior: 'smooth' }), 0);
   }
 
-  onTradeExecuted(execution: TradeExecution) {
-      console.log('Trade executed:', execution);
-//     window.location.reload();
-//     const instrument = this.instruments().find(item => item.instrument_id === execution.instrumentId);
-//     const accountId = this.selectedAccountId();
-//     if (!instrument || !accountId) {
-//       return;
-//     }
-//
-//     this.addOrder(accountId, instrument, execution);
-//     this.updateAccountCash(accountId, execution);
-//     this.updateHoldings(accountId, instrument, execution);
-//     this.syncSessionAccounts();
+  onTradeExecuted(execution: placedOrderDTO) {
+    const tradeHistory = this.tradeHistoryRef();
+    if (!tradeHistory) {
+        console.log("Trade history component not found.");
+        return;
+    }
+    tradeHistory.ordersArray.update(existing => [execution, ...existing]);
   }
 
   goToAccount() {

@@ -1,12 +1,11 @@
 import { CommonModule } from '@angular/common';
-import {Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
+import {Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges, signal} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Holding, Instrument, TradeExecution, TradeMode } from './dashboard.models';
+import { TradeMode } from './dashboard.models';
 import { formatCurrency, formatPercent } from './dashboard.utils';
-import {OrderService, OrderDTO} from '../../services/order.service';
+import {OrderService, OrderDTO, placedOrderDTO} from '../../services/order.service';
 import {PricingService,GetHoldingsResponseDTO, PricingQuoteDTO } from '../../services/pricing.service';
 import { tickerToName } from './stock';
-import { catchError, finalize, map, of, tap } from 'rxjs';
 
 
 interface StockOption {
@@ -24,25 +23,23 @@ type SelectedQuoteView = Omit<PricingQuoteDTO, 'instrumentId' | 'stale' | 'curre
   templateUrl: './dashboard-trade-desk.component.html'
 })
 export class DashboardTradeDeskComponent implements OnChanges {
-  @Input() instruments: Instrument[] = [];
-  @Input() holdings: Holding[] = [];
   @Input() cashBalance = 0;
   @Input() selectedMode: TradeMode = 'buy';
   @Input() selectedInstrumentId: number | null = null;
 
-  @Output() tradeExecuted = new EventEmitter<TradeExecution>();
+  @Output() tradeExecuted = new EventEmitter<placedOrderDTO>();
 
-  tradeMode: TradeMode = 'buy';
-  tradeInstrumentId: number | null = null;
-  tradeQuantity: number | null = null;
-  tradeSearchTerm = '';
-  tradeError = '';
-  tradeSuccess = '';
-  tradeLoading = false;
-  quoteLoading = false;
-  quoteError = '';
-  selectedStock: StockOption | null = null;
-  selectedQuote: SelectedQuoteView | null = null;
+  tradeMode = signal<TradeMode>('buy');
+  tradeInstrumentId = signal<number | null>(null);
+  tradeQuantity = signal<number | null>(null);
+  tradeSearchTerm = signal('');
+  tradeError = signal('');
+  tradeSuccess = signal('');
+  tradeLoading = signal(false);
+  quoteLoading = signal(false);
+  quoteError = signal('');
+  selectedStock = signal<StockOption | null>(null);
+  selectedQuote = signal<SelectedQuoteView | null>(null);
 
 
   readonly stockOptions: StockOption[] = Array.from(tickerToName.entries()).map(([ticker, name], index) => ({
@@ -70,18 +67,18 @@ export class DashboardTradeDeskComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['selectedMode']) {
-      this.tradeMode = this.selectedMode;
+      this.tradeMode.set(this.selectedMode);
     }
     if (changes['selectedInstrumentId']) {
       this.selectStockByInstrumentId(this.selectedInstrumentId);
-      this.tradeQuantity = null;
-      this.tradeError = '';
-      this.tradeSuccess = '';
+      this.tradeQuantity.set(null);
+      this.tradeError.set('');
+      this.tradeSuccess.set('');
     }
   }
 
   get filteredStockOptions(): StockOption[] {
-    const term = this.tradeSearchTerm.trim().toLowerCase();
+    const term = this.tradeSearchTerm().trim().toLowerCase();
 
     if (!term) {
       return this.stockOptions.slice(0, 10);
@@ -93,135 +90,122 @@ export class DashboardTradeDeskComponent implements OnChanges {
   }
 
   selectStock(stock: StockOption) {
-    this.tradeInstrumentId = stock.instrumentId;
-    this.selectedStock = stock;
-    this.tradeSearchTerm = `${stock.ticker} — ${stock.name}`;
-    this.tradeQuantity = null;
-    this.tradeError = '';
-    this.tradeSuccess = '';
-    this.quoteError = '';
+    this.tradeInstrumentId.set(stock.instrumentId);
+    this.selectedStock.set(stock);
+    this.tradeSearchTerm.set(`${stock.ticker} — ${stock.name}`);
+    this.tradeQuantity.set(null);
+    this.tradeError.set('');
+    this.tradeSuccess.set('');
+    this.quoteError.set('');
     this.loadSelectedQuote(stock.ticker);
   }
 
   onSearchTermChange() {
-    const matchedStock = this.stockOptions.find(stock => `${stock.ticker} — ${stock.name}` === this.tradeSearchTerm);
+    const matchedStock = this.stockOptions.find(stock => `${stock.ticker} — ${stock.name}` === this.tradeSearchTerm());
 
     if (!matchedStock) {
-      this.tradeInstrumentId = null;
-      this.selectedStock = null;
-      this.selectedQuote = null;
-      this.quoteError = '';
+      this.tradeInstrumentId.set(null);
+      this.selectedStock.set(null);
+      this.selectedQuote.set(null);
+      this.quoteError.set('');
     }
 
-    this.tradeError = '';
-    this.tradeSuccess = '';
+    this.tradeError.set('');
+    this.tradeSuccess.set('');
   }
 
   selectedInstrumentPrice(): number {
-    return this.selectedQuote?.price ?? 0;
+    return this.selectedQuote()?.price ?? 0;
   }
 
-  heldQuantity(): number {
-    const held = this.holdings.find(h => h.instrument_id === this.tradeInstrumentId);
-    return held?.quantity ?? 0;
-  }
 
   tradeTotalCost(): number {
-    const quantity = this.tradeQuantity ?? 0;
+    const quantity = this.tradeQuantity() ?? 0;
     return quantity * this.selectedInstrumentPrice();
   }
 
   canExecuteTrade(): boolean {
-    if (!this.selectedQuote || !this.tradeQuantity || this.tradeQuantity <= 0) {
+    if (!this.selectedQuote() || !this.tradeQuantity() || !this.tradeQuantity() || this.tradeQuantity()! <= 0) {
       return false;
     }
-    if (this.tradeMode === 'buy') {
+    if (this.tradeMode() === 'buy') {
       return this.tradeTotalCost() <= this.cashBalance;
     }
-    return this.heldQuantity() >= this.tradeQuantity;
+return true;
   }
 
   setTradeMode(mode: TradeMode) {
-    this.tradeMode = mode;
-    this.tradeError = '';
-    this.tradeSuccess = '';
+    this.tradeMode.set(mode);
+    this.tradeError.set('');
+    this.tradeSuccess.set('');
   }
 
   onTradeInstrumentChange() {
-    this.tradeError = '';
-    this.tradeSuccess = '';
-    this.tradeQuantity = null;
+    this.tradeError.set('');
+    this.tradeSuccess.set('');
+    this.tradeQuantity.set(null);
   }
 
   executeTrade() {
       if (!this.selectedAccountId) {
-        this.tradeError = 'No account selected.';
+        this.tradeError.set('No account selected.');
         return;
       }
-    const stock = this.selectedStock;
-    const quote = this.selectedQuote;
-    const quantity = this.tradeQuantity ?? 0;
+    const stock = this.selectedStock();
+    const quote = this.selectedQuote();
+    const quantity = this.tradeQuantity() ?? 0;
 
     if (!stock || !quote || !this.canExecuteTrade()) {
-      this.tradeError = this.tradeMode === 'buy'
-        ? 'Enter a valid quantity within your available cash balance.'
-        : 'Enter a valid quantity that does not exceed your holdings.';
+      this.tradeError.set('Cannot execute trade');
       return;
     }
 
-    this.tradeLoading = true;
-    this.tradeError = '';
-    this.tradeSuccess = '';
-
-
-//TODO: remove
-    this.tradeExecuted.emit({
-      instrumentId: stock.instrumentId,
-      orderType: this.tradeMode,
-      quantity,
-      stockPrice: quote.price,
-    });
+    this.tradeLoading.set(true);
+    this.tradeError.set('');
+    this.tradeSuccess.set('');
 
     const payload : OrderDTO  = {
       accountId: this.selectedAccountId,
       instrumentId: stock.instrumentId,
       quantity: quantity,
       stockPrice: quote.price, // get from pricer, load into selected instrument
-      orderType: this.tradeMode.toUpperCase() as 'BUY' | 'SELL'
+      orderType: this.tradeMode().toUpperCase() as 'BUY' | 'SELL'
     }
     this.orderService.placeOrder(this.selectedAccountId, payload).subscribe({
-      next: placedOrder => {
+      next: (placedOrder) => {
         console.log(placedOrder);
-        this.tradeLoading = false;
-        this.tradeSuccess = `Sample order filled: ${payload.orderType} ${quantity} share${quantity > 1 ? 's' : ''} of ${stock.ticker}.`;
-        this.tradeQuantity = null;
+        this.tradeExecuted.emit(placedOrder);
+        this.tradeLoading.set(false);
+        this.tradeSuccess.set(`Sample order filled: ${payload.orderType} ${quantity} share${quantity > 1 ? 's' : ''} of ${stock.ticker}.`);
+        this.tradeQuantity.set(null);
+
       },
       error: err => {
-        this.tradeLoading = false;
-        this.tradeQuantity = null;
-        this.tradeError= 'Failed to place order.';
+        this.tradeLoading.set(false);
+        this.tradeQuantity.set(null);
+        this.tradeError.set('Failed to place order.');
       }
     });
   }
 
   private selectStockByInstrumentId(instrumentId: number | null) {
     if (!instrumentId) {
-      this.tradeInstrumentId = null;
-      this.selectedStock = null;
-      this.selectedQuote = null;
-      this.tradeSearchTerm = '';
-      this.quoteError = '';
+      this.tradeInstrumentId.set(null);
+      this.selectedStock.set(null);
+      this.selectedQuote.set(null);
+      this.tradeSearchTerm.set('');
+      this.quoteError.set('');
       return;
     }
 
     const stock = this.stockOptions.find(option => option.instrumentId === instrumentId) ?? null;
 
     if (!stock) {
-      this.tradeInstrumentId = null;
-      this.selectedStock = null;
-      this.selectedQuote = null;
-      this.tradeSearchTerm = '';
-      this.quoteError = '';
+      this.tradeInstrumentId.set(null);
+      this.selectedStock.set(null);
+      this.selectedQuote.set(null);
+      this.tradeSearchTerm.set('');
+      this.quoteError.set('');
       return;
     }
 
@@ -229,22 +213,22 @@ export class DashboardTradeDeskComponent implements OnChanges {
   }
 
   private loadSelectedQuote(symbol: string) {
-    this.quoteLoading = true;
-    this.quoteError = '';
-    this.selectedQuote = null;
+    this.quoteLoading.set(true);
+    this.quoteError.set('');
+    this.selectedQuote.set(null);
 
     this.pricingService.getQuotes(symbol).subscribe({
       next: (resp: GetHoldingsResponseDTO) => {
         const quote = resp.quotes[0];
 
         if (!quote) {
-          this.quoteError = 'No quote data was returned.';
+          this.quoteError.set('No quote data was returned.');
           return;
         }
 
         console.log("Getting market data...");
         console.log(quote);
-        this.selectedQuote = {
+        this.selectedQuote.set({
           symbol: quote.symbol,
           price: quote.price,
           change: quote.change,
@@ -254,15 +238,15 @@ export class DashboardTradeDeskComponent implements OnChanges {
           prevClose: quote.prevClose,
           asOf: quote.asOf,
           source: quote.source,
-        };
-        this.quoteLoading = false;
+        });
+        this.quoteLoading.set(false);
       },
       error: err => {
-        this.quoteLoading = false;
-        this.quoteError = err?.error?.message ?? 'Failed to fetch market price.';
+        this.quoteLoading.set(false);
+        this.quoteError.set(err?.error?.message ?? 'Failed to fetch market price.');
       },
       complete: () => {
-        this.quoteLoading = false;
+        this.quoteLoading.set(false);
       }
     });
   }

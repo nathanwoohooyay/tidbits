@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
@@ -16,6 +17,11 @@ export class LoginPageComponent {
   private readonly authService = inject(AuthService);
   private readonly session = inject(SessionService);
   private readonly router = inject(Router);
+  private readonly title = inject(Title);
+
+  constructor() {
+    this.title.setTitle('Traders, Tickers, and Triumph');
+  }
 
   loginUsername = '';
   loginPassword = '';

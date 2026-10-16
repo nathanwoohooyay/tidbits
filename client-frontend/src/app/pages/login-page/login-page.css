@@ -8,15 +8,35 @@
 
 .login-card {
   width: min(100%, 420px);
-  background: white;
-  border-radius: 18px;
+  background: var(--clr-parchment);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
   padding: 2rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 24px 60px var(--clr-shadow-deep);
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.login-brand h1 {
+  color: var(--clr-espresso);
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.login-brand p {
+  margin-top: .35rem;
+  color: var(--clr-sienna);
+  font-size: .95rem;
+  font-weight: 700;
 }
 
 .subtitle {
   margin-top: 0.25rem;
-  color: #6f6257;
+  color: var(--clr-sienna);
 }
 
 .form-group {

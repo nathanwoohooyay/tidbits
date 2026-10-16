@@ -9,6 +9,7 @@ import {
   Holding,
   Instrument,
   Order,
+  ReportOverview,
   QuickTradeSelection,
   ThemeMode,
   TradeExecution,
@@ -29,6 +30,7 @@ import {UserDTO, UserService} from '../../services/user.service';
 import {AccountDto, AccountHoldingDto, AccountService} from '../../services/account.service';
 import { SessionAccount } from '../../services/session.service';
 import { OrderService, placedOrderDTO } from '../../services/order.service';
+import { ReportingService } from '../../services/reporting.service';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -60,6 +62,7 @@ export class DashboardPageComponent implements OnInit {
   private readonly themeStorageKey = 'tidbits_theme_mode';
   private readonly mockData = getMockDashboardData();
   private readonly userService = inject(UserService);
+  private readonly reportingService = inject(ReportingService);
 
   currentUser = signal<UserDTO | null>(null);
   cashAmount: number | null = null;
@@ -72,7 +75,7 @@ export class DashboardPageComponent implements OnInit {
   instruments = signal(this.mockData.instruments);
   holdingsByAccount = signal(this.mockData.holdingsByAccount);
   ordersByAccount = signal<Record<number, Order[]>>({});
-  reportingOverview = signal(this.mockData.reportingOverview);
+  reportingOverview = signal<ReportOverview | null>(null);
   usingPlaceholderMarketData = signal(this.mockData.usingPlaceholderMarketData);
   themeMode = signal<ThemeMode>('light');
   trendFilter = signal<TrendFilter>('trending');
@@ -116,11 +119,19 @@ export class DashboardPageComponent implements OnInit {
       next: user => {
         this.currentUser.set(user);
         this.session.setCurrentUser(user);
+        this.loadReportingOverview();
         this.loadAccounts(user.userId);
       },
       error: err => {
         this.cashError = err?.error?.message ?? err?.error?.error ?? 'Failed to load your profile.';
       },
+    });
+  }
+
+  private loadReportingOverview() {
+    this.reportingService.getCurrentUserOverview().subscribe({
+      next: overview => this.reportingOverview.set(overview),
+      error: () => this.reportingOverview.set(null),
     });
   }
 

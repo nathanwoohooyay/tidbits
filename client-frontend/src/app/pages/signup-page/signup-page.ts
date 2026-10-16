@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Title } from '@angular/platform-browser';
 import { AuthService, type SignupField, type SignupFieldErrors } from '../../services/auth.service';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,8 +20,13 @@ const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 export class SignupPageComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly title = inject(Title);
 
   readonly maxDateOfBirth = this.formatDateForInput(new Date());
+
+  constructor() {
+    this.title.setTitle('Traders, Tickers, and Triumph');
+  }
 
   signupUsername = '';
   signupEmail = '';

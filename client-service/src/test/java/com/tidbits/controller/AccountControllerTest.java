@@ -45,8 +45,8 @@ class AccountControllerTest {
         when(accountService.createAccount("Primary", 42)).thenReturn(saved);
 
         mockMvc.perform(post("/api/users/{userId}/accounts", 42)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content("Primary"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"Primary\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accountId").value(10))
                 .andExpect(jsonPath("$.userId").value(42))
@@ -59,8 +59,8 @@ class AccountControllerTest {
     @Test
     void createAccount_returnsBadRequestWhenNicknameIsBlank() throws Exception {
         mockMvc.perform(post("/api/users/{userId}/accounts", 42)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content("   "))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"   \"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.message").value("Account nickname is required."))
@@ -75,8 +75,8 @@ class AccountControllerTest {
                 .thenThrow(new AccessDeniedException("Unauthorized access."));
 
         mockMvc.perform(post("/api/users/{userId}/accounts", 42)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content("Primary"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"Primary\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"))
                 .andExpect(jsonPath("$.message").value("Unauthorized access."))
@@ -189,8 +189,8 @@ class AccountControllerTest {
                 .thenThrow(new RuntimeException("unexpected"));
 
         mockMvc.perform(post("/api/users/{userId}/accounts", 42)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content("Primary"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"Primary\"}"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.errorCode").value("GENERIC_ERROR"))
                 .andExpect(jsonPath("$.message").value("An unexpected error occurred"))

@@ -27,12 +27,12 @@ public class AccountController {
 
     @PostMapping
     @PreAuthorize("#userId.toString().equals(authentication.name)")
-    public ResponseEntity<AccountDTO> createAccount(@AuthenticationPrincipal Jwt jwt, @PathVariable Integer userId, @RequestBody String nickname) {
-        if (nickname.isBlank()) {
+    public ResponseEntity<AccountDTO> createAccount(@AuthenticationPrincipal Jwt jwt, @PathVariable Integer userId, @RequestBody AccountCreateRequestDTO request) {
+        if (request.getNickname() == null || request.getNickname().isBlank()) {
             throw new BadRequestException("Account nickname is required.");
         }
 
-        AccountDTO accountDTO = AccountMapper.toDto(accountService.createAccount(nickname, userId));
+        AccountDTO accountDTO = AccountMapper.toDto(accountService.createAccount(request.getNickname(), userId));
 
         return new ResponseEntity<>(accountDTO, HttpStatus.CREATED);
     }

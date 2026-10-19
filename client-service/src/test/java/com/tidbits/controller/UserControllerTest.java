@@ -50,8 +50,8 @@ class UserControllerTest {
         when(userService.changeEmail(42, "new@example.com")).thenReturn(updated);
 
         mockMvc.perform(patch("/api/users/{userId}/change-email", 42)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content("new@example.com"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"email\":\"new@example.com\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(42))
                 .andExpect(jsonPath("$.email").value("new@example.com"));
@@ -65,8 +65,8 @@ class UserControllerTest {
                 .thenThrow(new BadRequestException("New email is required."));
 
         mockMvc.perform(patch("/api/users/{userId}/change-email", 42)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content("   "))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"email\":\"   \"}"))
                 .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
         .andExpect(jsonPath("$.message").value("New email is required."))
@@ -79,8 +79,8 @@ class UserControllerTest {
         when(userService.changePhoneNumber(42, "9998887777")).thenReturn(updated);
 
         mockMvc.perform(patch("/api/users/{userId}/change-phone-number", 42)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content("9998887777"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"phoneNumber\":\"9998887777\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(42))
                 .andExpect(jsonPath("$.phoneNumber").value("9998887777"));
@@ -94,8 +94,8 @@ class UserControllerTest {
                 .thenThrow(new BadRequestException("New phone number is required."));
 
         mockMvc.perform(patch("/api/users/{userId}/change-phone-number", 42)
-                        .contentType(MediaType.TEXT_PLAIN)
-                .content(" "))
+            .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"phoneNumber\":\" \"}"))
                 .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
             .andExpect(jsonPath("$.message").value("New phone number is required."))

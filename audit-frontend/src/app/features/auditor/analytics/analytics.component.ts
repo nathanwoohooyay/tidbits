@@ -1,11 +1,14 @@
 import { Component, OnInit, ElementRef, ViewChild, AfterViewInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Chart, registerables } from 'chart.js';
 import { finalize, switchMap } from 'rxjs/operators';
 import { MetricsService } from '../../../core/services/metrics.service';
 import { ReportService } from '../../../core/services/report.service';
+import { AuditLogService } from '../../../core/services/audit-log.service';
 import {
   AllMetricsResponse,
+  TransactionLog,
   TradeVolumeByType,
   TradeVolumeByMarket,
   TradeVolumeBySide,
@@ -19,7 +22,7 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="analytics-container animate-fade-in">
       <!-- Page Header -->
@@ -107,6 +110,61 @@ Chart.register(...registerables);
             <div class="kpi-label">Assets Under Mgmt</div>
             <div class="kpi-value mono-font text-emerald">\${{ aumFormatted() }}</div>
             <div class="kpi-trend positive">Fully collateralized</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trading Activity Explorer -->
+      <div class="activity-section glass-panel">
+        <div class="card-title-row">
+          <div>
+            <h2 class="card-title">Trading Activity Explorer</h2>
+            <span class="card-sub">Analyze over-time activity by instrument, period, and client</span>
+          </div>
+          <span class="badge badge-auditor">Transaction Logs</span>
+        </div>
+
+        <div class="activity-filters">
+          <label class="filter-field">
+            <span>Instrument</span>
+            <select class="input-control" [ngModel]="selectedInstrument()" (ngModelChange)="onInstrumentChange($event)">
+              <option value="ALL">All instruments</option>
+              <option *ngFor="let instrument of availableInstruments()" [value]="instrument">{{ instrument }}</option>
+            </select>
+          </label>
+
+          <label class="filter-field">
+            <span>Period</span>
+            <select class="input-control" [ngModel]="selectedPeriodDays()" (ngModelChange)="onPeriodChange($event)">
+              <option [ngValue]="7">Last 7 days</option>
+              <option [ngValue]="30">Last 30 days</option>
+              <option [ngValue]="90">Last 90 days</option>
+              <option [ngValue]="365">Last 12 months</option>
+              <option [ngValue]="0">All available</option>
+            </select>
+          </label>
+
+          <label class="filter-field">
+            <span>Client</span>
+            <select class="input-control" [ngModel]="selectedClient()" (ngModelChange)="onClientChange($event)">
+              <option value="ALL">All clients</option>
+              <option *ngFor="let client of availableClients()" [value]="client">{{ client }}</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="activity-summary">
+          <div class="summary-pill">
+            <span class="summary-label">Filtered Trades</span>
+            <span class="summary-value mono-font">{{ filteredTradeCount().toLocaleString() }}</span>
+          </div>
+          <div class="summary-pill">
+            <span class="summary-label">Filtered Volume</span>
+            <span class="summary-value mono-font">\${{ filteredVolumeFormatted() }}</span>
+          </div>
+          <div class="summary-pill">
+            <span class="summary-label">Active Days</span>
+            <span class="summary-value mono-font">{{ activityBuckets().length }}</span>
           </div>
         </div>
       </div>
@@ -340,6 +398,68 @@ Chart.register(...registerables);
       gap: 16px;
     }
 
+    .activity-section {
+      padding: 20px;
+    }
+
+    .activity-filters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .input-control {
+      border: 1px solid rgba(62, 36, 21, 0.2);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #fffdf9;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .activity-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .summary-pill {
+      border: 1px solid rgba(62, 36, 21, 0.16);
+      background: #fffbf5;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .summary-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.45px;
+      font-weight: 700;
+    }
+
+    .summary-value {
+      font-size: 16px;
+      color: var(--text-primary);
+      font-weight: 800;
+    }
+
     .chart-card {
       padding: 20px;
       display: flex;
@@ -413,6 +533,14 @@ Chart.register(...registerables);
       padding: 30px;
       color: var(--text-muted);
     }
+
+    @media (max-width: 900px) {
+      .activity-filters,
+      .activity-summary,
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   `]
 })
 export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -425,15 +553,21 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   totalVolume = signal(0);
   totalOrders = signal(0);
   aumValue = signal(0);
+  txnLogs = signal<TransactionLog[]>([]);
+  selectedInstrument = signal('ALL');
+  selectedClient = signal('ALL');
+  selectedPeriodDays = signal(30);
 
   private charts: Chart[] = [];
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private readonly autoRefreshMs = 15000;
   private viewReady = false;
+  private baseTimeData: TradeVolumeOverTime[] = [];
 
   constructor(
     private metricsService: MetricsService,
-    private reportService: ReportService
+    private reportService: ReportService,
+    private auditLogService: AuditLogService
   ) {}
 
   ngOnInit() {
@@ -481,7 +615,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
       const orders = timeData.reduce((acc: number, curr: TradeVolumeOverTime) => acc + curr.order_count, 0);
       this.totalVolume.set(vol);
       this.totalOrders.set(orders);
-      this.updateLineChart(timeData);
+      this.baseTimeData = timeData;
+      this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
 
       const aum = (all['aum'] || []) as AumMetric[];
       const totalAum = aum.reduce(
@@ -496,6 +631,11 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
       const markets = (all['trade_volume_by_market'] || all['volume_by_market'] || []) as TradeVolumeByMarket[];
       this.updateBarChart(markets);
     });
+
+    this.auditLogService.getTransactionLogs().subscribe((logs: TransactionLog[]) => {
+      this.txnLogs.set(logs);
+      this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+    });
   }
 
   totalVolumeFormatted(): string {
@@ -508,6 +648,118 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   aumFormatted(): string {
     return this.aumValue().toLocaleString();
+  }
+
+  availableInstruments(): string[] {
+    const instruments = new Set<string>();
+
+    this.txnLogs().forEach((txn) => {
+      const label = this.getInstrumentLabel(txn);
+      if (label) {
+        instruments.add(label);
+      }
+    });
+
+    return [...instruments].sort((a, b) => a.localeCompare(b));
+  }
+
+  availableClients(): string[] {
+    const clients = new Set<string>();
+
+    this.txnLogs().forEach((txn) => {
+      const label = this.getClientLabel(txn);
+      if (label) {
+        clients.add(label);
+      }
+    });
+
+    return [...clients].sort((a, b) => a.localeCompare(b));
+  }
+
+  activityBuckets(): TradeVolumeOverTime[] {
+    const selectedPeriod = this.selectedPeriodDays();
+    const selectedClient = this.selectedClient();
+    const selectedInstrument = this.selectedInstrument();
+    const now = Date.now();
+    const minTimestamp = selectedPeriod > 0 ? now - (selectedPeriod * 24 * 60 * 60 * 1000) : 0;
+
+    const buckets = new Map<string, TradeVolumeOverTime>();
+
+    this.txnLogs()
+      .filter((txn) => this.isTradeTransaction(txn))
+      .filter((txn) => {
+        const eventTime = Date.parse(txn.timestamp || txn.happenedAt || '');
+        if (Number.isNaN(eventTime)) {
+          return false;
+        }
+
+        if (minTimestamp > 0 && eventTime < minTimestamp) {
+          return false;
+        }
+
+        if (selectedClient !== 'ALL' && this.getClientLabel(txn) !== selectedClient) {
+          return false;
+        }
+
+        if (selectedInstrument !== 'ALL' && this.getInstrumentLabel(txn) !== selectedInstrument) {
+          return false;
+        }
+
+        return true;
+      })
+      .forEach((txn) => {
+        const dateKey = this.toDateKey(txn.timestamp || txn.happenedAt || '');
+        if (!dateKey) {
+          return;
+        }
+
+        const existing = buckets.get(dateKey) || {
+          time_bucket: dateKey,
+          order_count: 0,
+          total_quantity: 0,
+          total_value: 0
+        };
+
+        const quantity = Number(txn.quantity || 0);
+        const price = Number(txn.price || txn.stockPrice || 0);
+        const amount = txn.amount == null ? quantity * price : Number(txn.amount);
+
+        existing.order_count += 1;
+        existing.total_quantity += quantity;
+        existing.total_value += Number.isFinite(amount) ? amount : 0;
+
+        buckets.set(dateKey, existing);
+      });
+
+    return [...buckets.values()].sort((left, right) => {
+      const leftTime = Date.parse(left.time_bucket || left.trade_date || '');
+      const rightTime = Date.parse(right.time_bucket || right.trade_date || '');
+      return leftTime - rightTime;
+    });
+  }
+
+  filteredTradeCount(): number {
+    return this.activityBuckets().reduce((sum, bucket) => sum + bucket.order_count, 0);
+  }
+
+  filteredVolumeFormatted(): string {
+    const total = this.activityBuckets().reduce((sum, bucket) => sum + bucket.total_value, 0);
+    return total.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
+  onInstrumentChange(nextValue: string) {
+    this.selectedInstrument.set(nextValue || 'ALL');
+    this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+  }
+
+  onPeriodChange(nextValue: number) {
+    this.selectedPeriodDays.set(Number(nextValue || 0));
+    this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+  }
+
+  onClientChange(nextValue: string) {
+    this.selectedClient.set(nextValue || 'ALL');
+    this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
   }
 
   exportOutliers() {
@@ -531,6 +783,46 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.refreshTimer = setInterval(() => {
       this.loadMetrics();
     }, this.autoRefreshMs);
+  }
+
+  private isTradeTransaction(txn: TransactionLog): boolean {
+    const event = String(txn.event || '').toUpperCase();
+    const orderType = String(txn.orderType || '').toUpperCase();
+
+    return event === 'ORDER_FILLED' || event === 'ORDER_ACCEPTED' || orderType === 'BUY' || orderType === 'SELL';
+  }
+
+  private getInstrumentLabel(txn: TransactionLog): string {
+    if (txn.ticker && String(txn.ticker).trim()) {
+      return String(txn.ticker).trim().toUpperCase();
+    }
+
+    if (txn.instrumentId) {
+      return `INST #${txn.instrumentId}`;
+    }
+
+    return '';
+  }
+
+  private getClientLabel(txn: TransactionLog): string {
+    if (txn.userId) {
+      return `Client #${txn.userId}`;
+    }
+
+    if (txn.accountId) {
+      return `Account #${txn.accountId}`;
+    }
+
+    return '';
+  }
+
+  private toDateKey(value: string): string {
+    const parsed = Date.parse(value);
+    if (Number.isNaN(parsed)) {
+      return '';
+    }
+
+    return new Date(parsed).toISOString().slice(0, 10);
   }
 
   private updateLineChart(data: TradeVolumeOverTime[]) {

@@ -14,11 +14,19 @@ CREATE TABLE users (
     date_of_birth DATE NOT NULL
 );
 
+
 CREATE TABLE accounts (
     account_id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(user_id),
     nickname TEXT,
     cash_balance NUMERIC(15, 2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE portfolio_snapshots (
+    snapshot_id SERIAL PRIMARY KEY,
+    account_id INT NOT NULL REFERENCES accounts(account_id),
+    total_value NUMERIC(15, 2) NOT NULL CHECK (total_value > 0),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 

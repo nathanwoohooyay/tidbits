@@ -45,8 +45,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> req
                         .requestMatchers("/public").permitAll()
-                        .requestMatchers("/api/users/**", "/api/accounts/**", "/api/pricing/**", "/api/orders/**")
-                        .authenticated())
+                        .requestMatchers("/api/users/**", "/api/accounts/**", "/api/pricing/**", "/api/orders/**", "/api/portfolio-snapshots/**").authenticated())
                 .oauth2ResourceServer((OAuth2ResourceServerConfigurer<HttpSecurity> oauth2) ->
                         oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(authenticationConverter)));
 

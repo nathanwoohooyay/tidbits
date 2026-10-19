@@ -15,8 +15,8 @@ services:
       - ./db/create_auth_db.sql:/docker-entrypoint-initdb.d/02-create-auth-db.sql
       - ./db/instruments_inserts.sql:/docker-entrypoint-initdb.d/03-inserts.sql
       - ./db/roles_insert.sql:/docker-entrypoint-initdb.d/04-role_insert.sql
-      - ./db/testdata.sql:/docker-entrypoint-initdb.d/05-testdata.sql
-      - ./db/seed_auth_db.sql:/docker-entrypoint-initdb.d/06-seed-auth-db.sql
+      - ./db/users_insert.sql:/docker-entrypoint-initdb.d/05-users_insert.sql
+      - ./db/fake_trading_data_insert.sql:/docker-entrypoint-initdb.d/06-fake-trading-data.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s

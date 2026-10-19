@@ -20,8 +20,8 @@
           <div class="insight-value">{{ reportingOverview.liveSummary.filledOrders }}</div>
         </div>
         <div class="insight-card">
-          <div class="insight-label">Accepted Orders</div>
-          <div class="insight-value">{{ reportingOverview.liveSummary.acceptedOrders }}</div>
+          <div class="insight-label">Orders Placed</div>
+          <div class="insight-value">{{ reportingOverview.liveSummary.placedOrders }}</div>
         </div>
         <div class="insight-card">
           <div class="insight-label">Total Notional</div>
@@ -31,7 +31,7 @@
 
       @if (tradeVolumeBySide().length > 0) {
         <div class="insight-subsection">
-          <h4>Volume by Side (Offline Pipeline)</h4>
+          <h4>Volume by Side</h4>
           <div class="insight-row-set">
             @for (item of tradeVolumeBySide(); track item.side) {
               <div class="insight-row">
@@ -55,9 +55,9 @@
             }
           </div>
         </div>
-      }
+      } 
 
-      @if (reportingOverview.topInstrumentNotional.length > 0) {
+       @if (reportingOverview.topInstrumentNotional.length > 0) {
         <div class="insight-subsection">
           <h4>Top Instrument Notional (Live Path)</h4>
           <div class="insight-row-set">

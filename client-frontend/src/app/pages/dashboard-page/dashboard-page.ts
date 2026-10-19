@@ -6,12 +6,10 @@ import { SessionService } from '../../services/session.service';
 import { buildMockChartData, getMockDashboardData } from '../../components/dashboard/dashboard.mock-data';
 import {
   DashboardNotices,
-  Holding,
   Instrument,
   Order,
   QuickTradeSelection,
   ThemeMode,
-  TradeExecution,
   TrendFilter,
 } from '../../components/dashboard/dashboard.models';
 import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-header.component';
@@ -60,6 +58,7 @@ export class DashboardPageComponent implements OnInit {
   private readonly orderApi = inject(OrderService);
   private readonly themeStorageKey = 'tidbits_theme_mode';
   private readonly mockData = getMockDashboardData();
+  private readonly marketSnapshotSymbols = ['AAPL', 'MSFT'];
   private readonly userService = inject(UserService);
 
   currentUser = signal<UserDTO | null>(null);
@@ -70,11 +69,10 @@ export class DashboardPageComponent implements OnInit {
 
   accounts = signal<AccountDto[]>([]);
   selectedAccountId = signal(0);
-  instruments = signal(this.mockData.instruments);
-  holdingsByAccount = signal(this.mockData.holdingsByAccount);
+  instruments = signal<Instrument[]>([]);
   ordersByAccount = signal<Record<number, Order[]>>({});
   reportingOverview = signal(this.mockData.reportingOverview);
-  usingPlaceholderMarketData = signal(this.mockData.usingPlaceholderMarketData);
+  usingPlaceholderMarketData = signal(false);
   themeMode = signal<ThemeMode>('light');
   trendFilter = signal<TrendFilter>('trending');
   chartTimeframe = signal<'1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'>('1M');
@@ -86,8 +84,7 @@ export class DashboardPageComponent implements OnInit {
     this.accounts().find(account => account.accountId === this.selectedAccountId()) ?? null
   );
 
-  holdings = computed(() => this.holdingsByAccount()[this.selectedAccountId()] ?? []);
-  orders = computed(() => this.ordersByAccount()[this.selectedAccountId()] ?? []);
+  // orders = computed(() => this.ordersByAccount()[this.selectedAccountId()] ?? []);
   cashBalance = computed(() => this.selectedAccount()?.cashBalance ?? 0);
 
   totalNetWorth = computed(() => this.portfolioValue() + this.cashBalance());
@@ -97,13 +94,13 @@ export class DashboardPageComponent implements OnInit {
     Object.fromEntries(this.instruments().map(instrument => [instrument.instrument_id, instrument.ticker])) as Record<number, string>
   );
 
-  notices = computed<DashboardNotices>(() => ({
-    marketNotice: 'Market data is currently sample data. Account balances are loaded from the client service.',
-    holdingsNotice: this.holdings().length === 0 ? 'No holdings were returned for this sample account yet.' : '',
-    ordersNotice: this.orders().length === 0 ? 'No orders were returned for this sample account yet.' : '',
-    accountNotice: '',
-    reportingNotice: this.reportingOverview() ? '' : 'Reporting insight feed is temporarily unavailable.',
-  }));
+  // notices = computed<DashboardNotices>(() => ({
+  //   marketNotice: 'Market prices are loaded from the pricing service.',
+  //   holdingsNotice: this.holdings().length === 0 ? 'No holdings were returned for this sample account yet.' : '',
+  //   ordersNotice: this.orders().length === 0 ? 'No orders were returned for this sample account yet.' : '',
+  //   accountNotice: '',
+  //   reportingNotice: this.reportingOverview() ? '' : 'Reporting insight feed is temporarily unavailable.',
+  // }));
 
 setPortfolioValue(value: number) {
     this.portfolioValue.set(value);
@@ -115,7 +112,6 @@ setPortfolioValue(value: number) {
 
   ngOnInit() {
     this.restoreThemePreference();
-
     const authenticatedUserId = this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
     if (!authenticatedUserId) {
       void this.router.navigateByUrl('/login');
@@ -133,7 +129,6 @@ setPortfolioValue(value: number) {
       },
     });
   }
-
 
   toggleTheme() {
     const nextMode = this.themeMode() === 'dark' ? 'light' : 'dark';
@@ -200,38 +195,6 @@ setPortfolioValue(value: number) {
     this.themeMode.set(mode);
     localStorage.setItem(this.themeStorageKey, mode);
     document.body.classList.toggle('dark-mode', mode === 'dark');
-  }
-
-  private addOrder(accountId: number, instrument: Instrument, execution: TradeExecution) {
-    const newOrder = {
-      order_id: Date.now(),
-      account_id: accountId,
-      instrument_id: instrument.instrument_id,
-      quantity: execution.quantity,
-      stock_price: execution.stockPrice,
-      order_type: execution.orderType,
-      status: 'filled',
-      ticker: instrument.ticker,
-      name: instrument.name,
-      created_at: new Date().toISOString(),
-    };
-
-    this.ordersByAccount.update(existing => ({
-      ...existing,
-      [accountId]: [newOrder, ...(existing[accountId] ?? [])],
-    }));
-  }
-
-  private updateAccountCash(accountId: number, execution: TradeExecution) {
-    const delta = execution.quantity * execution.stockPrice * (execution.orderType === 'buy' ? -1 : 1);
-    this.accounts.update(accounts =>
-      accounts.map(account =>
-        account.accountId === accountId
-          ? { ...account, cashBalance: Number((account.cashBalance + delta).toFixed(2)) }
-          : account
-      )
-    );
-    this.syncSessionAccounts();
   }
 
   private submitCashMovement(direction: 'deposit' | 'withdraw') {
@@ -328,8 +291,7 @@ setPortfolioValue(value: number) {
         this.selectedAccountId.set(nextAccountId);
         this.session.setAccounts(accounts.map(account => this.toSessionAccount(account)));
         this.session.setSelectedAccountId(nextAccountId);
-//         this.loadOrders(accounts);
-//         this.loadHoldings(accounts);
+        this.calculateOrderOverview(accounts);
       },
       error: err => {
         this.accounts.set([]);
@@ -341,14 +303,18 @@ setPortfolioValue(value: number) {
     });
   }
 
-  private loadOrders(accounts: AccountDto[]) {
+  private calculateOrderOverview(accounts: AccountDto[]) {
     if (!accounts.length) {
       this.ordersByAccount.set({});
+      this.updateReportingOrderCounts([]);
       return;
     }
 
     forkJoin(accounts.map(account => this.orderApi.getOrders(account.accountId))).subscribe({
       next: orderLists => {
+        const allOrders = orderLists.flat();
+        this.updateReportingOrderCounts(allOrders);
+
         const ordersByAccount = Object.fromEntries(
           accounts.map((account, index) => [
             account.accountId,
@@ -359,9 +325,39 @@ setPortfolioValue(value: number) {
       },
       error: err => {
         this.ordersByAccount.set({});
+        this.updateReportingOrderCounts([]);
         this.cashError = err?.error?.message ?? err?.error?.error ?? 'Failed to load your order history.';
       },
     });
+  }
+
+  private updateReportingOrderCounts(orders: placedOrderDTO[]) {
+    const volumeBySide = ['buy', 'sell'].map(side => {
+      const sideOrders = orders.filter(order => order.orderType.toLowerCase() === side);
+
+      return {
+        side,
+        total_value: sideOrders.reduce((total, order) => total + order.quantity * order.price, 0),
+        order_count: sideOrders.length,
+      };
+    }).filter(item => item.order_count > 0);
+
+    this.reportingOverview.update(overview => ({
+      ...overview,
+      liveSummary: {
+        ...overview.liveSummary,
+        totalOrders: orders.length,
+        filledOrders: orders.filter(order => order.status.toLowerCase() === 'filled').length,
+        placedOrders: orders.filter(order => order.status.toLowerCase() === 'placed').length,
+      },
+      offlineMetrics: {
+        ...overview.offlineMetrics,
+        data: {
+          ...overview.offlineMetrics.data,
+          trade_volume_by_side: volumeBySide,
+        },
+      },
+    }));
   }
 
   private toDashboardOrder(accountId: number, order: placedOrderDTO): Order {
@@ -379,117 +375,6 @@ setPortfolioValue(value: number) {
     };
   }
 
-
-  private loadHoldings(accounts: AccountDto[]) {
-    if (!accounts.length) {
-      this.holdingsByAccount.set({});
-      return;
-    }
-
-    forkJoin(accounts.map(account => this.accountApi.listHoldings(account.accountId))).subscribe({
-      next: holdingLists => {
-        const holdingsByAccount = Object.fromEntries(
-          accounts.map((account, index) => [
-            account.accountId,
-            holdingLists[index].map(holding => this.toDashboardHolding(account.accountId, holding)),
-          ])
-        );
-        this.holdingsByAccount.set(holdingsByAccount);
-      },
-      error: err => {
-        this.holdingsByAccount.set({});
-        this.cashError = err?.error?.message ?? err?.error?.error ?? 'Failed to load your holdings.';
-      },
-    });
-  }
-
-  private toDashboardHolding(accountId: number, holding: AccountHoldingDto): Holding {
-    const instrument = this.instruments().find(item => item.instrument_id === holding.instrumentId) ?? {
-      instrument_id: holding.instrumentId,
-      ticker: `Instrument ${holding.instrumentId}`,
-      name: `Instrument ${holding.instrumentId}`,
-      type: 'EQUITY',
-      market: 'UNKNOWN',
-      price: 0,
-      changePercent: 0,
-      changeAmount: 0,
-      volume: 0,
-      volumeFormatted: '0',
-      marketCap: 'N/A',
-      dayHigh: 0,
-      dayLow: 0,
-      sparkline: [],
-    };
-
-    return this.recalculateHolding({
-      account_id: accountId,
-      instrument_id: holding.instrumentId,
-      quantity: holding.quantity,
-      amount_invested: holding.amountInvested,
-      ticker: instrument.ticker,
-      name: instrument.name,
-      type: instrument.type,
-      market: instrument.market,
-      currentPrice: instrument.price,
-      changePercent: instrument.changePercent,
-      totalValue: 0,
-      avgCost: 0,
-      unrealizedGain: 0,
-      unrealizedGainPct: 0,
-    }, instrument);
-  }
-  private updateHoldings(accountId: number, instrument: Instrument, execution: TradeExecution) {
-    const currentHoldings = [...(this.holdingsByAccount()[accountId] ?? [])];
-    const existingIndex = currentHoldings.findIndex(holding => holding.instrument_id === instrument.instrument_id);
-
-    if (execution.orderType === 'buy') {
-      if (existingIndex >= 0) {
-        const existing = currentHoldings[existingIndex];
-        currentHoldings[existingIndex] = this.recalculateHolding({
-          ...existing,
-          quantity: existing.quantity + execution.quantity,
-          amount_invested: Number((existing.amount_invested + execution.quantity * execution.stockPrice).toFixed(2)),
-        }, instrument);
-      } else {
-        currentHoldings.push(this.recalculateHolding({
-          account_id: accountId,
-          instrument_id: instrument.instrument_id,
-          quantity: execution.quantity,
-          amount_invested: Number((execution.quantity * execution.stockPrice).toFixed(2)),
-          ticker: instrument.ticker,
-          name: instrument.name,
-          type: instrument.type,
-          market: instrument.market,
-          currentPrice: instrument.price,
-          changePercent: instrument.changePercent,
-          totalValue: 0,
-          avgCost: 0,
-          unrealizedGain: 0,
-          unrealizedGainPct: 0,
-        }, instrument));
-      }
-    } else if (existingIndex >= 0) {
-      const existing = currentHoldings[existingIndex];
-      const avgCost = existing.quantity > 0 ? existing.amount_invested / existing.quantity : 0;
-      const nextQuantity = Number((existing.quantity - execution.quantity).toFixed(4));
-      const nextAmountInvested = Number(Math.max(0, existing.amount_invested - (avgCost * execution.quantity)).toFixed(2));
-
-      if (nextQuantity <= 0) {
-        currentHoldings.splice(existingIndex, 1);
-      } else {
-        currentHoldings[existingIndex] = this.recalculateHolding({
-          ...existing,
-          quantity: nextQuantity,
-          amount_invested: nextAmountInvested,
-        }, instrument);
-      }
-    }
-
-    this.holdingsByAccount.update(existing => ({
-      ...existing,
-      [accountId]: currentHoldings,
-    }));
-  }
 
   private syncSessionAccounts() {
     this.session.setAccounts(this.accounts().map(account => this.toSessionAccount(account)));
@@ -519,27 +404,5 @@ setPortfolioValue(value: number) {
     };
   }
 
-  private recalculateHolding(holding: Holding, instrument: Instrument): Holding {
-    const totalValue = Number((holding.quantity * instrument.price).toFixed(2));
-    const avgCost = holding.quantity > 0 ? Number((holding.amount_invested / holding.quantity).toFixed(2)) : 0;
-    const unrealizedGain = Number((totalValue - holding.amount_invested).toFixed(2));
-    const unrealizedGainPct = holding.amount_invested > 0
-      ? Number(((unrealizedGain / holding.amount_invested) * 100).toFixed(2))
-      : 0;
-
-    return {
-      ...holding,
-      ticker: instrument.ticker,
-      name: instrument.name,
-      type: instrument.type,
-      market: instrument.market,
-      currentPrice: instrument.price,
-      changePercent: instrument.changePercent,
-      totalValue,
-      avgCost,
-      unrealizedGain,
-      unrealizedGainPct,
-    };
-  }
 }
 

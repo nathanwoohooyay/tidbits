@@ -1,9 +1,6 @@
-<section class="section-card" aria-label="Trending stocks">
+<section class="section-card" aria-label="Market snapshot">
   <div class="section-header">
     <span class="section-title">Market Snapshot</span>
-    @if (usingPlaceholderMarketData) {
-      <span class="placeholder-pill">Placeholder Quotes Active</span>
-    }
     <div class="filter-tabs" role="group" aria-label="Stock filter">
       @for (filter of filters; track filter[0]) {
         <button class="filter-tab" [class.active]="trendFilter === filter[0]" (click)="trendFilterChange.emit(filter[0])">
@@ -14,6 +11,13 @@
   </div>
 
   <div class="section-body" style="padding:0 1.5rem 1.5rem">
+    @if (loading()) {
+      <p>Loading market data...</p>
+    } @else if (error()) {
+      <p role="alert">{{ error() }}</p>
+    } @else if (trendingStocks.length === 0) {
+      <p>No market data is available.</p>
+    } @else {
     <table class="stock-table" aria-label="Stock market data">
       <thead>
         <tr>
@@ -49,6 +53,7 @@
         }
       </tbody>
     </table>
+    }
   </div>
 </section>
 

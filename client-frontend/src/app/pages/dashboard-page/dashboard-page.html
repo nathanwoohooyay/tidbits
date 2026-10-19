@@ -20,7 +20,7 @@
         [accountCount]="accounts().length">
       </app-dashboard-greeting>
 
-      <app-dashboard-notices [notices]="notices()"></app-dashboard-notices>
+      <!-- <app-dashboard-notices [notices]="notices()"></app-dashboard-notices> -->
 
       <app-dashboard-metrics
         [totalNetWorth]="totalNetWorth()"
@@ -56,9 +56,7 @@
       </app-dashboard-chart>
 
       <app-dashboard-market-snapshot
-        [instruments]="instruments()"
         [trendFilter]="trendFilter()"
-        [usingPlaceholderMarketData]="usingPlaceholderMarketData()"
         (trendFilterChange)="setTrendFilter($event)"
         (quickTrade)="onQuickTrade($event)">
       </app-dashboard-market-snapshot>

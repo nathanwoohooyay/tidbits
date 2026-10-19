@@ -79,6 +79,8 @@ export class DashboardPageComponent implements OnInit {
   trendFilter = signal<TrendFilter>('trending');
   chartTimeframe = signal<'1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'>('1M');
   quickTradeSelection = signal<QuickTradeSelection | null>(null);
+  portfolioValue = signal(0);
+  portfolioChange = signal(0);
 
   selectedAccount = computed(() =>
     this.accounts().find(account => account.accountId === this.selectedAccountId()) ?? null
@@ -87,8 +89,7 @@ export class DashboardPageComponent implements OnInit {
   holdings = computed(() => this.holdingsByAccount()[this.selectedAccountId()] ?? []);
   orders = computed(() => this.ordersByAccount()[this.selectedAccountId()] ?? []);
   cashBalance = computed(() => this.selectedAccount()?.cashBalance ?? 0);
-  portfolioValue = computed(() => this.holdings().reduce((sum, holding) => sum + holding.totalValue, 0));
-  portfolioGainLoss = computed(() => this.holdings().reduce((sum, holding) => sum + holding.unrealizedGain, 0));
+
   totalNetWorth = computed(() => this.portfolioValue() + this.cashBalance());
 
   chartData = computed(() => buildMockChartData(this.totalNetWorth()));
@@ -103,6 +104,14 @@ export class DashboardPageComponent implements OnInit {
     accountNotice: '',
     reportingNotice: this.reportingOverview() ? '' : 'Reporting insight feed is temporarily unavailable.',
   }));
+
+setPortfolioValue(value: number) {
+    this.portfolioValue.set(value);
+  }
+
+  setPortfolioChange(value: number) {
+    this.portfolioChange.set(value);
+  }
 
   ngOnInit() {
     this.restoreThemePreference();

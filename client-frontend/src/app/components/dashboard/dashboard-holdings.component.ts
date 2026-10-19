@@ -28,6 +28,8 @@ export interface HoldingDTO {
 })
 export class DashboardHoldingsComponent implements OnInit {
   @Output() quickTrade = new EventEmitter<{ instrumentId: number; mode: TradeMode }>();
+  @Output() portfolioValue = new EventEmitter<number>();
+   @Output() portfolioChange = new EventEmitter<number>();
 
   private _selectedAccountId: number | null = null;
 
@@ -69,6 +71,10 @@ private loadHoldings(accountId: number) {
         next: holdingsArray => {
           console.log(holdingsArray);
 
+         let totalInvested=0;
+         let totalValue=0;
+         let totalChangeVal = 0;
+
           holdingsArray.forEach(holding => {
             const ticker = this.stockTickers[holding.instrumentId - 1];
 
@@ -95,6 +101,15 @@ private loadHoldings(accountId: number) {
 
                 this.expandedHoldingsArray.update(array => [...array, expandedHolding]);
                 console.log(expandedHolding);
+
+                totalInvested+=holding.amountInvested;
+                totalValue+=calculatedInfo.marketValue;
+                        console.log(totalInvested);
+                        console.log(totalValue);
+                        totalChangeVal=((totalValue-totalInvested)/totalInvested)*100;
+
+                        this.portfolioValue.emit(totalValue);
+                        this.portfolioChange.emit(totalChangeVal);
               },
               error: err => {
                 console.log('Failed to fetch market price', err);

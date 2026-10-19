@@ -26,7 +26,7 @@
         [totalNetWorth]="totalNetWorth()"
         [cashBalance]="cashBalance()"
         [portfolioValue]="portfolioValue()"
-        [portfolioGainLoss]="portfolioGainLoss()">
+        [portfolioGainLoss]="portfolioChange()">
       </app-dashboard-metrics>
 
       <app-dashboard-cash-panel
@@ -64,6 +64,8 @@
       </app-dashboard-market-snapshot>
 
       <app-dashboard-holdings
+              (portfolioValue)="setPortfolioValue($event)"
+              (portfolioChange)="setPortfolioChange($event)"
         [selectedAccountId]="selectedAccountId()"
         (quickTrade)="onQuickTrade($event)">
       </app-dashboard-holdings>

@@ -31,13 +31,13 @@ public class UserController {
 
     @PatchMapping("/{userId}/change-email")
     @PreAuthorize("#userId.toString().equals(authentication.name)")
-    public ResponseEntity<UserDTO> changeEmail(@PathVariable Integer userId, @RequestBody String newEmail) {
-        return ResponseEntity.ok(UserMapper.toUserDTO(userService.changeEmail(userId, newEmail)));
+    public ResponseEntity<UserDTO> changeEmail(@PathVariable Integer userId, @RequestBody UserUpdateDTO request) {
+        return ResponseEntity.ok(UserMapper.toUserDTO(userService.changeEmail(userId, request.getEmail())));
     }
 
     @PatchMapping("/{userId}/change-phone-number")
     @PreAuthorize("#userId.toString().equals(authentication.name)")
-    public ResponseEntity<UserDTO> changePhoneNumber(@PathVariable Integer userId, @RequestBody String newPhoneNumber) {
-        return ResponseEntity.ok(UserMapper.toUserDTO(userService.changePhoneNumber(userId, newPhoneNumber)));
+    public ResponseEntity<UserDTO> changePhoneNumber(@PathVariable Integer userId, @RequestBody UserUpdateDTO request) {
+        return ResponseEntity.ok(UserMapper.toUserDTO(userService.changePhoneNumber(userId, request.getPhoneNumber())));
     }
 }

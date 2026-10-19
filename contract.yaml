@@ -21,7 +21,7 @@ info:
     - User self-service routes under `/api/users/{userId}` and `/api/users/{userId}/accounts` enforce that the JWT subject matches the path `userId`.
     - Account-scoped routes under `/api/accounts/{accountId}/...` are authenticated, but the current client-service implementation does not additionally compare `accountId` against the JWT subject.
     - Audit write routes for user logs and transaction logs exist in controllers, but the current audit-service security configuration denies those non-GET requests. They are documented here with that limitation called out explicitly.
-    - Several endpoints intentionally accept primitive bodies instead of JSON objects: account nicknames are raw strings, deposit and withdraw amounts are raw numbers, and some user updates are raw strings.
+    - Several endpoints intentionally accept primitive bodies instead of JSON objects: account nicknames are raw strings, and deposit and withdraw amounts are raw numbers.
     - Historical candle requests can return `202 Accepted` when a backfill has been kicked off and data is not ready yet.
 
     Server usage:
@@ -272,7 +272,7 @@ paths:
         - Users
       summary: Change the authenticated user's email address
       description: |
-        Accepts a raw string body instead of a JSON object.
+        Accepts a JSON object containing the new email address.
 
         Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: changeEmail
@@ -283,14 +283,9 @@ paths:
       requestBody:
         required: true
         content:
-          text/plain:
-            schema:
-              $ref: '#/components/schemas/EmailChangeRequest'
-            example: trader.updated@example.com
           application/json:
             schema:
               $ref: '#/components/schemas/EmailChangeRequest'
-            example: trader.updated@example.com
       responses:
         '200':
           description: Email changed successfully.
@@ -317,7 +312,7 @@ paths:
         - Users
       summary: Change the authenticated user's phone number
       description: |
-        Accepts a raw string body instead of a JSON object.
+        Accepts a JSON object containing the new phone number.
 
         Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: changePhoneNumber
@@ -328,14 +323,9 @@ paths:
       requestBody:
         required: true
         content:
-          text/plain:
-            schema:
-              $ref: '#/components/schemas/PhoneNumberChangeRequest'
-            example: 5550123
           application/json:
             schema:
               $ref: '#/components/schemas/PhoneNumberChangeRequest'
-            example: 5550123
       responses:
         '200':
           description: Phone number changed successfully.
@@ -392,7 +382,7 @@ paths:
       description: |
         Creates an account for the specified user.
 
-        The request body is a raw nickname string, not a JSON object.
+        The request body is a JSON object containing the account nickname.
 
         Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: createAccount
@@ -403,14 +393,9 @@ paths:
       requestBody:
         required: true
         content:
-          text/plain:
-            schema:
-              $ref: '#/components/schemas/AccountNicknameRequest'
-            example: Main Trading Account
           application/json:
             schema:
-              $ref: '#/components/schemas/AccountNicknameRequest'
-            example: Main Trading Account
+              $ref: '#/components/schemas/AccountCreateRequest'
       responses:
         '201':
           description: Account created successfully.
@@ -1817,20 +1802,37 @@ components:
           example: NewPass123
 
     EmailChangeRequest:
-      type: string
-      format: email
-      example: trader.updated@example.com
-      description: Raw string request body used by `PATCH /api/users/{userId}/change-email`.
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: trader.updated@example.com
 
     PhoneNumberChangeRequest:
-      type: string
-      example: 5550142
-      description: Raw string request body used by `PATCH /api/users/{userId}/change-phone-number`.
+      type: object
+      required:
+        - phoneNumber
+      properties:
+        phoneNumber:
+          type: string
+          example: 5550142
 
     AccountNicknameRequest:
       type: string
       example: Main Trading Account
       description: Raw string request body used by account create and rename routes.
+
+    AccountCreateRequest:
+      type: object
+      required:
+        - nickname
+      properties:
+        nickname:
+          type: string
+          example: Main Trading Account
 
     AmountRequest:
       type: number

@@ -45,7 +45,7 @@ public class UserService {
                 throw new BadRequestException("New email is required.");
             }
 
-            user.setEmail(newEmail);
+            user.setEmail(newEmail.trim());
             User saved = userRepository.save(user);
 
             userAuditEventPublisher.publish("CHANGE_EMAIL", userId, saved.getUsername(), "SUCCESS", "Email changed");
@@ -65,7 +65,7 @@ public class UserService {
                 throw new BadRequestException("New phone number is required.");
             }
 
-            user.setPhoneNumber(newPhoneNumber);
+            user.setPhoneNumber(newPhoneNumber.trim());
             User saved = userRepository.save(user);
 
             userAuditEventPublisher.publish("CHANGE_PHONE_NUMBER", userId, saved.getUsername(), "SUCCESS", "Phone number changed");

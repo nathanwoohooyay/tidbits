@@ -12,21 +12,21 @@
     <section class="account-card">
       <h2>Update Account Information</h2>
 
-      @if (updateError) {
-        <div class="error-message" role="alert">{{ updateError }}</div>
+      @if (updateError()) {
+        <div class="error-message" role="alert">{{ updateError() }}</div>
       }
-      @if (updateSuccess) {
-        <div class="success-message" role="status">{{ updateSuccess }}</div>
+      @if (updateSuccess()) {
+        <div class="success-message" role="status">{{ updateSuccess() }}</div>
       }
 
       <form (ngSubmit)="updateAccount()" class="form-grid">
-<br>
         <div class="form-group">
           <label for="update-email">Email</label>
           <input
             id="update-email"
             type="email"
-            [(ngModel)]="updateEmail"
+            [ngModel]="updateEmail()"
+            (ngModelChange)="updateEmail.set($event)"
             name="updateEmail"
             placeholder="Enter new email"
           />
@@ -37,7 +37,8 @@
           <input
             id="update-phone-number"
             type="text"
-            [(ngModel)]="updatePhoneNumber"
+            [ngModel]="updatePhoneNumber()"
+            (ngModelChange)="updatePhoneNumber.set($event)"
             name="updatePhoneNumber"
             placeholder="Enter new phone number"
           />
@@ -46,9 +47,9 @@
         <button
           type="submit"
           class="btn-primary"
-          [disabled]="updateLoading"
+          [disabled]="updateLoading()"
         >
-          {{ updateLoading ? 'Updating…' : 'Update Account' }}
+          {{ updateLoading() ? 'Updating…' : 'Update Account' }}
         </button>
       </form>
     </section>
@@ -56,12 +57,11 @@
     <!-- Change Password Section -->
     <section class="account-card">
       <h2>Change Password</h2>
-     <br>
-      @if (passwordError) {
-        <div class="error-message" role="alert">{{ passwordError }}</div>
+      @if (passwordError()) {
+        <div class="error-message" role="alert">{{ passwordError() }}</div>
       }
-      @if (passwordSuccess) {
-        <div class="success-message" role="status">{{ passwordSuccess }}</div>
+      @if (passwordSuccess()) {
+        <div class="success-message" role="status">{{ passwordSuccess() }}</div>
       }
 
       <form (ngSubmit)="changePassword()" class="form-grid">
@@ -70,7 +70,8 @@
           <input
             id="old-password"
             type="password"
-            [(ngModel)]="currentPassword"
+            [ngModel]="currentPassword()"
+            (ngModelChange)="currentPassword.set($event)"
             name="currentPassword"
             placeholder="Enter current password"
             autocomplete="current-password"
@@ -82,7 +83,8 @@
           <input
             id="new-password"
             type="password"
-            [(ngModel)]="newPassword"
+            [ngModel]="newPassword()"
+            (ngModelChange)="newPassword.set($event)"
             name="newPassword"
             placeholder="Enter new password (min 8 characters)"
             autocomplete="new-password"
@@ -94,7 +96,8 @@
           <input
             id="confirm-password"
             type="password"
-            [(ngModel)]="confirmPassword"
+            [ngModel]="confirmPassword()"
+            (ngModelChange)="confirmPassword.set($event)"
             name="confirmPassword"
             placeholder="Confirm new password"
             autocomplete="new-password"
@@ -104,9 +107,9 @@
         <button
           type="submit"
           class="btn-primary"
-          [disabled]="passwordLoading"
+          [disabled]="passwordLoading()"
         >
-          {{ passwordLoading ? 'Changing…' : 'Change Password' }}
+          {{ passwordLoading() ? 'Changing…' : 'Change Password' }}
         </button>
       </form>
     </section>

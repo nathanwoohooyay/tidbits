@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild, DestroyRef, effect } from '@angular/core';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, interval } from 'rxjs';
+import { startWith } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SessionService } from '../../services/session.service';
 import { buildMockChartData, getMockDashboardData } from '../../components/dashboard/dashboard.mock-data';
 import {
@@ -52,6 +54,7 @@ export class DashboardPageComponent implements OnInit {
   readonly today = new Date();
 
   readonly tradeHistoryRef = viewChild(DashboardTradeHistoryComponent);
+  readonly holdingsRef = viewChild(DashboardHoldingsComponent);
   private readonly router = inject(Router);
   private readonly session = inject(SessionService);
   private readonly accountApi = inject(AccountService);
@@ -60,6 +63,8 @@ export class DashboardPageComponent implements OnInit {
   private readonly mockData = getMockDashboardData();
   private readonly marketSnapshotSymbols = ['AAPL', 'MSFT'];
   private readonly userService = inject(UserService);
+
+  private readonly destroyRef = inject(DestroyRef);
 
   currentUser = signal<UserDTO | null>(null);
   cashAmount: number | null = null;
@@ -123,6 +128,7 @@ setPortfolioValue(value: number) {
         this.currentUser.set(user);
         this.session.setCurrentUser(user);
         this.loadAccounts(user.userId);
+        this.startPolling();
       },
       error: err => {
         this.cashError = err?.error?.message ?? err?.error?.error ?? 'Failed to load your profile.';
@@ -170,6 +176,42 @@ setPortfolioValue(value: number) {
         return;
     }
     tradeHistory.ordersArray.update(existing => [execution, ...existing]);
+  }
+
+    private startPolling() {
+        console.log("\nStarting polling");
+      interval(20_000).pipe(
+        startWith(0),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(() => {
+        const accountId = this.selectedAccountId();
+        if (accountId > 0) {
+          this.refreshData(accountId);
+        }
+      });
+    }
+  refreshData(accountId: number){
+      if (!this.session.isAuthenticated()) {
+          this.signOut();
+          return;
+      }
+
+      console.log("\nRefreshing data for accountId:", accountId);
+      this.refreshSelectedAccount(accountId);
+      const tradeHistory = this.tradeHistoryRef();
+        if (!tradeHistory) {
+            console.log("Trade history component not found.");
+            return;
+        }
+    tradeHistory.loadHistory(accountId);
+
+    const holdings = this.holdingsRef();
+    if (!holdings) {
+        console.log("Holdings component not found.");
+        return;
+    }
+    holdings.loadHoldings(accountId);
+
   }
 
   goToAccount() {

@@ -42,6 +42,8 @@ export class DashboardTradeHistoryComponent implements OnInit{
 
   }
 loadHistory(accountId: number){
+    this.orderHistoryLoading.set(true);
+    this.ordersArray.set([]);
       this.orderService.getOrders(accountId).subscribe({
         next: ordersArray => {
           console.log(ordersArray);

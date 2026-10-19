@@ -64,7 +64,7 @@ export class DashboardHoldingsComponent implements OnInit {
   }
 
 
-private loadHoldings(accountId: number) {
+ loadHoldings(accountId: number) {
   // clear the array
   this.expandedHoldingsArray.set([]);
    this.accountService.listHoldings(accountId).subscribe({

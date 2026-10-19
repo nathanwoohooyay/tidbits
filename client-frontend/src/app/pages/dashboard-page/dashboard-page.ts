@@ -344,6 +344,7 @@ setPortfolioValue(value: number) {
 
     this.reportingOverview.update(overview => ({
       ...overview,
+      generatedAt: new Date().toISOString(),
       liveSummary: {
         ...overview.liveSummary,
         totalOrders: orders.length,

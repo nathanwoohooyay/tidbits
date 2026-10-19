@@ -176,6 +176,7 @@ setPortfolioValue(value: number) {
         return;
     }
     tradeHistory.ordersArray.update(existing => [execution, ...existing]);
+    tradeHistory.setDateSort('desc');
   }
 
     private startPolling() {

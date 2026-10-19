@@ -31,6 +31,7 @@ export class DashboardTradeHistoryComponent implements OnInit{
   }
 
   ordersArray = signal<placedOrderDTO[]>([]);
+  dateSortDirection = signal<'desc' | 'asc'>('desc');
   orderHistoryLoading = signal(false);
   orderHistoryError = signal('');
   private readonly orderService = inject(OrderService);
@@ -41,6 +42,21 @@ export class DashboardTradeHistoryComponent implements OnInit{
 
 
   }
+
+  setDateSort(direction: 'desc' | 'asc') {
+    this.dateSortDirection.set(direction);
+  }
+
+  sortedOrders(): placedOrderDTO[] {
+    const direction = this.dateSortDirection();
+
+    return [...this.ordersArray()].sort((a, b) => {
+      const aTime = new Date(a.statusHistory?.[0]?.changedAt ?? 0).getTime();
+      const bTime = new Date(b.statusHistory?.[0]?.changedAt ?? 0).getTime();
+      return direction === 'desc' ? bTime - aTime : aTime - bTime;
+    });
+  }
+
 loadHistory(accountId: number){
     this.orderHistoryLoading.set(true);
     this.ordersArray.set([]);

@@ -1,11 +1,16 @@
 import {inject} from '@angular/core';
-import {HttpInterceptorFn} from '@angular/common/http';
+import {HttpInterceptorFn, HttpErrorResponse} from '@angular/common/http';
 import { SessionService } from './session.service';
+import { catchError } from 'rxjs/operators';
+import { Router } from '@angular/router';
+import { throwError } from 'rxjs';
 
 export const authInterceptor: HttpInterceptorFn =
   (req, next) => {
-    const tokenStore = inject(SessionService);
-    const token = tokenStore.getAuthToken();
+    const session = inject(SessionService);
+    const router = inject(Router);
+    const token = session.getAuthToken();
+
     if (token && !req.url.endsWith('login')&& !req.url.endsWith('signup')) {
       const authedReq = req.clone({
         setHeaders: { Authorization: `Bearer ${token}` },
@@ -13,5 +18,13 @@ export const authInterceptor: HttpInterceptorFn =
       console.log(authedReq);
       return next(authedReq);
     }
-    return next(req);
+    return next(req).pipe(
+        catchError((error) => {
+          if (error.status === 401) {
+            session.clearAuthToken();
+            router.navigateByUrl('/login');
+          }
+      return throwError(() => error); // required: return ObservableInput
+        })
+    );
   };

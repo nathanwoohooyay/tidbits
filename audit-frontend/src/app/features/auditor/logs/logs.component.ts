@@ -77,18 +77,54 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
         </div>
 
         <div class="filter-wrap">
-          <div class="search-box">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input
-              type="text"
-              class="input-control search-input"
-              placeholder="Filter by user, event, account, order..."
-              [ngModel]="searchQuery()"
-              (ngModelChange)="searchQuery.set($event ?? '')"
-            />
+          <div class="common-filters">
+            <label class="filter-field">
+              <span>Start Date</span>
+              <input
+                type="date"
+                class="input-control"
+                [ngModel]="startDate()"
+                (ngModelChange)="startDate.set($event || '')"
+              />
+            </label>
+
+            <label class="filter-field">
+              <span>End Date</span>
+              <input
+                type="date"
+                class="input-control"
+                [ngModel]="endDate()"
+                (ngModelChange)="endDate.set($event || '')"
+              />
+            </label>
+          </div>
+
+          <div *ngIf="activeTab() === 'USER'" class="specific-filters user-filters">
+            <label class="filter-field">
+              <span>Action</span>
+              <select class="input-control" [ngModel]="selectedUserAction()" (ngModelChange)="selectedUserAction.set($event || 'ALL')">
+                <option value="ALL">All actions</option>
+                <option *ngFor="let action of availableUserActions()" [value]="action">{{ action }}</option>
+              </select>
+            </label>
+          </div>
+
+          <div *ngIf="activeTab() !== 'USER'" class="specific-filters">
+            <label class="filter-field">
+              <span>Instrument</span>
+              <select class="input-control" [ngModel]="selectedInstrument()" (ngModelChange)="selectedInstrument.set($event || 'ALL')">
+                <option value="ALL">All instruments</option>
+                <option *ngFor="let instrument of availableInstruments()" [value]="instrument">{{ instrument }}</option>
+              </select>
+            </label>
+
+            <label class="filter-field">
+              <span>Client</span>
+              <select class="input-control" [ngModel]="selectedClient()" (ngModelChange)="selectedClient.set($event || 'ALL')">
+                <option value="ALL">All clients</option>
+                <option *ngFor="let client of availableClients()" [value]="client">{{ client }}</option>
+              </select>
+            </label>
           </div>
 
           <div class="status-filters">
@@ -347,31 +383,45 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
       flex-wrap: wrap;
     }
 
-    .search-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #ffffff;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 2px 10px;
+    .specific-filters {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(160px, 1fr));
+      gap: 10px;
     }
 
-    .search-box svg {
+    .common-filters {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .user-filters {
+      grid-template-columns: minmax(170px, 220px);
+    }
+
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.35px;
       color: var(--text-muted);
     }
 
-    .search-input {
-      border: none;
-      background: transparent;
-      padding: 6px 0;
-      width: 220px;
+    .input-control {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      background: #ffffff;
+      padding: 6px 8px;
       font-size: 13px;
     }
 
-    .search-input:focus {
-      box-shadow: none;
-      background: transparent;
+    .input-control:focus {
+      outline: none;
+      border-color: rgba(51, 27, 14, 0.45);
+      box-shadow: 0 0 0 2px rgba(51, 27, 14, 0.08);
     }
 
     .status-filters {
@@ -456,30 +506,36 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
       padding: 30px;
       color: var(--text-muted);
     }
+
+    @media (max-width: 1100px) {
+      .specific-filters,
+      .common-filters {
+        grid-template-columns: 1fr;
+      }
+    }
   `]
 })
 export class LogsComponent implements OnInit {
   activeTab = signal<LogsTab>('USER');
   statusFilter = signal<StatusFilter>('ALL');
-  searchQuery = signal('');
+  selectedInstrument = signal('ALL');
+  selectedClient = signal('ALL');
+  selectedUserAction = signal('ALL');
+  startDate = signal('');
+  endDate = signal('');
 
   userLogs = signal<UserLog[]>([]);
   txnLogs = signal<TransactionLog[]>([]);
 
   filteredUserLogs = computed(() => {
     let logs = [...this.userLogs()];
-    const query = this.searchQuery().trim().toLowerCase();
     const status = this.statusFilter();
+    const selectedUserAction = this.selectedUserAction();
 
-    if (query) {
-      logs = logs.filter(l => {
-        const actionOrEvent = (l.action || l.event || '').toLowerCase();
-        return (
-          (l.username && l.username.toLowerCase().includes(query)) ||
-          actionOrEvent.includes(query) ||
-          (l.ipAddress && l.ipAddress.toLowerCase().includes(query))
-        );
-      });
+    logs = logs.filter((log) => this.matchesDateRange(log.timestamp || log.happenedAt || ''));
+
+    if (selectedUserAction !== 'ALL') {
+      logs = logs.filter((log) => this.normalizeAction(log.action || log.event) === selectedUserAction);
     }
 
     if (status !== 'ALL') {
@@ -496,17 +552,54 @@ export class LogsComponent implements OnInit {
   });
 
   filteredAccountTxnLogs = computed(() => {
-    const query = this.searchQuery().trim().toLowerCase();
     const status = this.statusFilter();
 
-    return this.filterAccountTransactions(this.txnLogs(), query, status);
+    return this.filterAccountTransactions(this.txnLogs(), status);
   });
 
   filteredOrderLogs = computed(() => {
-    const query = this.searchQuery().trim().toLowerCase();
     const status = this.statusFilter();
 
-    return this.filterOrderLifecycleLogs(this.txnLogs(), query, status);
+    return this.filterOrderLifecycleLogs(this.txnLogs(), status);
+  });
+
+  availableInstruments = computed(() => {
+    const labels = new Set<string>();
+
+    this.txnLogs().forEach((log: TransactionLog) => {
+      const label = this.getInstrumentLabel(log);
+      if (label) {
+        labels.add(label);
+      }
+    });
+
+    return [...labels].sort((left, right) => left.localeCompare(right));
+  });
+
+  availableClients = computed(() => {
+    const labels = new Set<string>();
+
+    this.txnLogs().forEach((log: TransactionLog) => {
+      const label = this.getClientLabel(log);
+      if (label) {
+        labels.add(label);
+      }
+    });
+
+    return [...labels].sort((left, right) => left.localeCompare(right));
+  });
+
+  availableUserActions = computed(() => {
+    const labels = new Set<string>();
+
+    this.userLogs().forEach((log: UserLog) => {
+      const action = this.normalizeAction(log.action || log.event);
+      if (action) {
+        labels.add(action);
+      }
+    });
+
+    return [...labels].sort((left, right) => left.localeCompare(right));
   });
 
   constructor(
@@ -586,11 +679,11 @@ export class LogsComponent implements OnInit {
     }
   }
 
-  private filterAccountTransactions(logs: TransactionLog[], query: string, status: StatusFilter): TransactionLog[] {
+  private filterAccountTransactions(logs: TransactionLog[], status: StatusFilter): TransactionLog[] {
     const accountTransactions = this.buildAccountTransactions(logs);
 
     return accountTransactions.filter((log) => {
-      if (!this.matchesSearch(log, query, 'TXN')) {
+      if (!this.matchesSpecificFilters(log)) {
         return false;
       }
 
@@ -598,54 +691,103 @@ export class LogsComponent implements OnInit {
     });
   }
 
-  private filterOrderLifecycleLogs(logs: TransactionLog[], query: string, status: StatusFilter): TransactionLog[] {
+  private filterOrderLifecycleLogs(logs: TransactionLog[], status: StatusFilter): TransactionLog[] {
     return [...logs]
       .filter((log) => this.isOrderLifecycleEvent(log))
-      .filter((log) => this.matchesSearch(log, query, 'ORDERS'))
+      .filter((log) => this.matchesSpecificFilters(log))
       .filter((log) => this.matchesOrderStatus(log, status))
       .sort((left, right) => this.compareByTimestamp(right, left));
   }
 
   private buildAccountTransactions(logs: TransactionLog[]): TransactionLog[] {
-    const cashTransactions = logs.filter((log) => this.isCashTransaction(log));
-    const dedupedOrderTransactions = new Map<string, TransactionLog>();
+    const dedupedTransactions = new Map<string, TransactionLog>();
 
     logs
-      .filter((log) => this.isEligibleOrderTransaction(log))
+      .filter((log) => this.isAccountTransactionEvent(log))
       .forEach((log) => {
         const key = this.getAccountTransactionKey(log);
-        const existing = dedupedOrderTransactions.get(key);
+        const existing = dedupedTransactions.get(key);
 
         if (!existing || this.compareByTimestamp(log, existing) > 0) {
-          dedupedOrderTransactions.set(key, log);
+          dedupedTransactions.set(key, log);
         }
       });
 
-    return [...cashTransactions, ...dedupedOrderTransactions.values()]
+    return [...dedupedTransactions.values()]
       .sort((left, right) => this.compareByTimestamp(right, left));
   }
 
-  private matchesSearch(log: TransactionLog, query: string, tab: Exclude<LogsTab, 'USER'>): boolean {
-    if (!query) {
-      return true;
+  private matchesSpecificFilters(log: TransactionLog): boolean {
+    const selectedInstrument = this.selectedInstrument();
+    const selectedClient = this.selectedClient();
+
+    if (selectedInstrument !== 'ALL' && this.getInstrumentLabel(log) !== selectedInstrument) {
+      return false;
     }
 
-    const searchValues = [
-      log.ticker,
-      log.event,
-      log.orderType,
-      log.status,
-      log.orderId,
-      log.transactionId,
-      log.accountId,
-      log.instrumentId
-    ].filter((value) => value !== undefined && value !== null);
-
-    if (tab === 'ORDERS') {
-      searchValues.push(this.formatOrderEvent(log.event));
+    if (selectedClient !== 'ALL' && this.getClientLabel(log) !== selectedClient) {
+      return false;
     }
 
-    return searchValues.some((value) => String(value).toLowerCase().includes(query));
+    if (!this.matchesDateRange(log.timestamp || log.happenedAt || '')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private matchesDateRange(timestamp: string): boolean {
+    const startDate = this.startDate();
+    const endDate = this.endDate();
+
+    const value = Date.parse(timestamp);
+    if (Number.isNaN(value)) {
+      return !(startDate || endDate);
+    }
+
+    if (startDate) {
+      const start = Date.parse(`${startDate}T00:00:00`);
+      if (!Number.isNaN(start) && value < start) {
+        return false;
+      }
+    }
+
+    if (endDate) {
+      const end = Date.parse(`${endDate}T23:59:59`);
+      if (!Number.isNaN(end) && value > end) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private normalizeAction(action?: string): string {
+    return String(action || '').trim().toUpperCase();
+  }
+
+  private getInstrumentLabel(log: TransactionLog): string {
+    if (log.ticker && String(log.ticker).trim()) {
+      return String(log.ticker).trim().toUpperCase();
+    }
+
+    if (log.instrumentId) {
+      return `INST #${log.instrumentId}`;
+    }
+
+    return '';
+  }
+
+  private getClientLabel(log: TransactionLog): string {
+    if (log.userId) {
+      return `Client #${log.userId}`;
+    }
+
+    if (log.accountId) {
+      return `Account #${log.accountId}`;
+    }
+
+    return '';
   }
 
   private matchesAccountTransactionStatus(log: TransactionLog, status: StatusFilter): boolean {
@@ -681,12 +823,25 @@ export class LogsComponent implements OnInit {
     );
   }
 
+  private isAccountTransactionEvent(log: TransactionLog): boolean {
+    if (this.isCashTransaction(log) || this.isEligibleOrderTransaction(log)) {
+      return true;
+    }
+
+    return Boolean(
+      log.transactionId ||
+      ORDER_SIDE_TYPES.has(log.orderType) ||
+      ACCOUNT_ORDER_EVENTS.has(log.event || '') ||
+      ORDER_LIFECYCLE_EVENTS.has(log.event || '')
+    );
+  }
+
   private isCashTransaction(log: TransactionLog): boolean {
     return ACCOUNT_TRANSACTION_EVENTS.has(log.event || '');
   }
 
   private isOrderLifecycleEvent(log: TransactionLog): boolean {
-    return Boolean(log.orderId && ORDER_LIFECYCLE_EVENTS.has(log.event || ''));
+    return Boolean(log.orderId || ORDER_LIFECYCLE_EVENTS.has(log.event || ''));
   }
 
   private getAccountTransactionKey(log: TransactionLog): string {

@@ -154,3 +154,12 @@ SELECT
 FROM account_transactions t
 JOIN accounts a ON a.account_id = t.account_id
 WHERE t.transaction_id BETWEEN 1 AND 19;
+
+-- Keep SERIAL sequences aligned with explicit IDs inserted above.
+SELECT setval('users_user_id_seq', (SELECT COALESCE(MAX(user_id), 1) FROM users), true);
+SELECT setval('accounts_account_id_seq', (SELECT COALESCE(MAX(account_id), 1) FROM accounts), true);
+SELECT setval('portfolio_snapshots_snapshot_id_seq', (SELECT COALESCE(MAX(snapshot_id), 1) FROM portfolio_snapshots), true);
+SELECT setval('orders_order_id_seq', (SELECT COALESCE(MAX(order_id), 1) FROM orders), true);
+SELECT setval('account_transactions_transaction_id_seq', (SELECT COALESCE(MAX(transaction_id), 1) FROM account_transactions), true);
+SELECT setval('user_logs_log_id_seq', (SELECT COALESCE(MAX(log_id), 1) FROM user_logs), true);
+SELECT setval('transaction_logs_log_id_seq', (SELECT COALESCE(MAX(log_id), 1) FROM transaction_logs), true);

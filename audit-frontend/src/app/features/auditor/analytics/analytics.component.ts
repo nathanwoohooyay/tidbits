@@ -121,7 +121,6 @@ Chart.register(...registerables);
             <h2 class="card-title">Trading Activity Explorer</h2>
             <span class="card-sub">Analyze over-time activity by instrument, period, and client</span>
           </div>
-          <span class="badge badge-auditor">Transaction Logs</span>
         </div>
 
         <div class="activity-filters">
@@ -178,7 +177,6 @@ Chart.register(...registerables);
               <h2 class="card-title">Trading Volume Velocity (Over Time)</h2>
               <span class="card-sub">Daily traded aggregate value in USD</span>
             </div>
-            <span class="badge badge-auditor">FastAPI Pipeline</span>
           </div>
           <div class="chart-wrapper">
             <canvas #volumeTimeCanvas></canvas>

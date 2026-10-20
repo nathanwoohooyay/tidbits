@@ -14,7 +14,6 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     <div class="users-container animate-fade-in">
       <div class="page-header">
         <div>
-          <div class="badge badge-admin">USER GOVERNANCE</div>
           <h1 class="page-title">User & Role Management</h1>
           <p class="page-subtitle">Inspect registered accounts, reassign role permissions, and execute session revocations</p>
         </div>

@@ -12,7 +12,6 @@ import { AdminDashboardStats } from '../../../core/models/models';
     <div class="admin-dash-container animate-fade-in">
       <div class="page-header">
         <div>
-          <div class="badge badge-admin">ADMIN CONTROL PLANE</div>
           <h1 class="page-title">Executive Administration</h1>
           <p class="page-subtitle">Platform-wide identity governance, token versioning, and account supervision</p>
         </div>
@@ -41,7 +40,6 @@ import { AdminDashboardStats } from '../../../core/models/models';
           <div class="stat-info">
             <div class="stat-label">Registered Users</div>
             <div class="stat-val mono-font">{{ stats().totalUsers | number }}</div>
-            <div class="stat-sub">Across all access tiers</div>
           </div>
         </div>
 
@@ -55,7 +53,6 @@ import { AdminDashboardStats } from '../../../core/models/models';
           <div class="stat-info">
             <div class="stat-label">Trading Accounts</div>
             <div class="stat-val mono-font">{{ stats().totalAccounts | number }}</div>
-            <div class="stat-sub">Custodial & sub-accounts</div>
           </div>
         </div>
 
@@ -70,7 +67,6 @@ import { AdminDashboardStats } from '../../../core/models/models';
           <div class="stat-info">
             <div class="stat-label">User Event Records</div>
             <div class="stat-val mono-font">{{ stats().totalUserLogs | number }}</div>
-            <div class="stat-sub">Kafka audit topics</div>
           </div>
         </div>
 
@@ -85,7 +81,6 @@ import { AdminDashboardStats } from '../../../core/models/models';
           <div class="stat-info">
             <div class="stat-label">Transactions Tracked</div>
             <div class="stat-val mono-font">{{ stats().totalTransactionLogs | number }}</div>
-            <div class="stat-sub">Order stream immutable log</div>
           </div>
         </div>
       </div>

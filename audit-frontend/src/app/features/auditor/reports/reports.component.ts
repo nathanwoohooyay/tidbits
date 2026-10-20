@@ -17,9 +17,6 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
           <h1 class="page-title">Compliance Report Generator</h1>
           <p class="page-subtitle">Produce verified institutional audit dossiers, regulatory submissions, and dataset exports</p>
         </div>
-        <div class="header-badges">
-          <span class="badge badge-auditor">AUDITOR WORKSPACE</span>
-        </div>
       </div>
 
       <div class="reports-layout">
@@ -34,10 +31,10 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
             <div class="form-group">
               <label>Report Template</label>
               <select class="input-control" [(ngModel)]="selectedTemplate">
-                <option value="EXECUTIVE">Executive Trading Compliance Audit</option>
-                <option value="ANOMALIES">Outlier Trades & Market Abuse Investigation</option>
-                <option value="REVENUE">AUM, Fees & Capital Reconciliation</option>
-                <option value="FULL">Complete Platform Regulatory Dossier</option>
+                <option value="EXECUTIVE">Executive Summary (Compliance Snapshot)</option>
+                <option value="ANOMALIES">Anomaly Investigation (Outlier Trades)</option>
+                <option value="REVENUE">Revenue & AUM Reconciliation</option>
+                <option value="FULL">Full Regulatory Dossier (All Sections)</option>
               </select>
             </div>
 
@@ -104,12 +101,16 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
         <div class="preview-card glass-panel">
           <div class="card-header">
             <div class="preview-badge">LIVE PREVIEW</div>
-            <h2 class="card-title">Dossier Executive Summary</h2>
-            <span class="card-sub">Synchronized with FastAPI metrics pipeline</span>
+            <h2 class="card-title">{{ activeTemplateName() }}</h2>
+            <span class="card-sub">{{ activeTemplateSummary() }}</span>
           </div>
 
           <div class="dossier-preview">
             <div class="dossier-meta">
+              <div class="meta-item">
+                <span class="meta-label">Template:</span>
+                <span class="meta-val">{{ activeTemplateName() }}</span>
+              </div>
               <div class="meta-item">
                 <span class="meta-label">Dossier ID:</span>
                 <span class="meta-val mono-font">REP-2026-{{ reportSerial() }}</span>
@@ -424,6 +425,32 @@ export class ReportsComponent implements OnInit {
     });
   }
 
+  activeTemplateName(): string {
+    switch (this.selectedTemplate) {
+      case 'ANOMALIES':
+        return 'Anomaly Investigation Report';
+      case 'REVENUE':
+        return 'Revenue & AUM Reconciliation Report';
+      case 'FULL':
+        return 'Full Regulatory Dossier';
+      default:
+        return 'Executive Compliance Summary';
+    }
+  }
+
+  activeTemplateSummary(): string {
+    switch (this.selectedTemplate) {
+      case 'ANOMALIES':
+        return 'Focuses on flagged outliers and suspicious execution patterns.';
+      case 'REVENUE':
+        return 'Focuses on AUM movement, fee flow, and valuation totals.';
+      case 'FULL':
+        return 'Includes executive, anomaly, and reconciliation sections.';
+      default:
+        return 'High-level compliance snapshot synchronized with current metrics.';
+    }
+  }
+
   totalSampledVolumeFormatted(): string {
     const total = this.volumeSummary().reduce((sum, item) => sum + item.total_value, 0);
     return total.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -434,7 +461,7 @@ export class ReportsComponent implements OnInit {
     const total = this.volumeSummary().reduce((sum, item) => sum + item.total_value, 0);
 
     this.reportService.generatePrintableAuditDossier(
-      `Tidbits Compliance Audit Dossier #${this.reportSerial()}`,
+      `${this.activeTemplateName()} #${this.reportSerial()}`,
       {
         auditorName,
         dateRange: `${this.startDate} to ${this.endDate}`,
@@ -452,7 +479,7 @@ export class ReportsComponent implements OnInit {
   }
 
   exportCurrentDataCsv() {
-    const filename = `tidbits_audit_report_${this.selectedTemplate.toLowerCase()}`;
+    const filename = `tidbits_${this.activeTemplateName().toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
     if (this.selectedTemplate === 'ANOMALIES') {
       this.reportService.exportToCsv(filename, this.outliers());
     } else {

@@ -226,8 +226,16 @@ services:
     ports:
       - "8090:80"
     depends_on:
+      client-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
       postgres:
         condition: service_healthy
+      gateway:
+        condition: service_started
     networks:
       - tidbits-network
 

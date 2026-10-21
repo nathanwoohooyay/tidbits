@@ -449,7 +449,7 @@ paths:
         - Accounts
       summary: Rename an account
       description: |
-        Accepts a raw nickname string and returns `202 Accepted` with an empty body.
+        Accepts a JSON object containing the new nickname and returns `202 Accepted` with an empty body.
 
         Authorization rule: the JWT subject must equal the `userId` path parameter.
       operationId: updateAccount
@@ -461,14 +461,9 @@ paths:
       requestBody:
         required: true
         content:
-          text/plain:
-            schema:
-              $ref: '#/components/schemas/AccountNicknameRequest'
-            example: Retirement Account
           application/json:
             schema:
-              $ref: '#/components/schemas/AccountNicknameRequest'
-            example: Retirement Account
+              $ref: '#/components/schemas/AccountNicknameUpdateRequest'
       responses:
         '202':
           description: Account rename accepted.
@@ -1823,7 +1818,16 @@ components:
     AccountNicknameRequest:
       type: string
       example: Main Trading Account
-      description: Raw string request body used by account create and rename routes.
+      description: Raw string request body used by account rename routes.
+
+    AccountNicknameUpdateRequest:
+      type: object
+      required:
+        - nickname
+      properties:
+        nickname:
+          type: string
+          example: Retirement Account
 
     AccountCreateRequest:
       type: object

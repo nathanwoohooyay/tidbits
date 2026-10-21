@@ -22,17 +22,11 @@ import { AuthService } from '../../core/services/auth.service';
             </div>
             <div class="brand-text">
               <div class="brand-name">TIDBITS <span class="highlight">AUDIT</span></div>
-              <div class="brand-sub">Platform v2.4 • Institutional</div>
             </div>
           </div>
         </div>
 
-        <div class="header-center">
-          <div class="system-status-chip">
-            <span class="pulse-dot"></span>
-            <span>SYSTEM AUDIT STREAM: <strong>ACTIVE</strong></span>
-          </div>
-        </div>
+
 
         <div class="header-right">
           <!-- User Profile Chip -->
@@ -46,7 +40,7 @@ import { AuthService } from '../../core/services/auth.service';
                 class="badge"
                 [ngClass]="authService.roleBadgeClass()"
               >
-                {{ authService.userRole() }}
+                {{ authService.userRole() || 'AUDITOR' }}
               </div>
             </div>
           </div>
@@ -88,18 +82,14 @@ import { AuthService } from '../../core/services/auth.service';
 
             <a
               id="nav-reports"
-              routerLink="/auditor/reports"
+              routerLink="/auditor/compliance"
               routerLinkActive="active"
               class="nav-item"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
-              <span>Generate Reports</span>
+              <span>Compliance</span>
             </a>
 
             <a
@@ -153,14 +143,6 @@ import { AuthService } from '../../core/services/auth.service';
             </nav>
           </div>
 
-          <div class="sidebar-footer">
-            <div class="compliance-badge">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-              <span>SOC2 & FINRA READY</span>
-            </div>
-          </div>
         </aside>
 
         <!-- Main Content View -->
@@ -247,11 +229,12 @@ import { AuthService } from '../../core/services/auth.service';
     .user-chip {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 4px 10px 4px 6px;
+      gap: 12px;
+      padding: 6px 12px 6px 8px;
       background: #fbf7ef;
       border: 1px solid var(--border-subtle);
       border-radius: 9999px;
+      min-height: 40px;
     }
 
     .user-avatar {
@@ -271,6 +254,21 @@ import { AuthService } from '../../core/services/auth.service';
       font-size: 12.5px;
       font-weight: 600;
       color: var(--text-primary);
+      line-height: 1.1;
+    }
+
+    .user-details {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      min-width: 90px;
+    }
+
+    .user-details .badge {
+      line-height: 1;
+      padding-top: 3px;
+      padding-bottom: 3px;
     }
 
     .logout-btn {
@@ -339,25 +337,6 @@ import { AuthService } from '../../core/services/auth.service';
       border-color: rgba(138, 78, 35, 0.3);
       font-weight: 700;
       box-shadow: 0 2px 8px rgba(51, 27, 14, 0.06);
-    }
-
-    .sidebar-footer {
-      margin-top: auto;
-      padding-top: 16px;
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    .compliance-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      background: rgba(138, 78, 35, 0.07);
-      border: 1px solid rgba(138, 78, 35, 0.18);
-      border-radius: var(--radius-md);
-      font-size: 10.5px;
-      font-weight: 700;
-      color: var(--text-secondary);
     }
 
     .shell-main {

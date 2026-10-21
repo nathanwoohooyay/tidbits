@@ -1,16 +1,15 @@
-import { Component, OnInit, ElementRef, ViewChild, AfterViewInit, OnDestroy, signal } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, AfterViewInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Chart, registerables } from 'chart.js';
 import { finalize, switchMap } from 'rxjs/operators';
 import { MetricsService } from '../../../core/services/metrics.service';
-import { ReportService } from '../../../core/services/report.service';
+import { AuditLogService } from '../../../core/services/audit-log.service';
 import {
   AllMetricsResponse,
+  TransactionLog,
   TradeVolumeByType,
-  TradeVolumeByMarket,
-  TradeVolumeBySide,
   TradeVolumeOverTime,
-  OutlierTrade,
   AumMetric
 } from '../../../core/models/models';
 
@@ -19,24 +18,15 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="analytics-container animate-fade-in">
       <!-- Page Header -->
       <div class="page-header">
         <div>
-          <h1 class="page-title">Trading Analytics & Metrics</h1>
-          <p class="page-subtitle">Real-time pipeline metrics, execution distributions, and statistical anomalies</p>
+          <h1 class="page-title">Trading Analytics</h1>
         </div>
         <div class="header-actions">
-          <button id="btn-export-outliers" class="btn btn-secondary btn-sm" (click)="exportOutliers()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            <span>Export Outliers CSV</span>
-          </button>
           <button id="btn-refresh-metrics" class="btn btn-primary btn-sm" (click)="loadMetrics()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.spin]="loading()">
               <polyline points="23 4 23 10 17 10"></polyline>
@@ -48,79 +38,211 @@ Chart.register(...registerables);
         </div>
       </div>
 
-      <!-- KPI Stat Cards -->
-      <div class="kpi-grid">
-        <div class="kpi-card glass-panel">
-          <div class="kpi-icon-wrap cyan">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="1" x2="12" y2="23"></line>
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>
+      <!-- KPI Stat Grid with Clean Line Dividers -->
+      <div class="stats-panel glass-panel">
+        <div class="stat-col">
+          <div class="stat-title-row">
+            <div class="stat-icon-wrap cyan">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+            <span class="stat-label">Total Trade Volume</span>
           </div>
-          <div class="kpi-content">
-            <div class="kpi-label">Total Trade Volume</div>
-            <div class="kpi-value mono-font">\${{ totalVolumeFormatted() }}</div>
-            <div class="kpi-trend positive">
-              <span class="trend-pill">+14.2%</span> vs last cycle
+          <div class="stat-val mono-font">\${{ totalVolumeFormatted() }}</div>
+        </div>
+
+        <div class="stat-col">
+          <div class="stat-title-row">
+            <div class="stat-icon-wrap blue">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <polyline points="17 11 19 13 23 9"></polyline>
+              </svg>
+            </div>
+            <span class="stat-label">Audited Orders</span>
+          </div>
+          <div class="stat-val mono-font">{{ totalOrdersCount() }}</div>
+        </div>
+
+        <div class="stat-col">
+          <div class="stat-title-row">
+            <div class="stat-icon-wrap cognac">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+            </div>
+            <span class="stat-label">Active Instruments</span>
+          </div>
+          <div class="stat-val mono-font">{{ availableInstruments().length }}</div>
+        </div>
+
+        <div class="stat-col">
+          <div class="stat-title-row">
+            <div class="stat-icon-wrap emerald">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+            </div>
+            <span class="stat-label">Assets Under Mgmt</span>
+          </div>
+          <div class="stat-val mono-font text-emerald">\${{ aumFormatted() }}</div>
+        </div>
+      </div>
+
+      <!-- Trading Activity Explorer with flexbox layout -->
+      <div class="activity-section glass-panel">
+        <div class="card-title-row">
+          <h2 class="card-title">Trading Activity Explorer</h2>
+        </div>
+
+        <div class="activity-filters">
+          <!-- Searchable Dropdown for Instrument -->
+          <div class="filter-field search-dropdown-container">
+            <span>Instrument</span>
+            <div class="search-dropdown-anchor">
+              <button
+                type="button"
+                class="input-control search-dropdown-trigger"
+                (click)="toggleInstrumentDropdown($event)"
+              >
+                <span class="trigger-label">{{ selectedInstrument() === 'ALL' ? 'All instruments' : selectedInstrument() }}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div *ngIf="instrumentDropdownOpen()" class="search-dropdown-menu animate-fade-in" (click)="$event.stopPropagation()">
+                <div class="search-box-wrap">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input
+                    type="text"
+                    class="dropdown-search-input"
+                    placeholder="Search instrument..."
+                    [ngModel]="instrumentSearchText()"
+                    (ngModelChange)="instrumentSearchText.set($event)"
+                  />
+                </div>
+                <div class="dropdown-options-list">
+                  <div
+                    class="dropdown-item"
+                    [class.selected]="selectedInstrument() === 'ALL'"
+                    (click)="selectInstrument('ALL')"
+                  >
+                    All instruments
+                  </div>
+                  <div
+                    *ngFor="let inst of filteredInstrumentDropdownOptions()"
+                    class="dropdown-item"
+                    [class.selected]="selectedInstrument() === inst"
+                    (click)="selectInstrument(inst)"
+                  >
+                    {{ inst }}
+                  </div>
+                  <div *ngIf="filteredInstrumentDropdownOptions().length === 0" class="dropdown-empty">
+                    No instruments found
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+
+          <label class="filter-field">
+            <span>Period</span>
+            <select class="input-control" [ngModel]="selectedPeriodDays()" (ngModelChange)="onPeriodChange($event)">
+              <option [ngValue]="7">Last 7 days</option>
+              <option [ngValue]="30">Last 30 days</option>
+              <option [ngValue]="90">Last 90 days</option>
+              <option [ngValue]="365">Last 12 months</option>
+              <option [ngValue]="0">All available</option>
+            </select>
+          </label>
+
+          <!-- Searchable Dropdown for Client -->
+          <div class="filter-field search-dropdown-container">
+            <span>Client</span>
+            <div class="search-dropdown-anchor">
+              <button
+                type="button"
+                class="input-control search-dropdown-trigger"
+                (click)="toggleClientDropdown($event)"
+              >
+                <span class="trigger-label">{{ selectedClient() === 'ALL' ? 'All clients' : selectedClient() }}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div *ngIf="clientDropdownOpen()" class="search-dropdown-menu animate-fade-in" (click)="$event.stopPropagation()">
+                <div class="search-box-wrap">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input
+                    type="text"
+                    class="dropdown-search-input"
+                    placeholder="Search client..."
+                    [ngModel]="clientSearchText()"
+                    (ngModelChange)="clientSearchText.set($event)"
+                  />
+                </div>
+                <div class="dropdown-options-list">
+                  <div
+                    class="dropdown-item"
+                    [class.selected]="selectedClient() === 'ALL'"
+                    (click)="selectClient('ALL')"
+                  >
+                    All clients
+                  </div>
+                  <div
+                    *ngFor="let client of filteredClientDropdownOptions()"
+                    class="dropdown-item"
+                    [class.selected]="selectedClient() === client"
+                    (click)="selectClient(client)"
+                  >
+                    {{ client }}
+                  </div>
+                  <div *ngIf="filteredClientDropdownOptions().length === 0" class="dropdown-empty">
+                    No clients found
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Backdrop to close dropdowns when clicking outside -->
+          <div *ngIf="clientDropdownOpen() || instrumentDropdownOpen()" class="dropdown-backdrop" (click)="closeDropdowns()"></div>
         </div>
 
-        <div class="kpi-card glass-panel">
-          <div class="kpi-icon-wrap blue">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="8.5" cy="7" r="4"></circle>
-              <polyline points="17 11 19 13 23 9"></polyline>
-            </svg>
+        <div class="activity-summary">
+          <div class="summary-pill">
+            <span class="summary-label">Filtered Trades</span>
+            <span class="summary-value mono-font">{{ filteredTradeCount().toLocaleString() }}</span>
           </div>
-          <div class="kpi-content">
-            <div class="kpi-label">Audited Orders</div>
-            <div class="kpi-value mono-font">{{ totalOrdersCount() }}</div>
-            <div class="kpi-trend neutral">Across all venues</div>
+          <div class="summary-pill">
+            <span class="summary-label">Filtered Volume</span>
+            <span class="summary-value mono-font">\${{ filteredVolumeFormatted() }}</span>
           </div>
-        </div>
-
-        <div class="kpi-card glass-panel">
-          <div class="kpi-icon-wrap rose">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-label">Z-Score Anomalies</div>
-            <div class="kpi-value mono-font text-rose">{{ outlierList().length }}</div>
-            <div class="kpi-trend alert">Require investigation</div>
-          </div>
-        </div>
-
-        <div class="kpi-card glass-panel">
-          <div class="kpi-icon-wrap emerald">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-label">Assets Under Mgmt</div>
-            <div class="kpi-value mono-font text-emerald">\${{ aumFormatted() }}</div>
-            <div class="kpi-trend positive">Fully collateralized</div>
+          <div class="summary-pill">
+            <span class="summary-label">Active Days</span>
+            <span class="summary-value mono-font">{{ activityBuckets().length }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Charts Grid -->
+      <!-- Charts Grid (Volume Velocity & Instrument Distribution) -->
       <div class="charts-grid">
         <!-- Main Line Chart: Volume Over Time -->
-        <div class="chart-card glass-panel full-width">
+        <div class="chart-card glass-panel line-chart-card">
           <div class="card-title-row">
-            <div>
-              <h2 class="card-title">Trading Volume Velocity (Over Time)</h2>
-              <span class="card-sub">Daily traded aggregate value in USD</span>
-            </div>
-            <span class="badge badge-auditor">FastAPI Pipeline</span>
+            <h2 class="card-title">Trading Volume Velocity (Over Time)</h2>
           </div>
           <div class="chart-wrapper">
             <canvas #volumeTimeCanvas></canvas>
@@ -128,86 +250,13 @@ Chart.register(...registerables);
         </div>
 
         <!-- Doughnut Chart: By Instrument Type -->
-        <div class="chart-card glass-panel">
+        <div class="chart-card glass-panel doughnut-chart-card">
           <div class="card-title-row">
-            <div>
-              <h2 class="card-title">Volume by Instrument Type</h2>
-              <span class="card-sub">Equity, ETF, Crypto, Options</span>
-            </div>
+            <h2 class="card-title">Volume by Instrument Type</h2>
           </div>
           <div class="chart-wrapper square">
             <canvas #instrumentTypeCanvas></canvas>
           </div>
-        </div>
-
-        <!-- Bar Chart: By Market -->
-        <div class="chart-card glass-panel">
-          <div class="card-title-row">
-            <div>
-              <h2 class="card-title">Volume by Execution Market</h2>
-              <span class="card-sub">Venue distribution</span>
-            </div>
-          </div>
-          <div class="chart-wrapper square">
-            <canvas #marketCanvas></canvas>
-          </div>
-        </div>
-      </div>
-
-      <!-- Anomaly Outlier Trades Section -->
-      <div class="outliers-section glass-panel">
-        <div class="card-title-row table-header">
-          <div>
-            <h2 class="card-title">Statistical Trade Outliers (Z-Score &gt; 2.5)</h2>
-            <span class="card-sub">Detected by statistical regression in python data pipeline</span>
-          </div>
-          <span class="badge badge-danger">{{ outlierList().length }} Outliers Identified</span>
-        </div>
-
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Order ID</th>
-                <th>Account ID</th>
-                <th>Ticker</th>
-                <th>Side</th>
-                <th>Quantity</th>
-                <th>Execution Price</th>
-                <th>Estimated Value</th>
-                <th>Z-Score</th>
-                <th>Audit Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let item of outlierList()">
-                <td class="mono-font">#{{ item.order_id }}</td>
-                <td class="mono-font">Acc #{{ item.account_id }}</td>
-                <td>
-                  <span class="ticker-pill">{{ item.ticker || 'N/A' }}</span>
-                </td>
-                <td>
-                  <span class="badge" [ngClass]="item.order_type === 'BUY' ? 'badge-success' : 'badge-warning'">
-                    {{ item.order_type || 'BUY' }}
-                  </span>
-                </td>
-                <td class="mono-font">{{ item.quantity | number }}</td>
-                <td class="mono-font">\${{ item.stock_price | number:'1.2-2' }}</td>
-                <td class="mono-font font-bold">\${{ (item.order_value || (item.quantity * item.stock_price)) | number:'1.0-0' }}</td>
-                <td>
-                  <span class="zscore-tag">
-                    {{ item.z_score ? (item.z_score | number:'1.2-2') : '3.42' }}σ
-                  </span>
-                </td>
-                <td>
-                  <span class="badge badge-danger">FLAGGED</span>
-                </td>
-              </tr>
-              <tr *ngIf="outlierList().length === 0">
-                <td colspan="9" class="empty-state">No anomalies detected in current batch.</td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
@@ -216,7 +265,7 @@ Chart.register(...registerables);
     .analytics-container {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
     }
 
     .page-header {
@@ -225,6 +274,7 @@ Chart.register(...registerables);
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 12px;
+      padding-bottom: 2px;
     }
 
     .page-title {
@@ -232,12 +282,6 @@ Chart.register(...registerables);
       font-weight: 800;
       color: var(--text-primary);
       letter-spacing: -0.3px;
-    }
-
-    .page-subtitle {
-      font-size: 13px;
-      color: var(--text-secondary);
-      margin-top: 2px;
     }
 
     .header-actions {
@@ -253,191 +297,391 @@ Chart.register(...registerables);
       100% { transform: rotate(360deg); }
     }
 
-    .kpi-grid {
+    /* KPI Panel with clean line divisions */
+    .stats-panel {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 0;
+      overflow: hidden;
     }
 
-    .kpi-card {
-      padding: 18px;
+    .stat-col {
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-right: 1px solid var(--border-subtle);
+    }
+
+    .stat-col:last-child {
+      border-right: none;
+    }
+
+    .stat-title-row {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 10px;
     }
 
-    .kpi-icon-wrap {
-      width: 46px;
-      height: 46px;
-      border-radius: var(--radius-md);
+    .stat-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
     }
 
-    .kpi-icon-wrap.cyan {
-      background: rgba(138, 78, 35, 0.12);
+    .stat-icon-wrap.cyan {
+      background: rgba(138, 78, 35, 0.08);
       color: #8a4e23;
-      border: 1px solid rgba(138, 78, 35, 0.25);
+      border: 1px solid rgba(138, 78, 35, 0.2);
     }
 
-    .kpi-icon-wrap.blue {
-      background: rgba(51, 27, 14, 0.12);
+    .stat-icon-wrap.blue {
+      background: rgba(51, 27, 14, 0.08);
       color: #331b0e;
-      border: 1px solid rgba(51, 27, 14, 0.25);
+      border: 1px solid rgba(51, 27, 14, 0.2);
     }
 
-    .kpi-icon-wrap.rose {
-      background: rgba(163, 50, 36, 0.12);
-      color: #a33224;
-      border: 1px solid rgba(163, 50, 36, 0.25);
+    .stat-icon-wrap.cognac {
+      background: rgba(184, 117, 20, 0.08);
+      color: #b87514;
+      border: 1px solid rgba(184, 117, 20, 0.2);
     }
 
-    .kpi-icon-wrap.emerald {
-      background: rgba(42, 97, 66, 0.12);
+    .stat-icon-wrap.emerald {
+      background: rgba(42, 97, 66, 0.08);
       color: #2a6142;
-      border: 1px solid rgba(42, 97, 66, 0.25);
+      border: 1px solid rgba(42, 97, 66, 0.2);
     }
 
-    .kpi-label {
-      font-size: 11.5px;
+    .stat-label {
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--text-muted);
     }
 
-    .kpi-value {
-      font-size: 22px;
+    .stat-val {
+      font-size: 24px;
       font-weight: 800;
       color: var(--text-primary);
-      margin: 2px 0;
+      line-height: 1.1;
+      margin-top: 2px;
     }
 
-    .text-rose { color: #a33224; }
-    .text-emerald { color: #2a6142; }
-    .font-bold { font-weight: 700; color: var(--text-primary); }
-
-    .kpi-trend {
-      font-size: 11.5px;
+    .stat-sub {
+      font-size: 11px;
       color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .stat-sub.positive {
+      color: #2a6142;
     }
 
     .trend-pill {
-      color: #2a6142;
       font-weight: 700;
     }
 
-    .kpi-trend.alert {
-      color: #a33224;
-      font-weight: 700;
+    .text-emerald { color: #2a6142; }
+
+    @media (max-width: 1024px) {
+      .stats-panel {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .stat-col:nth-child(2) {
+        border-right: none;
+      }
+      .stat-col:nth-child(1), .stat-col:nth-child(2) {
+        border-bottom: 1px solid var(--border-subtle);
+      }
     }
 
-    .charts-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+    @media (max-width: 640px) {
+      .stats-panel {
+        grid-template-columns: 1fr;
+      }
+      .stat-col {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .stat-col:last-child {
+        border-bottom: none;
+      }
     }
 
-    .chart-card {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .chart-card.full-width {
-      grid-column: 1 / -1;
+    /* Activity Explorer */
+    .activity-section {
+      padding: 18px 22px;
     }
 
     .card-title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .card-title {
       font-size: 15px;
       font-weight: 800;
       color: var(--text-primary);
+      letter-spacing: -0.2px;
     }
 
-    .card-sub {
-      font-size: 12px;
+    .activity-filters {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 11px;
       color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      min-width: 180px;
+      flex: 1;
+    }
+
+    .input-control {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      background: #ffffff;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .search-dropdown-container {
+      position: relative;
+      min-width: 180px;
+    }
+
+    .search-dropdown-anchor {
+      position: relative;
+    }
+
+    .search-dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      text-align: left;
+      font-size: 12.5px;
+      font-weight: 600;
+      width: 100%;
+    }
+
+    .trigger-label {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 150px;
+    }
+
+    .search-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      min-width: 220px;
+      z-index: 100;
+      background: #fffdf9;
+      border: 1px solid rgba(62, 36, 21, 0.2);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .search-box-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      background: #faf6ee;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .search-box-wrap svg {
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .dropdown-search-input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 12px;
+      color: var(--text-primary);
+      width: 100%;
+    }
+
+    .dropdown-options-list {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .dropdown-item {
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .dropdown-item:hover {
+      background: #f5eedf;
+      color: var(--accent-cognac);
+    }
+
+    .dropdown-item.selected {
+      background: #331b0e;
+      color: #f7f2e8;
+    }
+
+    .dropdown-empty {
+      padding: 10px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .dropdown-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99;
+      background: transparent;
+    }
+
+    .activity-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .summary-pill {
+      background: #faf6ee;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .summary-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.45px;
+      font-weight: 700;
+    }
+
+    .summary-value {
+      font-size: 14px;
+      color: var(--text-primary);
+      font-weight: 800;
+    }
+
+    /* Charts Grid - 2 columns: Line velocity and Doughnut */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 16px;
+    }
+
+    .chart-card {
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
     }
 
     .chart-wrapper {
       position: relative;
-      height: 280px;
+      height: 290px;
       width: 100%;
     }
 
     .chart-wrapper.square {
-      height: 250px;
+      height: 290px;
     }
 
-    .outliers-section {
-      padding: 20px;
-    }
-
-    .table-header {
-      margin-bottom: 14px;
-    }
-
-    .ticker-pill {
-      background: #f7ede0;
-      color: #6b3a1d;
-      border: 1px solid rgba(138, 78, 35, 0.2);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-weight: 700;
-      font-size: 12px;
-      letter-spacing: 0.5px;
-    }
-
-    .zscore-tag {
-      background: rgba(163, 50, 36, 0.1);
-      border: 1px solid rgba(163, 50, 36, 0.28);
-      color: #a33224;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 700;
-      font-size: 11.5px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 30px;
-      color: var(--text-muted);
+    @media (max-width: 960px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
     }
   `]
 })
 export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('volumeTimeCanvas') volumeTimeCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('instrumentTypeCanvas') instrumentTypeCanvas!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('marketCanvas') marketCanvas!: ElementRef<HTMLCanvasElement>;
 
   loading = signal(false);
-  outlierList = signal<OutlierTrade[]>([]);
   totalVolume = signal(0);
   totalOrders = signal(0);
   aumValue = signal(0);
+  txnLogs = signal<TransactionLog[]>([]);
+  selectedInstrument = signal('ALL');
+  selectedClient = signal('ALL');
+  selectedPeriodDays = signal(30);
+
+  clientSearchText = signal('');
+  clientDropdownOpen = signal(false);
+
+  instrumentSearchText = signal('');
+  instrumentDropdownOpen = signal(false);
+
+  filteredClientDropdownOptions = computed(() => {
+    const query = this.clientSearchText().trim().toLowerCase();
+    const all = this.availableClients();
+    if (!query) return all;
+    return all.filter(c => c.toLowerCase().includes(query));
+  });
+
+  filteredInstrumentDropdownOptions = computed(() => {
+    const query = this.instrumentSearchText().trim().toLowerCase();
+    const all = this.availableInstruments();
+    if (!query) return all;
+    return all.filter(i => i.toLowerCase().includes(query));
+  });
 
   private charts: Chart[] = [];
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private readonly autoRefreshMs = 15000;
   private viewReady = false;
+  private baseTimeData: TradeVolumeOverTime[] = [];
 
   constructor(
     private metricsService: MetricsService,
-    private reportService: ReportService
+    private auditLogService: AuditLogService
   ) {}
 
   ngOnInit() {
-    // Defer loading until canvas refs are ready in ngAfterViewInit.
+    // Canvas initialized in ngAfterViewInit
   }
 
   ngAfterViewInit() {
@@ -467,9 +711,6 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     ).subscribe((response: AllMetricsResponse) => {
       const all = response.data || {};
 
-      const outliers = (all.outlier_trades || []) as OutlierTrade[];
-      this.outlierList.set(outliers);
-
       const timeData = ((all['trade_volume_over_time'] || all['volume_over_time'] || []) as TradeVolumeOverTime[])
         .map(item => ({
           ...item,
@@ -481,7 +722,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
       const orders = timeData.reduce((acc: number, curr: TradeVolumeOverTime) => acc + curr.order_count, 0);
       this.totalVolume.set(vol);
       this.totalOrders.set(orders);
-      this.updateLineChart(timeData);
+      this.baseTimeData = timeData;
+      this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
 
       const aum = (all['aum'] || []) as AumMetric[];
       const totalAum = aum.reduce(
@@ -492,9 +734,11 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       const types = (all['trade_volume_by_type'] || all['volume_by_type'] || []) as TradeVolumeByType[];
       this.updateDoughnutChart(types);
+    });
 
-      const markets = (all['trade_volume_by_market'] || all['volume_by_market'] || []) as TradeVolumeByMarket[];
-      this.updateBarChart(markets);
+    this.auditLogService.getTransactionLogs().subscribe((logs: TransactionLog[]) => {
+      this.txnLogs.set(logs);
+      this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
     });
   }
 
@@ -510,17 +754,154 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.aumValue().toLocaleString();
   }
 
-  exportOutliers() {
-    this.reportService.exportToCsv('tidbits_trade_outliers', this.outlierList());
+  availableInstruments(): string[] {
+    const instruments = new Set<string>();
+
+    this.txnLogs().forEach((txn) => {
+      const label = this.getInstrumentLabel(txn);
+      if (label) {
+        instruments.add(label);
+      }
+    });
+
+    return [...instruments].sort((a, b) => a.localeCompare(b));
+  }
+
+  availableClients(): string[] {
+    const clients = new Set<string>();
+
+    this.txnLogs().forEach((txn) => {
+      const label = this.getClientLabel(txn);
+      if (label) {
+        clients.add(label);
+      }
+    });
+
+    return [...clients].sort((a, b) => a.localeCompare(b));
+  }
+
+  activityBuckets(): TradeVolumeOverTime[] {
+    const selectedPeriod = this.selectedPeriodDays();
+    const selectedClient = this.selectedClient();
+    const selectedInstrument = this.selectedInstrument();
+    const now = Date.now();
+    const minTimestamp = selectedPeriod > 0 ? now - (selectedPeriod * 24 * 60 * 60 * 1000) : 0;
+
+    const buckets = new Map<string, TradeVolumeOverTime>();
+
+    this.txnLogs()
+      .filter((txn) => this.isTradeTransaction(txn))
+      .filter((txn) => {
+        const eventTime = Date.parse(txn.timestamp || txn.happenedAt || '');
+        if (Number.isNaN(eventTime)) {
+          return false;
+        }
+
+        if (minTimestamp > 0 && eventTime < minTimestamp) {
+          return false;
+        }
+
+        if (selectedClient !== 'ALL' && this.getClientLabel(txn) !== selectedClient) {
+          return false;
+        }
+
+        if (selectedInstrument !== 'ALL' && this.getInstrumentLabel(txn) !== selectedInstrument) {
+          return false;
+        }
+
+        return true;
+      })
+      .forEach((txn) => {
+        const dateKey = this.toDateKey(txn.timestamp || txn.happenedAt || '');
+        if (!dateKey) {
+          return;
+        }
+
+        const existing = buckets.get(dateKey) || {
+          time_bucket: dateKey,
+          order_count: 0,
+          total_quantity: 0,
+          total_value: 0
+        };
+
+        const quantity = Number(txn.quantity || 0);
+        const price = Number(txn.price || txn.stockPrice || 0);
+        const amount = txn.amount == null ? quantity * price : Number(txn.amount);
+
+        existing.order_count += 1;
+        existing.total_quantity += quantity;
+        existing.total_value += Number.isFinite(amount) ? amount : 0;
+
+        buckets.set(dateKey, existing);
+      });
+
+    return [...buckets.values()].sort((left, right) => {
+      const leftTime = Date.parse(left.time_bucket || left.trade_date || '');
+      const rightTime = Date.parse(right.time_bucket || right.trade_date || '');
+      return leftTime - rightTime;
+    });
+  }
+
+  filteredTradeCount(): number {
+    return this.activityBuckets().reduce((sum, bucket) => sum + bucket.order_count, 0);
+  }
+
+  filteredVolumeFormatted(): string {
+    const total = this.activityBuckets().reduce((sum, bucket) => sum + bucket.total_value, 0);
+    return total.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
+  onInstrumentChange(nextValue: string) {
+    this.selectedInstrument.set(nextValue || 'ALL');
+    this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+  }
+
+  onPeriodChange(nextValue: number) {
+    this.selectedPeriodDays.set(Number(nextValue || 0));
+    this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+  }
+
+  onClientChange(nextValue: string) {
+    this.selectedClient.set(nextValue || 'ALL');
+    this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+  }
+
+  toggleClientDropdown(event?: Event) {
+    if (event) event.stopPropagation();
+    this.clientDropdownOpen.set(!this.clientDropdownOpen());
+    if (this.clientDropdownOpen()) {
+      this.instrumentDropdownOpen.set(false);
+    }
+  }
+
+  selectClient(client: string) {
+    this.selectedClient.set(client);
+    this.clientDropdownOpen.set(false);
+    this.onClientChange(client);
+  }
+
+  toggleInstrumentDropdown(event?: Event) {
+    if (event) event.stopPropagation();
+    this.instrumentDropdownOpen.set(!this.instrumentDropdownOpen());
+    if (this.instrumentDropdownOpen()) {
+      this.clientDropdownOpen.set(false);
+    }
+  }
+
+  selectInstrument(inst: string) {
+    this.selectedInstrument.set(inst);
+    this.instrumentDropdownOpen.set(false);
+    this.onInstrumentChange(inst);
+  }
+
+  closeDropdowns() {
+    this.clientDropdownOpen.set(false);
+    this.instrumentDropdownOpen.set(false);
   }
 
   private destroyCharts() {
     this.charts.forEach(c => c.destroy());
     this.charts = [];
-  }
-
-  private renderCharts() {
-    // Charts are rendered by loadMetrics once data is received.
   }
 
   private startAutoRefresh() {
@@ -533,12 +914,51 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     }, this.autoRefreshMs);
   }
 
+  private isTradeTransaction(txn: TransactionLog): boolean {
+    const event = String(txn.event || '').toUpperCase();
+    const orderType = String(txn.orderType || '').toUpperCase();
+
+    return event === 'ORDER_FILLED' || event === 'ORDER_ACCEPTED' || orderType === 'BUY' || orderType === 'SELL';
+  }
+
+  private getInstrumentLabel(txn: TransactionLog): string {
+    if (txn.ticker && String(txn.ticker).trim()) {
+      return String(txn.ticker).trim().toUpperCase();
+    }
+
+    if (txn.instrumentId) {
+      return `INST #${txn.instrumentId}`;
+    }
+
+    return '';
+  }
+
+  private getClientLabel(txn: TransactionLog): string {
+    if (txn.userId) {
+      return `Client #${txn.userId}`;
+    }
+
+    if (txn.accountId) {
+      return `Account #${txn.accountId}`;
+    }
+
+    return '';
+  }
+
+  private toDateKey(value: string): string {
+    const parsed = Date.parse(value);
+    if (Number.isNaN(parsed)) {
+      return '';
+    }
+
+    return new Date(parsed).toISOString().slice(0, 10);
+  }
+
   private updateLineChart(data: TradeVolumeOverTime[]) {
     if (!this.volumeTimeCanvas) return;
     const ctx = this.volumeTimeCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
 
-    // Check existing
     const existing = this.charts.find(c => c.canvas === this.volumeTimeCanvas.nativeElement);
     if (existing) existing.destroy();
 
@@ -546,7 +966,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     const values = data.map(d => d.total_value);
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 250);
-    gradient.addColorStop(0, 'rgba(138, 78, 35, 0.25)');
+    gradient.addColorStop(0, 'rgba(138, 78, 35, 0.22)');
     gradient.addColorStop(1, 'rgba(138, 78, 35, 0.0)');
 
     const chart = new Chart(ctx, {
@@ -590,7 +1010,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
             ticks: {
               color: '#6b5344',
               font: { size: 11 },
-              callback: (val) => '\$' + Number(val).toLocaleString()
+              callback: (val) => '$' + Number(val).toLocaleString()
             }
           }
         }
@@ -619,7 +1039,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
           data: values,
           backgroundColor: ['#331b0e', '#8a4e23', '#c27d38', '#2a6142'],
           borderColor: '#ffffff',
-          borderWidth: 3
+          borderWidth: 2
         }]
       },
       options: {
@@ -632,53 +1052,6 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         },
         cutout: '70%'
-      }
-    });
-
-    this.charts.push(chart);
-  }
-
-  private updateBarChart(data: TradeVolumeByMarket[]) {
-    if (!this.marketCanvas) return;
-    const ctx = this.marketCanvas.nativeElement.getContext('2d');
-    if (!ctx) return;
-
-    const existing = this.charts.find(c => c.canvas === this.marketCanvas.nativeElement);
-    if (existing) existing.destroy();
-
-    const labels = data.map(d => d.market || 'Venue');
-    const values = data.map(d => d.total_value);
-
-    const chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Market Volume ($)',
-          data: values,
-          backgroundColor: 'rgba(93, 49, 23, 0.78)',
-          borderColor: '#331b0e',
-          borderWidth: 1,
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { color: '#6b5344' }
-          },
-          y: {
-            grid: { color: 'rgba(62, 36, 21, 0.06)' },
-            ticks: {
-              color: '#6b5344',
-              callback: (val) => '\$' + (Number(val) / 1000000).toFixed(1) + 'M'
-            }
-          }
-        }
       }
     });
 

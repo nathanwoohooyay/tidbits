@@ -67,6 +67,7 @@ export class AuditLogService {
 
         return {
           logId: Number(log.logId ?? 0),
+          userId: log.userId == null ? undefined : Number(log.userId),
           accountId: Number(log.accountId ?? 0),
           instrumentId: Number(log.instrumentId ?? 0),
           ticker: log.ticker,

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MetricsService } from '../../../core/services/metrics.service';
@@ -11,33 +11,111 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="reports-container animate-fade-in">
+    <div class="compliance-container animate-fade-in">
+      <!-- Header -->
       <div class="page-header">
         <div>
-          <h1 class="page-title">Compliance Report Generator</h1>
-          <p class="page-subtitle">Produce verified institutional audit dossiers, regulatory submissions, and dataset exports</p>
+          <h1 class="page-title">Compliance & Surveillance</h1>
         </div>
-        <div class="header-badges">
-          <span class="badge badge-auditor">AUDITOR WORKSPACE</span>
+        <div class="header-actions">
+          <button id="btn-export-outliers" class="btn btn-secondary btn-sm" (click)="exportOutliersCsv()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Export Outliers CSV</span>
+          </button>
+          <button id="btn-generate-pdf-top" class="btn btn-primary btn-sm" (click)="generatePdfReport()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9V2h12v7"></path>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            <span>Generate PDF Report</span>
+          </button>
         </div>
       </div>
 
+      <!-- Section 1: Statistical Trade Outliers & Anomalies -->
+      <div class="glass-panel section-panel">
+        <div class="panel-header-row">
+          <div>
+            <h2 class="panel-title">Statistical Trade Outliers & Anomalies</h2>
+          </div>
+          <div class="header-filters">
+            <div class="threshold-control">
+              <label>Sensitivity:</label>
+              <input type="range" min="2.0" max="4.0" step="0.1" class="range-slider" [(ngModel)]="zScoreThreshold">
+              <span class="range-val mono-font">&gt; {{ zScoreThreshold }}σ</span>
+            </div>
+            <span class="badge badge-danger">{{ filteredOutliers().length }} Flagged</span>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Account ID</th>
+                <th>Ticker</th>
+                <th>Side</th>
+                <th>Quantity</th>
+                <th>Execution Price</th>
+                <th>Estimated Value</th>
+                <th>Z-Score</th>
+                <th>Surveillance Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of filteredOutliers()">
+                <td class="mono-font">#{{ item.order_id }}</td>
+                <td class="mono-font">Acc #{{ item.account_id }}</td>
+                <td>
+                  <span class="ticker-pill">{{ item.ticker || 'N/A' }}</span>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="item.order_type === 'BUY' ? 'badge-success' : 'badge-warning'">
+                    {{ item.order_type || 'BUY' }}
+                  </span>
+                </td>
+                <td class="mono-font">{{ item.quantity | number }}</td>
+                <td class="mono-font">\${{ item.stock_price | number:'1.2-2' }}</td>
+                <td class="mono-font font-bold">\${{ (item.order_value || (item.quantity * item.stock_price)) | number:'1.0-0' }}</td>
+                <td>
+                  <span class="zscore-tag">
+                    {{ item.z_score ? (item.z_score | number:'1.2-2') : '3.42' }}σ
+                  </span>
+                </td>
+                <td>
+                  <span class="badge badge-danger">FLAGGED</span>
+                </td>
+              </tr>
+              <tr *ngIf="filteredOutliers().length === 0">
+                <td colspan="9" class="empty-state">No anomalies exceeding threshold {{ zScoreThreshold }}σ.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 2: Report Configuration & Summary Preview -->
       <div class="reports-layout">
         <!-- Configuration Card -->
         <div class="config-card glass-panel">
           <div class="card-header">
-            <h2 class="card-title">Report Configuration</h2>
-            <span class="card-sub">Define dossier parameters</span>
+            <h2 class="card-title">Generate Compliance Report</h2>
           </div>
 
           <div class="config-form">
             <div class="form-group">
               <label>Report Template</label>
               <select class="input-control" [(ngModel)]="selectedTemplate">
-                <option value="EXECUTIVE">Executive Trading Compliance Audit</option>
-                <option value="ANOMALIES">Outlier Trades & Market Abuse Investigation</option>
-                <option value="REVENUE">AUM, Fees & Capital Reconciliation</option>
-                <option value="FULL">Complete Platform Regulatory Dossier</option>
+                <option value="EXECUTIVE">Executive Summary (Compliance Snapshot)</option>
+                <option value="ANOMALIES">Anomaly Investigation (Outlier Trades)</option>
+                <option value="REVENUE">Revenue & AUM Reconciliation</option>
+                <option value="FULL">Full Regulatory Report (All Sections)</option>
               </select>
             </div>
 
@@ -53,20 +131,12 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
             </div>
 
             <div class="form-group">
-              <label>Anomaly Sensitivity Threshold</label>
-              <div class="range-wrap">
-                <input type="range" min="2.0" max="4.0" step="0.1" class="range-slider" [(ngModel)]="zScoreThreshold">
-                <span class="range-val mono-font">&gt; {{ zScoreThreshold }}σ</span>
-              </div>
-            </div>
-
-            <div class="form-group">
               <label>Compliance Notes & Auditor Assessment</label>
               <textarea
                 class="input-control textarea"
                 rows="3"
                 [(ngModel)]="complianceNotes"
-                placeholder="Enter formal observations, audit scope, or specific trade findings..."
+                placeholder="Enter formal observations, audit scope, or specific findings..."
               ></textarea>
             </div>
 
@@ -74,14 +144,14 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
               <button
                 id="btn-generate-pdf"
                 class="btn btn-primary btn-block"
-                (click)="generatePdfDossier()"
+                (click)="generatePdfReport()"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M6 9V2h12v7"></path>
                   <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                   <rect x="6" y="14" width="12" height="8"></rect>
                 </svg>
-                <span>Generate Official PDF Dossier</span>
+                <span>Generate Official PDF Report</span>
               </button>
 
               <button
@@ -89,7 +159,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
                 class="btn btn-secondary btn-block"
                 (click)="exportCurrentDataCsv()"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -103,15 +173,17 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
         <!-- Live Preview Summary Card -->
         <div class="preview-card glass-panel">
           <div class="card-header">
-            <div class="preview-badge">LIVE PREVIEW</div>
-            <h2 class="card-title">Dossier Executive Summary</h2>
-            <span class="card-sub">Synchronized with FastAPI metrics pipeline</span>
+            <h2 class="card-title">Live Report Preview</h2>
           </div>
 
-          <div class="dossier-preview">
-            <div class="dossier-meta">
+          <div class="report-preview-box">
+            <div class="report-meta">
               <div class="meta-item">
-                <span class="meta-label">Dossier ID:</span>
+                <span class="meta-label">Template:</span>
+                <span class="meta-val">{{ activeTemplateName() }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Report ID:</span>
                 <span class="meta-val mono-font">REP-2026-{{ reportSerial() }}</span>
               </div>
               <div class="meta-item">
@@ -150,44 +222,110 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
               </div>
             </div>
 
-            <div class="notes-preview">
-              <h3 class="section-heading">Lead Auditor Notes</h3>
-              <p class="notes-text">{{ complianceNotes }}</p>
-            </div>
           </div>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    .reports-container {
+    .compliance-container {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
     }
 
     .page-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 2px;
     }
 
     .page-title {
       font-size: 22px;
       font-weight: 800;
       color: var(--text-primary);
+      letter-spacing: -0.3px;
     }
 
-    .page-subtitle {
-      font-size: 13px;
-      color: var(--text-secondary);
-      margin-top: 2px;
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .section-panel {
+      padding: 18px 22px;
+    }
+
+    .panel-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .panel-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.2px;
+    }
+
+    .header-filters {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .threshold-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .range-slider {
+      width: 100px;
+      accent-color: var(--accent-cognac);
+    }
+
+    .range-val {
+      font-size: 12px;
+      color: var(--accent-cognac);
+      font-weight: 700;
+    }
+
+    .ticker-pill {
+      background: #f7ede0;
+      color: #6b3a1d;
+      border: 1px solid rgba(138, 78, 35, 0.2);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .zscore-tag {
+      background: rgba(163, 50, 36, 0.08);
+      border: 1px solid rgba(163, 50, 36, 0.25);
+      color: #a33224;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 11.5px;
+      font-family: 'JetBrains Mono', monospace;
     }
 
     .reports-layout {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 18px;
     }
 
     @media (max-width: 1024px) {
@@ -197,40 +335,38 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
     }
 
     .config-card, .preview-card {
-      padding: 24px;
+      padding: 20px 22px;
       display: flex;
       flex-direction: column;
     }
 
     .card-header {
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
     }
 
     .card-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       color: var(--text-primary);
-    }
-
-    .card-sub {
-      font-size: 12px;
-      color: var(--text-muted);
+      letter-spacing: -0.2px;
     }
 
     .config-form {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
 
     .form-group label {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--text-secondary);
       text-transform: uppercase;
@@ -243,69 +379,40 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
       gap: 12px;
     }
 
-    .range-wrap {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .range-slider {
-      flex: 1;
-      accent-color: var(--accent-cognac);
-    }
-
-    .range-val {
-      font-size: 13px;
-      color: var(--accent-cognac);
-      font-weight: 700;
-    }
-
     .textarea {
       resize: vertical;
-      min-height: 80px;
+      min-height: 72px;
     }
 
     .action-buttons {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      margin-top: 10px;
+      margin-top: 4px;
     }
 
     .btn-block {
       width: 100%;
-      padding: 12px;
+      padding: 10px 14px;
     }
 
-    .preview-badge {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      color: var(--accent-cognac);
-      background: rgba(138, 78, 35, 0.1);
-      padding: 2px 8px;
-      border-radius: 4px;
-      margin-bottom: 8px;
-    }
-
-    .dossier-preview {
+    .report-preview-box {
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
       background: #ffffff;
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 18px;
+      border-radius: var(--radius-sm);
+      padding: 16px;
       box-shadow: var(--shadow-sm);
     }
 
-    .dossier-meta {
+    .report-meta {
       display: flex;
       flex-direction: column;
       gap: 6px;
       border-bottom: 1px solid var(--border-subtle);
-      padding-bottom: 14px;
+      padding-bottom: 12px;
     }
 
     .meta-item {
@@ -329,13 +436,13 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
       gap: 10px;
       text-align: center;
       border-bottom: 1px solid var(--border-subtle);
-      padding-bottom: 14px;
+      padding-bottom: 12px;
     }
 
     .preview-kpi-item {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
       align-items: center;
     }
 
@@ -347,7 +454,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
     }
 
     .kpi-num {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       color: var(--text-primary);
     }
@@ -355,18 +462,18 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
     .text-rose { color: #a33224; }
 
     .section-heading {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .classes-list {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
 
     .class-row {
@@ -376,7 +483,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
       padding: 6px 10px;
       background: #faf6ee;
       border: 1px solid rgba(62, 36, 21, 0.06);
-      border-radius: 4px;
+      border-radius: var(--radius-sm);
     }
 
     .class-name { font-weight: 700; color: var(--text-primary); }
@@ -385,13 +492,19 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
 
     .notes-preview {
       border-top: 1px solid var(--border-subtle);
-      padding-top: 12px;
+      padding-top: 10px;
     }
 
     .notes-text {
       font-size: 12px;
       color: var(--text-secondary);
-      line-height: 1.5;
+      line-height: 1.45;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
     }
   `]
 })
@@ -405,6 +518,14 @@ export class ReportsComponent implements OnInit {
   volumeSummary = signal<TradeVolumeByType[]>([]);
   outliers = signal<OutlierTrade[]>([]);
   reportSerial = signal('8842');
+
+  filteredOutliers = computed(() => {
+    const threshold = Number(this.zScoreThreshold || 2.5);
+    return this.outliers().filter(item => {
+      const z = Number(item.z_score ?? 3.42);
+      return z >= threshold;
+    });
+  });
 
   constructor(
     public authService: AuthService,
@@ -424,37 +545,54 @@ export class ReportsComponent implements OnInit {
     });
   }
 
+  activeTemplateName(): string {
+    switch (this.selectedTemplate) {
+      case 'ANOMALIES':
+        return 'Anomaly Investigation Report';
+      case 'REVENUE':
+        return 'Revenue & AUM Reconciliation Report';
+      case 'FULL':
+        return 'Full Regulatory Report';
+      default:
+        return 'Executive Compliance Summary';
+    }
+  }
+
   totalSampledVolumeFormatted(): string {
     const total = this.volumeSummary().reduce((sum, item) => sum + item.total_value, 0);
     return total.toLocaleString(undefined, { maximumFractionDigits: 0 });
   }
 
-  generatePdfDossier() {
+  generatePdfReport() {
     const auditorName = this.authService.currentUser()?.username || 'Senior Auditor';
     const total = this.volumeSummary().reduce((sum, item) => sum + item.total_value, 0);
 
     this.reportService.generatePrintableAuditDossier(
-      `Tidbits Compliance Audit Dossier #${this.reportSerial()}`,
+      `${this.activeTemplateName()} #${this.reportSerial()}`,
       {
         auditorName,
         dateRange: `${this.startDate} to ${this.endDate}`,
         summaryStats: [
-          { label: 'Sampled Volume', value: '\$' + total.toLocaleString() },
-          { label: 'Outlier Trades', value: this.outliers().length },
+          { label: 'Sampled Volume', value: '$' + total.toLocaleString() },
+          { label: 'Outlier Trades', value: this.filteredOutliers().length },
           { label: 'Z-Score Sensitivity', value: `${this.zScoreThreshold}σ` },
           { label: 'Regulatory Status', value: 'VERIFIED' }
         ],
         volumeSummary: this.volumeSummary(),
-        outliers: this.outliers(),
+        outliers: this.filteredOutliers(),
         complianceNotes: this.complianceNotes
       }
     );
   }
 
+  exportOutliersCsv() {
+    this.reportService.exportToCsv('tidbits_trade_outliers', this.filteredOutliers());
+  }
+
   exportCurrentDataCsv() {
-    const filename = `tidbits_audit_report_${this.selectedTemplate.toLowerCase()}`;
+    const filename = `tidbits_${this.activeTemplateName().toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
     if (this.selectedTemplate === 'ANOMALIES') {
-      this.reportService.exportToCsv(filename, this.outliers());
+      this.reportService.exportToCsv(filename, this.filteredOutliers());
     } else {
       this.reportService.exportToCsv(filename, this.volumeSummary());
     }

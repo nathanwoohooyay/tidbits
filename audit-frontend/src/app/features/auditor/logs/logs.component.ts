@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuditLogService } from '../../../core/services/audit-log.service';
@@ -13,16 +13,34 @@ const ORDER_LIFECYCLE_EVENTS = new Set(['ORDER_PLACED', 'ORDER_ACCEPTED', 'ORDER
 const ACCOUNT_ORDER_EVENTS = new Set(['ORDER_ACCEPTED', 'ORDER_FILLED']);
 const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
 
+export interface AggregatedOrder {
+  orderId: number;
+  accountId?: number;
+  userId?: number;
+  ticker?: string;
+  instrumentId?: number;
+  orderType: string;
+  quantity: number;
+  price: number;
+  totalValue: number;
+  finalStatus: 'FILLED' | 'ACCEPTED' | 'REJECTED' | 'PLACED' | 'UNKNOWN';
+  timePlaced: string | null;
+  timeAccepted: string | null;
+  timeRejected: string | null;
+  timeFilled: string | null;
+  latestTimestamp: string;
+  lifecycleEvents: TransactionLog[];
+}
+
 @Component({
   selector: 'app-logs',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="logs-container animate-fade-in">
+    <div class="logs-container">
       <div class="page-header">
         <div>
           <h1 class="page-title">Audit Event Logs</h1>
-          <p class="page-subtitle">Immutable event streaming from Kafka: user identity events, account transactions, and order lifecycle activity</p>
         </div>
         <div class="header-actions">
           <button id="btn-export-logs" class="btn btn-secondary btn-sm" (click)="exportLogsCsv()">
@@ -44,7 +62,7 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
         </div>
       </div>
 
-      <!-- Tab Switcher & Filter Controls -->
+      <!-- Controls Panel with Tabs and Responsive Flexbox Filters -->
       <div class="controls-card glass-panel">
         <div class="tabs-wrap">
           <button
@@ -72,26 +90,183 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
             (click)="activeTab.set('ORDERS')"
           >
             <span>Orders</span>
-            <span class="tab-badge">{{ filteredOrderLogs().length }}</span>
+            <span class="tab-badge">{{ filteredOrders().length }}</span>
           </button>
         </div>
 
-        <div class="filter-wrap">
-          <div class="search-box">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input
-              type="text"
-              class="input-control search-input"
-              placeholder="Filter by user, event, account, order..."
-              [ngModel]="searchQuery()"
-              (ngModelChange)="searchQuery.set($event ?? '')"
-            />
+        <!-- Flexbox Filter Controls -->
+        <div class="filters-flexbox">
+          <!-- Date Range Filters -->
+          <div class="filter-group">
+            <label class="filter-field">
+              <span>Start Date</span>
+              <input
+                type="date"
+                class="input-control"
+                [ngModel]="startDate()"
+                (ngModelChange)="startDate.set($event || '')"
+              />
+            </label>
+            <label class="filter-field">
+              <span>End Date</span>
+              <input
+                type="date"
+                class="input-control"
+                [ngModel]="endDate()"
+                (ngModelChange)="endDate.set($event || '')"
+              />
+            </label>
           </div>
 
-          <div class="status-filters">
+          <!-- Specific Filters for User Logs -->
+          <div *ngIf="activeTab() === 'USER'" class="filter-group">
+            <label class="filter-field">
+              <span>Action</span>
+              <select class="input-control select-fixed" [ngModel]="selectedUserAction()" (ngModelChange)="selectedUserAction.set($event || 'ALL')">
+                <option value="ALL">All actions</option>
+                <option *ngFor="let action of availableUserActions()" [value]="action">{{ action }}</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- Specific Filters for Transactions & Orders -->
+          <div *ngIf="activeTab() !== 'USER'" class="filter-group">
+            <!-- Filter by Buy or Sell -->
+            <label class="filter-field">
+              <span>Side</span>
+              <select class="input-control select-sm" [ngModel]="selectedSide()" (ngModelChange)="selectedSide.set($event || 'ALL')">
+                <option value="ALL">All Sides</option>
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+              </select>
+            </label>
+
+            <!-- Searching Dropdown for Transactions -->
+            <label class="filter-field">
+              <span>Transaction</span>
+              <div class="search-select-wrap">
+                <input
+                  type="text"
+                  class="input-control search-input"
+                  placeholder="Search Txn ID..."
+                  [ngModel]="txnSearchQuery()"
+                  (ngModelChange)="txnSearchQuery.set($event)"
+                />
+              </div>
+            </label>
+
+            <!-- Searching Dropdown for Clients -->
+            <div class="filter-field search-dropdown-container" [class.open]="clientDropdownOpen()">
+              <span>Client</span>
+              <div class="search-dropdown-anchor">
+                <button
+                  type="button"
+                  class="input-control search-dropdown-trigger"
+                  (click)="toggleClientDropdown($event)"
+                >
+                  <span class="trigger-label">{{ selectedClient() === 'ALL' ? 'All clients' : selectedClient() }}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <div *ngIf="clientDropdownOpen()" class="search-dropdown-menu animate-fade-in" (click)="$event.stopPropagation()">
+                  <div class="search-box-wrap">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input
+                      #clientSearchInput
+                      type="text"
+                      class="dropdown-search-input"
+                      placeholder="Search client..."
+                      [ngModel]="clientSearchText()"
+                      (ngModelChange)="onClientSearchChange($event)"
+                    />
+                  </div>
+                  <div class="dropdown-options-list">
+                    <div
+                      class="dropdown-item"
+                      [class.selected]="selectedClient() === 'ALL'"
+                      (click)="selectClient('ALL')"
+                    >
+                      All clients
+                    </div>
+                    <div
+                      *ngFor="let client of filteredClientDropdownOptions()"
+                      class="dropdown-item"
+                      [class.selected]="selectedClient() === client"
+                      (click)="selectClient(client)"
+                    >
+                      {{ client }}
+                    </div>
+                    <div *ngIf="filteredClientDropdownOptions().length === 0" class="dropdown-empty">
+                      No clients found
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Searching Dropdown for Instruments -->
+            <div class="filter-field search-dropdown-container" [class.open]="instrumentDropdownOpen()">
+              <span>Instrument</span>
+              <div class="search-dropdown-anchor">
+                <button
+                  type="button"
+                  class="input-control search-dropdown-trigger"
+                  (click)="toggleInstrumentDropdown($event)"
+                >
+                  <span class="trigger-label">{{ selectedInstrument() === 'ALL' ? 'All instruments' : selectedInstrument() }}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <div *ngIf="instrumentDropdownOpen()" class="search-dropdown-menu animate-fade-in" (click)="$event.stopPropagation()">
+                  <div class="search-box-wrap">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input
+                      #instrumentSearchInput
+                      type="text"
+                      class="dropdown-search-input"
+                      placeholder="Search instrument..."
+                      [ngModel]="instrumentSearchText()"
+                      (ngModelChange)="onInstrumentSearchChange($event)"
+                    />
+                  </div>
+                  <div class="dropdown-options-list">
+                    <div
+                      class="dropdown-item"
+                      [class.selected]="selectedInstrument() === 'ALL'"
+                      (click)="selectInstrument('ALL')"
+                    >
+                      All instruments
+                    </div>
+                    <div
+                      *ngFor="let inst of filteredInstrumentDropdownOptions()"
+                      class="dropdown-item"
+                      [class.selected]="selectedInstrument() === inst"
+                      (click)="selectInstrument(inst)"
+                    >
+                      {{ inst }}
+                    </div>
+                    <div *ngIf="filteredInstrumentDropdownOptions().length === 0" class="dropdown-empty">
+                      No instruments found
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Backdrop to close dropdowns when clicking outside -->
+            <div *ngIf="clientDropdownOpen() || instrumentDropdownOpen()" class="dropdown-backdrop" (click)="closeDropdowns()"></div>
+          </div>
+
+          <!-- Status Filters -->
+          <div class="status-filters-group">
             <button
               class="status-pill"
               [class.active]="statusFilter() === 'ALL'"
@@ -104,14 +279,14 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
               [class.active]="statusFilter() === 'SUCCESS'"
               (click)="statusFilter.set('SUCCESS')"
             >
-              Success / Accepted / Filled
+              Success / Filled
             </button>
             <button
               class="status-pill failure"
               [class.active]="statusFilter() === 'FAILURE'"
               (click)="statusFilter.set('FAILURE')"
             >
-              Failures
+              Failures / Rejected
             </button>
           </div>
         </div>
@@ -170,7 +345,7 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
                 <th>Timestamp</th>
                 <th>Account</th>
                 <th>Instrument</th>
-                <th>Type</th>
+                <th>Type / Side</th>
                 <th>Quantity</th>
                 <th>Price</th>
                 <th>Total Value</th>
@@ -181,7 +356,7 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
               <tr *ngFor="let txn of filteredAccountTxnLogs()">
                 <td class="mono-font">#{{ txn.logId }}</td>
                 <td class="mono-font">{{ txn.orderId ? ('#' + txn.orderId) : '-' }}</td>
-                <td class="mono-font">{{ txn.transactionId ? ('#' + txn.transactionId) : '-' }}</td>
+                <td class="mono-font font-bold">{{ txn.transactionId ? ('#' + txn.transactionId) : '-' }}</td>
                 <td class="mono-font text-muted">{{ (txn.timestamp || txn.happenedAt) | date:'short' }}</td>
                 <td class="mono-font">Acc #{{ txn.accountId }}</td>
                 <td>
@@ -209,58 +384,203 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
         </div>
       </div>
 
-      <!-- Orders Table -->
+      <!-- Orders Table: Aggregated with Final Status and Detail Click-Through -->
       <div *ngIf="activeTab() === 'ORDERS'" class="glass-panel table-panel animate-fade-in">
         <div class="table-container">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Log ID</th>
                 <th>Order ID</th>
-                <th>Transaction ID</th>
-                <th>Timestamp</th>
-                <th>Account</th>
+                <th>Account / Client</th>
                 <th>Instrument</th>
                 <th>Side</th>
-                <th>Lifecycle Event</th>
                 <th>Quantity</th>
                 <th>Price</th>
                 <th>Total Value</th>
-                <th>Status</th>
+                <th>Final Status</th>
+                <th>Last Event Time</th>
+                <th style="text-align: right;">Details</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let orderLog of filteredOrderLogs()">
-                <td class="mono-font">#{{ orderLog.logId }}</td>
-                <td class="mono-font">{{ orderLog.orderId ? ('#' + orderLog.orderId) : '-' }}</td>
-                <td class="mono-font">{{ orderLog.transactionId ? ('#' + orderLog.transactionId) : '-' }}</td>
-                <td class="mono-font text-muted">{{ (orderLog.timestamp || orderLog.happenedAt) | date:'short' }}</td>
-                <td class="mono-font">Acc #{{ orderLog.accountId }}</td>
-                <td>
-                  <span class="ticker-pill">{{ orderLog.ticker || (orderLog.instrumentId ? ('Inst #' + orderLog.instrumentId) : '-') }}</span>
+              <tr
+                *ngFor="let order of filteredOrders()"
+                class="clickable-row"
+                (click)="openOrderDetail(order)"
+              >
+                <td class="mono-font font-bold">#{{ order.orderId }}</td>
+                <td class="mono-font">
+                  <span *ngIf="order.accountId">Acc #{{ order.accountId }}</span>
+                  <span *ngIf="order.userId" class="client-sub"> (Client #{{ order.userId }})</span>
                 </td>
                 <td>
-                  <span class="badge" [ngClass]="getTransactionTypeBadgeClass(orderLog)">
-                    {{ orderLog.orderType || '-' }}
+                  <span class="ticker-pill">{{ order.ticker || (order.instrumentId ? ('Inst #' + order.instrumentId) : '-') }}</span>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="order.orderType === 'BUY' ? 'badge-success' : 'badge-warning'">
+                    {{ order.orderType }}
                   </span>
                 </td>
+                <td class="mono-font">{{ order.quantity ? (order.quantity | number) : '-' }}</td>
+                <td class="mono-font">{{ order.price ? ('$' + (order.price | number:'1.2-2')) : '-' }}</td>
+                <td class="mono-font font-bold">{{ order.totalValue ? ('$' + (order.totalValue | number:'1.2-2')) : '-' }}</td>
                 <td>
-                  <span class="action-tag">{{ formatOrderEvent(orderLog.event) }}</span>
-                </td>
-                <td class="mono-font">{{ orderLog.quantity ? (orderLog.quantity | number) : '-' }}</td>
-                <td class="mono-font">{{ orderLog.price ? ('$' + (orderLog.price | number:'1.2-2')) : '-' }}</td>
-                <td class="mono-font font-bold">{{ formatTransactionTotal(orderLog) }}</td>
-                <td>
-                  <span class="badge" [ngClass]="getStatusBadgeClass(orderLog.status)">
-                    {{ orderLog.status || 'UNKNOWN' }}
+                  <span class="badge" [ngClass]="getFinalStatusBadgeClass(order.finalStatus)">
+                    {{ order.finalStatus }}
                   </span>
+                </td>
+                <td class="mono-font text-muted">{{ order.latestTimestamp | date:'short' }}</td>
+                <td style="text-align: right;">
+                  <button class="btn btn-secondary btn-sm" (click)="openOrderDetail(order); $event.stopPropagation()">
+                    <span>Inspect</span>
+                  </button>
                 </td>
               </tr>
-              <tr *ngIf="filteredOrderLogs().length === 0">
-                <td colspan="12" class="empty-cell">No matching order lifecycle events found.</td>
+              <tr *ngIf="filteredOrders().length === 0">
+                <td colspan="10" class="empty-cell">No matching orders found.</td>
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Order Detail Modal with Lifecycle Timestamps -->
+      <div *ngIf="selectedOrder()" class="modal-backdrop animate-fade-in" (click)="closeOrderDetail()">
+        <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <div class="badge" [ngClass]="getFinalStatusBadgeClass(selectedOrder()!.finalStatus)">
+                {{ selectedOrder()!.finalStatus }}
+              </div>
+              <h2 class="modal-title">Order #{{ selectedOrder()!.orderId }}</h2>
+              <span class="modal-sub">
+                {{ selectedOrder()!.ticker || 'Instrument' }} · {{ selectedOrder()!.orderType }} · Acc #{{ selectedOrder()!.accountId }}
+              </span>
+            </div>
+            <button class="modal-close" (click)="closeOrderDetail()">✕</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-overview-layout">
+              <div class="lifecycle-panel">
+                <h3 class="overview-title">Status History</h3>
+                <div class="lifecycle-timeline">
+                  <div
+                    class="timeline-step timeline-step-chain"
+                    [class.completed]="selectedOrder()!.timePlaced"
+                    [class.next-active]="selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected"
+                  >
+                    <div class="step-dot"></div>
+                    <div class="step-content">
+                      <div class="step-label">Placed</div>
+                      <div class="step-time mono-font">
+                        {{ selectedOrder()!.timePlaced ? (selectedOrder()!.timePlaced | date:'medium') : '—' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    class="timeline-step"
+                    [class.timeline-step-chain]="shouldShowFilledStep(selectedOrder()!)"
+                    [class.completed]="selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected"
+                    [class.rejected]="selectedOrder()!.timeRejected"
+                    [class.next-active]="selectedOrder()!.timeFilled"
+                  >
+                    <div class="step-dot"></div>
+                    <div class="step-content">
+                      <div class="step-label">
+                        {{ selectedOrder()!.timeRejected ? 'Rejected' : 'Accepted' }}
+                      </div>
+                      <div class="step-time mono-font">
+                        {{ (selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected) ? ((selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected) | date:'medium') : '—' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <ng-container *ngIf="shouldShowFilledStep(selectedOrder()!)">
+                    <div class="timeline-step" [class.completed]="selectedOrder()!.timeFilled">
+                      <div class="step-dot"></div>
+                      <div class="step-content">
+                        <div class="step-label">Filled</div>
+                        <div class="step-time mono-font">
+                          {{ selectedOrder()!.timeFilled ? (selectedOrder()!.timeFilled | date:'medium') : '—' }}
+                        </div>
+                      </div>
+                    </div>
+                  </ng-container>
+                </div>
+              </div>
+
+              <div class="metrics-panel">
+                <h3 class="overview-title">Order Snapshot</h3>
+                <div class="order-metrics-grid">
+                  <div class="metric-item">
+                    <span class="metric-lbl">Instrument</span>
+                    <span class="metric-val">{{ selectedOrder()!.ticker || ('Inst #' + selectedOrder()!.instrumentId) }}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-lbl">Side</span>
+                    <span class="metric-val" [class.text-emerald]="selectedOrder()!.orderType === 'BUY'" [class.text-warning]="selectedOrder()!.orderType === 'SELL'">
+                      {{ selectedOrder()!.orderType }}
+                    </span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-lbl">Quantity</span>
+                    <span class="metric-val mono-font">{{ selectedOrder()!.quantity | number }}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-lbl">Price</span>
+                    <span class="metric-val mono-font">\${{ selectedOrder()!.price | number:'1.2-2' }}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-lbl">Total Value</span>
+                    <span class="metric-val mono-font font-bold">\${{ selectedOrder()!.totalValue | number:'1.2-2' }}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-lbl">Account / User</span>
+                    <span class="metric-val mono-font">Acc #{{ selectedOrder()!.accountId }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kafka Audit Event Stream -->
+            <div class="events-history">
+              <h3 class="events-title">Event Audit Trail (Kafka Records)</h3>
+              <div class="events-table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Log ID</th>
+                      <th>Event</th>
+                      <th>Status</th>
+                      <th>Txn ID</th>
+                      <th>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let ev of getOrderEventRows(selectedOrder()!)">
+                      <td class="mono-font">#{{ ev.logId }}</td>
+                      <td>
+                        <span class="action-tag">{{ ev.event || 'ORDER_EVENT' }}</span>
+                      </td>
+                      <td>
+                        <span class="badge" [ngClass]="getStatusBadgeClass(ev.status)">
+                          {{ ev.status || 'SUCCESS' }}
+                        </span>
+                      </td>
+                      <td class="mono-font">{{ ev.transactionId ? ('#' + ev.transactionId) : '—' }}</td>
+                      <td class="mono-font text-muted">{{ (ev.timestamp || ev.happenedAt) | date:'medium' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-secondary" (click)="closeOrderDetail()">Close</button>
+          </div>
         </div>
       </div>
     </div>
@@ -270,24 +590,21 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
       display: flex;
       flex-direction: column;
       gap: 16px;
+      min-height: 0;
     }
 
     .page-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding-bottom: 2px;
     }
 
     .page-title {
       font-size: 22px;
       font-weight: 800;
       color: var(--text-primary);
-    }
-
-    .page-subtitle {
-      font-size: 13px;
-      color: var(--text-secondary);
-      margin-top: 2px;
+      letter-spacing: -0.3px;
     }
 
     .header-actions {
@@ -295,13 +612,15 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
       gap: 10px;
     }
 
+    /* Controls card with flexbox layout */
     .controls-card {
       padding: 14px 18px;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 14px;
+      position: relative;
+      z-index: 25;
+      overflow: visible;
     }
 
     .tabs-wrap {
@@ -309,8 +628,9 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
       gap: 8px;
       background: #ece3d2;
       padding: 4px;
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
       border: 1px solid var(--border-subtle);
+      width: fit-content;
     }
 
     .tab-btn {
@@ -336,59 +656,196 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
     .tab-badge {
       background: rgba(0, 0, 0, 0.12);
       padding: 1px 6px;
-      border-radius: 9999px;
+      border-radius: var(--radius-sm);
       font-size: 11px;
     }
 
-    .filter-wrap {
+    /* Filters using flexbox */
+    .filters-flexbox {
       display: flex;
-      align-items: center;
-      gap: 14px;
       flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px 16px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-subtle);
     }
 
-    .search-box {
+    .filter-group {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #ffffff;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 2px 10px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 10px;
     }
 
-    .search-box svg {
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.35px;
       color: var(--text-muted);
     }
 
+    .input-control {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      background: #ffffff;
+      padding: 6px 10px;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      height: 34px;
+    }
+
+    .select-sm {
+      min-width: 100px;
+    }
+
+    .select-fixed {
+      min-width: 140px;
+    }
+
     .search-input {
+      width: 130px;
+    }
+
+    .search-dropdown-container {
+      position: relative;
+      min-width: 150px;
+      z-index: 15;
+    }
+
+    .search-dropdown-container.open {
+      z-index: 1350;
+    }
+
+    .search-dropdown-anchor {
+      position: relative;
+    }
+
+    .search-dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      text-align: left;
+      font-size: 12.5px;
+      font-weight: 600;
+      width: 100%;
+    }
+
+    .trigger-label {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 130px;
+    }
+
+    .search-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      min-width: 210px;
+      z-index: 1400;
+      background: #fffdf9;
+      border: 1px solid rgba(62, 36, 21, 0.2);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .search-box-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      background: #faf6ee;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .search-box-wrap svg {
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .dropdown-search-input {
       border: none;
       background: transparent;
-      padding: 6px 0;
-      width: 220px;
-      font-size: 13px;
+      outline: none;
+      font-size: 12px;
+      color: var(--text-primary);
+      width: 100%;
     }
 
-    .search-input:focus {
-      box-shadow: none;
+    .dropdown-options-list {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .dropdown-item {
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .dropdown-item:hover {
+      background: #f5eedf;
+      color: var(--accent-cognac);
+    }
+
+    .dropdown-item.selected {
+      background: #331b0e;
+      color: #f7f2e8;
+    }
+
+    .dropdown-empty {
+      padding: 10px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .dropdown-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1300;
       background: transparent;
     }
 
-    .status-filters {
+    .status-filters-group {
       display: flex;
       gap: 6px;
+      margin-left: auto;
+      align-items: center;
     }
 
     .status-pill {
       background: transparent;
       border: 1px solid var(--border-subtle);
       color: var(--text-muted);
-      padding: 4px 10px;
-      border-radius: 9999px;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
       font-size: 11.5px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
+      height: 34px;
     }
 
     .status-pill.active {
@@ -398,13 +855,13 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
     }
 
     .status-pill.success.active {
-      background: rgba(42, 97, 66, 0.18);
+      background: rgba(42, 97, 66, 0.15);
       color: #2a6142;
       border-color: #2a6142;
     }
 
     .status-pill.failure.active {
-      background: rgba(163, 50, 36, 0.18);
+      background: rgba(163, 50, 36, 0.15);
       color: #a33224;
       border-color: #a33224;
     }
@@ -412,6 +869,16 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
     .table-panel {
       padding: 0;
       overflow: hidden;
+      position: relative;
+      z-index: 1;
+      height: clamp(360px, 58vh, 680px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-container {
+      height: 100%;
+      overflow: auto;
     }
 
     .user-pill {
@@ -422,8 +889,8 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
     .action-tag {
       background: #fbf7ef;
       border: 1px solid var(--border-subtle);
-      padding: 2px 8px;
-      border-radius: 4px;
+      padding: 2px 7px;
+      border-radius: var(--radius-sm);
       font-size: 11.5px;
       font-weight: 700;
       color: var(--accent-cognac);
@@ -434,9 +901,23 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
       color: #6b3a1d;
       border: 1px solid rgba(138, 78, 35, 0.2);
       padding: 2px 8px;
-      border-radius: 4px;
+      border-radius: var(--radius-sm);
       font-weight: 700;
       font-size: 12px;
+    }
+
+    .client-sub {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .clickable-row {
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .clickable-row:hover td {
+      background: #f7efe1;
     }
 
     .device-cell {
@@ -450,36 +931,286 @@ const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
 
     .text-muted { color: var(--text-muted); }
     .font-bold { font-weight: 700; color: var(--text-primary); }
+    .text-emerald { color: #2a6142; }
+    .text-warning { color: #9c600b; }
 
     .empty-cell {
       text-align: center;
       padding: 30px;
       color: var(--text-muted);
     }
+
+    /* Modal Styling */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(40, 22, 13, 0.6);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2200;
+      padding: 20px;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 1060px;
+      background: #fffdf9;
+      border: 1px solid rgba(62, 36, 21, 0.2);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 14px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-top: 4px;
+    }
+
+    .modal-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .modal-overview-layout {
+      display: grid;
+      grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .overview-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 14px;
+    }
+
+    /* Order Lifecycle Timeline */
+    .lifecycle-timeline {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 12px;
+      padding: 16px 14px;
+      background: #faf6ee;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .timeline-step {
+      display: grid;
+      grid-template-columns: 12px 1fr;
+      align-items: start;
+      column-gap: 10px;
+      width: 100%;
+      position: relative;
+    }
+
+    .timeline-step-chain::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 14px;
+      bottom: -12px;
+      width: 2px;
+      background: #d8cebe;
+      border-radius: 2px;
+    }
+
+    .timeline-step-chain.next-active::after {
+      background: #2a6142;
+    }
+
+    .timeline-step.rejected.timeline-step-chain.next-active::after {
+      background: #a33224;
+    }
+
+    .step-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #d8cebe;
+      border: 2px solid #b5a48e;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .timeline-step.completed .step-dot {
+      background: #2a6142;
+      border-color: #1e4730;
+      box-shadow: 0 0 6px rgba(42, 97, 66, 0.4);
+    }
+
+    .timeline-step.rejected .step-dot {
+      background: #a33224;
+      border-color: #7a1c11;
+      box-shadow: 0 0 6px rgba(163, 50, 36, 0.4);
+    }
+
+    .step-content {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .step-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .timeline-step.completed .step-label {
+      color: var(--text-primary);
+    }
+
+    .step-time {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* Financial metrics */
+    .order-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px 14px;
+      background: #fdfbf7;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .metric-lbl {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.4px;
+    }
+
+    .metric-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* Events audit trail */
+    .events-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .events-table-wrap {
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 960px) {
+      .modal-card {
+        max-width: 94vw;
+        padding: 18px;
+      }
+
+      .modal-overview-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .order-metrics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   `]
 })
 export class LogsComponent implements OnInit {
   activeTab = signal<LogsTab>('USER');
   statusFilter = signal<StatusFilter>('ALL');
-  searchQuery = signal('');
+  selectedInstrument = signal('ALL');
+  selectedClient = signal('ALL');
+  selectedSide = signal('ALL');
+  selectedUserAction = signal('ALL');
+  startDate = signal('');
+  endDate = signal('');
+  txnSearchQuery = signal('');
+
+  clientSearchText = signal('');
+  clientDropdownOpen = signal(false);
+
+  instrumentSearchText = signal('');
+  instrumentDropdownOpen = signal(false);
+
+  @ViewChild('clientSearchInput') clientSearchInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('instrumentSearchInput') instrumentSearchInput?: ElementRef<HTMLInputElement>;
+
+  selectedOrder = signal<AggregatedOrder | null>(null);
 
   userLogs = signal<UserLog[]>([]);
   txnLogs = signal<TransactionLog[]>([]);
 
   filteredUserLogs = computed(() => {
     let logs = [...this.userLogs()];
-    const query = this.searchQuery().trim().toLowerCase();
     const status = this.statusFilter();
+    const selectedUserAction = this.selectedUserAction();
 
-    if (query) {
-      logs = logs.filter(l => {
-        const actionOrEvent = (l.action || l.event || '').toLowerCase();
-        return (
-          (l.username && l.username.toLowerCase().includes(query)) ||
-          actionOrEvent.includes(query) ||
-          (l.ipAddress && l.ipAddress.toLowerCase().includes(query))
-        );
-      });
+    logs = logs.filter((log) => this.matchesDateRange(log.timestamp || log.happenedAt || ''));
+
+    if (selectedUserAction !== 'ALL') {
+      logs = logs.filter((log) => this.normalizeAction(log.action || log.event) === selectedUserAction);
     }
 
     if (status !== 'ALL') {
@@ -496,17 +1227,214 @@ export class LogsComponent implements OnInit {
   });
 
   filteredAccountTxnLogs = computed(() => {
-    const query = this.searchQuery().trim().toLowerCase();
     const status = this.statusFilter();
+    const side = this.selectedSide();
+    const txnQuery = this.txnSearchQuery().trim().toLowerCase();
 
-    return this.filterAccountTransactions(this.txnLogs(), query, status);
+    let list = this.filterAccountTransactions(this.txnLogs(), status);
+
+    if (side !== 'ALL') {
+      list = list.filter((log) => {
+        const type = (log.orderType || log.event || '').toUpperCase();
+        return type === side;
+      });
+    }
+
+    if (txnQuery) {
+      list = list.filter((log) => {
+        const txnIdStr = String(log.transactionId || '');
+        const orderIdStr = String(log.orderId || '');
+        const logIdStr = String(log.logId || '');
+        const tickerStr = String(log.ticker || '').toLowerCase();
+        return txnIdStr.includes(txnQuery) || orderIdStr.includes(txnQuery) || logIdStr.includes(txnQuery) || tickerStr.includes(txnQuery);
+      });
+    }
+
+    return list;
   });
 
-  filteredOrderLogs = computed(() => {
-    const query = this.searchQuery().trim().toLowerCase();
-    const status = this.statusFilter();
+  // Aggregated orders list
+  aggregatedOrders = computed(() => {
+    const logs = this.txnLogs();
+    const orderMap = new Map<number, TransactionLog[]>();
 
-    return this.filterOrderLifecycleLogs(this.txnLogs(), query, status);
+    logs.forEach((log) => {
+      if (log.orderId != null && log.orderId > 0) {
+        const existing = orderMap.get(log.orderId) || [];
+        existing.push(log);
+        orderMap.set(log.orderId, existing);
+      }
+    });
+
+    const orders: AggregatedOrder[] = [];
+
+    orderMap.forEach((events, orderId) => {
+      // Sort events chronologically
+      events.sort((a, b) => {
+        const left = Date.parse(a.timestamp || a.happenedAt || '');
+        const right = Date.parse(b.timestamp || b.happenedAt || '');
+        return (Number.isNaN(left) ? 0 : left) - (Number.isNaN(right) ? 0 : right);
+      });
+
+      const placedEvent = events.find(e => e.event === 'ORDER_PLACED');
+      const acceptedEvent = events.find(e => e.event === 'ORDER_ACCEPTED');
+      const rejectedEvent = events.find(e => e.event === 'ORDER_REJECTED' || e.status === 'REJECTED');
+      const filledEvent = events.find(e => e.event === 'ORDER_FILLED' || e.status === 'FILLED');
+
+      const primary = filledEvent || acceptedEvent || placedEvent || events[0];
+
+      // Final status determination
+      let finalStatus: 'FILLED' | 'ACCEPTED' | 'REJECTED' | 'PLACED' | 'UNKNOWN' = 'PLACED';
+      if (filledEvent) {
+        finalStatus = 'FILLED';
+      } else if (rejectedEvent) {
+        finalStatus = 'REJECTED';
+      } else if (acceptedEvent) {
+        finalStatus = 'ACCEPTED';
+      } else if (placedEvent) {
+        finalStatus = 'PLACED';
+      }
+
+      const quantity = Number(primary.quantity || 0);
+      const price = Number(primary.price || primary.stockPrice || 0);
+      const totalValue = primary.amount != null ? Number(primary.amount) : (quantity * price);
+
+      const latestEvent = events[events.length - 1];
+
+      orders.push({
+        orderId,
+        accountId: primary.accountId,
+        userId: primary.userId,
+        ticker: primary.ticker,
+        instrumentId: primary.instrumentId,
+        orderType: String(primary.orderType || (primary.event === 'SELL' ? 'SELL' : 'BUY')).toUpperCase(),
+        quantity,
+        price,
+        totalValue,
+        finalStatus,
+        timePlaced: placedEvent ? (placedEvent.timestamp || placedEvent.happenedAt || null) : null,
+        timeAccepted: acceptedEvent ? (acceptedEvent.timestamp || acceptedEvent.happenedAt || null) : null,
+        timeRejected: rejectedEvent ? (rejectedEvent.timestamp || rejectedEvent.happenedAt || null) : null,
+        timeFilled: filledEvent ? (filledEvent.timestamp || filledEvent.happenedAt || null) : null,
+        latestTimestamp: latestEvent.timestamp || latestEvent.happenedAt || '',
+        lifecycleEvents: events
+      });
+    });
+
+    // Sort newest order first
+    orders.sort((a, b) => {
+      const left = Date.parse(a.latestTimestamp);
+      const right = Date.parse(b.latestTimestamp);
+      return (Number.isNaN(right) ? 0 : right) - (Number.isNaN(left) ? 0 : left);
+    });
+
+    return orders;
+  });
+
+  filteredOrders = computed(() => {
+    let orders = this.aggregatedOrders();
+    const status = this.statusFilter();
+    const side = this.selectedSide();
+    const instrument = this.selectedInstrument();
+    const client = this.selectedClient();
+    const instrumentQuery = this.instrumentSearchText().trim().toLowerCase();
+    const clientQuery = this.clientSearchText().trim().toLowerCase();
+    const txnQuery = this.txnSearchQuery().trim().toLowerCase();
+
+    // Date range
+    orders = orders.filter(o => this.matchesDateRange(o.latestTimestamp));
+
+    // Status filter
+    if (status === 'SUCCESS') {
+      orders = orders.filter(o => o.finalStatus === 'FILLED' || o.finalStatus === 'ACCEPTED');
+    } else if (status === 'FAILURE') {
+      orders = orders.filter(o => o.finalStatus === 'REJECTED');
+    }
+
+    // Side filter
+    if (side !== 'ALL') {
+      orders = orders.filter(o => o.orderType === side);
+    }
+
+    // Instrument filter
+    orders = orders.filter((o) => {
+      const label = o.ticker ? o.ticker.toUpperCase() : (o.instrumentId ? `INST #${o.instrumentId}` : '');
+      return this.matchesSearchFilter(label, instrument, instrumentQuery);
+    });
+
+    // Client filter
+    orders = orders.filter((o) => {
+      const clientLabel = o.userId ? `Client #${o.userId}` : (o.accountId ? `Account #${o.accountId}` : '');
+      return this.matchesSearchFilter(clientLabel, client, clientQuery);
+    });
+
+    // Search query
+    if (txnQuery) {
+      orders = orders.filter(o => {
+        const orderIdStr = String(o.orderId);
+        const tickerStr = String(o.ticker || '').toLowerCase();
+        return orderIdStr.includes(txnQuery) || tickerStr.includes(txnQuery);
+      });
+    }
+
+    return orders;
+  });
+
+  availableInstruments = computed(() => {
+    const labels = new Set<string>();
+
+    this.txnLogs().forEach((log: TransactionLog) => {
+      const label = this.getInstrumentLabel(log);
+      if (label) {
+        labels.add(label);
+      }
+    });
+
+    return [...labels].sort((left, right) => left.localeCompare(right));
+  });
+
+  availableClients = computed(() => {
+    const labels = new Set<string>();
+
+    this.txnLogs().forEach((log: TransactionLog) => {
+      const label = this.getClientLabel(log);
+      if (label) {
+        labels.add(label);
+      }
+    });
+
+    return [...labels].sort((left, right) => left.localeCompare(right));
+  });
+
+  filteredClientDropdownOptions = computed(() => {
+    const query = this.clientSearchText().trim().toLowerCase();
+    const all = this.availableClients();
+    if (!query) return all;
+    return all.filter(c => c.toLowerCase().includes(query));
+  });
+
+  filteredInstrumentDropdownOptions = computed(() => {
+    const query = this.instrumentSearchText().trim().toLowerCase();
+    const all = this.availableInstruments();
+    if (!query) return all;
+    return all.filter(i => i.toLowerCase().includes(query));
+  });
+
+  matchingClients = computed(() => {
+    return this.availableClients();
+  });
+
+  availableUserActions = computed(() => {
+    const labels = new Set<string>();
+
+    this.userLogs().forEach((log: UserLog) => {
+      const action = this.normalizeAction(log.action || log.event);
+      if (action) {
+        labels.add(action);
+      }
+    });
+
+    return [...labels].sort((left, right) => left.localeCompare(right));
   });
 
   constructor(
@@ -529,8 +1457,82 @@ export class LogsComponent implements OnInit {
     } else if (this.activeTab() === 'TXN') {
       this.reportService.exportToCsv('tidbits_account_transaction_logs', this.filteredAccountTxnLogs());
     } else {
-      this.reportService.exportToCsv('tidbits_order_lifecycle_logs', this.filteredOrderLogs());
+      this.reportService.exportToCsv('tidbits_orders_summary', this.filteredOrders());
     }
+  }
+
+  toggleClientDropdown(event?: Event) {
+    if (event) event.stopPropagation();
+    this.clientDropdownOpen.set(!this.clientDropdownOpen());
+    if (this.clientDropdownOpen()) {
+      this.instrumentDropdownOpen.set(false);
+      this.focusClientSearchInput();
+    }
+  }
+
+  onClientSearchChange(value: string) {
+    this.clientSearchText.set(value || '');
+    this.selectedClient.set('ALL');
+  }
+
+  selectClient(client: string) {
+    this.selectedClient.set(client);
+    this.clientSearchText.set('');
+    this.clientDropdownOpen.set(false);
+  }
+
+  toggleInstrumentDropdown(event?: Event) {
+    if (event) event.stopPropagation();
+    this.instrumentDropdownOpen.set(!this.instrumentDropdownOpen());
+    if (this.instrumentDropdownOpen()) {
+      this.clientDropdownOpen.set(false);
+      this.focusInstrumentSearchInput();
+    }
+  }
+
+  onInstrumentSearchChange(value: string) {
+    this.instrumentSearchText.set(value || '');
+    this.selectedInstrument.set('ALL');
+  }
+
+  selectInstrument(inst: string) {
+    this.selectedInstrument.set(inst);
+    this.instrumentSearchText.set('');
+    this.instrumentDropdownOpen.set(false);
+  }
+
+  closeDropdowns() {
+    this.clientDropdownOpen.set(false);
+    this.instrumentDropdownOpen.set(false);
+  }
+
+  shouldShowFilledStep(order: AggregatedOrder): boolean {
+    return Boolean((order.timeAccepted || order.timeFilled) && !order.timeRejected);
+  }
+
+  getOrderEventRows(order: AggregatedOrder): TransactionLog[] {
+    const events = order.lifecycleEvents;
+    if (!events.length) {
+      return [];
+    }
+
+    const preferredEvent = this.getFinalStatusEvent(order.finalStatus);
+    for (let i = events.length - 1; i >= 0; i--) {
+      const ev = events[i];
+      if ((ev.event || '') === preferredEvent || (ev.status || '') === order.finalStatus) {
+        return [ev];
+      }
+    }
+
+    return [events[events.length - 1]];
+  }
+
+  openOrderDetail(order: AggregatedOrder) {
+    this.selectedOrder.set(order);
+  }
+
+  closeOrderDetail() {
+    this.selectedOrder.set(null);
   }
 
   formatTransactionTotal(txn: TransactionLog): string {
@@ -539,8 +1541,8 @@ export class LogsComponent implements OnInit {
     }
 
     if (txn.quantity && txn.price) {
-      const computed = txn.quantity * txn.price;
-      return '$' + computed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const computedVal = txn.quantity * txn.price;
+      return '$' + computedVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     return '-';
@@ -552,10 +1554,6 @@ export class LogsComponent implements OnInit {
     }
 
     return txn.orderType || txn.event || '-';
-  }
-
-  formatOrderEvent(event?: string): string {
-    return (event || 'UNKNOWN').replace(/^ORDER_/, '');
   }
 
   getTransactionTypeBadgeClass(txn: TransactionLog): string {
@@ -586,11 +1584,26 @@ export class LogsComponent implements OnInit {
     }
   }
 
-  private filterAccountTransactions(logs: TransactionLog[], query: string, status: StatusFilter): TransactionLog[] {
+  getFinalStatusBadgeClass(status: string): string {
+    switch (status) {
+      case 'FILLED':
+        return 'badge-success';
+      case 'ACCEPTED':
+        return 'badge-auditor';
+      case 'REJECTED':
+        return 'badge-danger';
+      case 'PLACED':
+        return 'badge-warning';
+      default:
+        return 'badge-user';
+    }
+  }
+
+  private filterAccountTransactions(logs: TransactionLog[], status: StatusFilter): TransactionLog[] {
     const accountTransactions = this.buildAccountTransactions(logs);
 
     return accountTransactions.filter((log) => {
-      if (!this.matchesSearch(log, query, 'TXN')) {
+      if (!this.matchesSpecificFilters(log)) {
         return false;
       }
 
@@ -598,54 +1611,99 @@ export class LogsComponent implements OnInit {
     });
   }
 
-  private filterOrderLifecycleLogs(logs: TransactionLog[], query: string, status: StatusFilter): TransactionLog[] {
-    return [...logs]
-      .filter((log) => this.isOrderLifecycleEvent(log))
-      .filter((log) => this.matchesSearch(log, query, 'ORDERS'))
-      .filter((log) => this.matchesOrderStatus(log, status))
-      .sort((left, right) => this.compareByTimestamp(right, left));
-  }
-
   private buildAccountTransactions(logs: TransactionLog[]): TransactionLog[] {
-    const cashTransactions = logs.filter((log) => this.isCashTransaction(log));
-    const dedupedOrderTransactions = new Map<string, TransactionLog>();
+    const dedupedTransactions = new Map<string, TransactionLog>();
 
     logs
-      .filter((log) => this.isEligibleOrderTransaction(log))
+      .filter((log) => this.isAccountTransactionEvent(log))
       .forEach((log) => {
         const key = this.getAccountTransactionKey(log);
-        const existing = dedupedOrderTransactions.get(key);
+        const existing = dedupedTransactions.get(key);
 
         if (!existing || this.compareByTimestamp(log, existing) > 0) {
-          dedupedOrderTransactions.set(key, log);
+          dedupedTransactions.set(key, log);
         }
       });
 
-    return [...cashTransactions, ...dedupedOrderTransactions.values()]
+    return [...dedupedTransactions.values()]
       .sort((left, right) => this.compareByTimestamp(right, left));
   }
 
-  private matchesSearch(log: TransactionLog, query: string, tab: Exclude<LogsTab, 'USER'>): boolean {
-    if (!query) {
-      return true;
+  private matchesSpecificFilters(log: TransactionLog): boolean {
+    const selectedInstrument = this.selectedInstrument();
+    const selectedClient = this.selectedClient();
+    const instrumentQuery = this.instrumentSearchText().trim().toLowerCase();
+    const clientQuery = this.clientSearchText().trim().toLowerCase();
+    const instrumentLabel = this.getInstrumentLabel(log);
+    const clientLabel = this.getClientLabel(log);
+
+    if (!this.matchesSearchFilter(instrumentLabel, selectedInstrument, instrumentQuery)) {
+      return false;
     }
 
-    const searchValues = [
-      log.ticker,
-      log.event,
-      log.orderType,
-      log.status,
-      log.orderId,
-      log.transactionId,
-      log.accountId,
-      log.instrumentId
-    ].filter((value) => value !== undefined && value !== null);
-
-    if (tab === 'ORDERS') {
-      searchValues.push(this.formatOrderEvent(log.event));
+    if (!this.matchesSearchFilter(clientLabel, selectedClient, clientQuery)) {
+      return false;
     }
 
-    return searchValues.some((value) => String(value).toLowerCase().includes(query));
+    if (!this.matchesDateRange(log.timestamp || log.happenedAt || '')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private matchesDateRange(timestamp: string): boolean {
+    const startDate = this.startDate();
+    const endDate = this.endDate();
+
+    const value = Date.parse(timestamp);
+    if (Number.isNaN(value)) {
+      return !(startDate || endDate);
+    }
+
+    if (startDate) {
+      const start = Date.parse(`${startDate}T00:00:00`);
+      if (!Number.isNaN(start) && value < start) {
+        return false;
+      }
+    }
+
+    if (endDate) {
+      const end = Date.parse(`${endDate}T23:59:59`);
+      if (!Number.isNaN(end) && value > end) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private normalizeAction(action?: string): string {
+    return String(action || '').trim().toUpperCase();
+  }
+
+  private getInstrumentLabel(log: TransactionLog): string {
+    if (log.ticker && String(log.ticker).trim()) {
+      return String(log.ticker).trim().toUpperCase();
+    }
+
+    if (log.instrumentId) {
+      return `INST #${log.instrumentId}`;
+    }
+
+    return '';
+  }
+
+  private getClientLabel(log: TransactionLog): string {
+    if (log.userId) {
+      return `Client #${log.userId}`;
+    }
+
+    if (log.accountId) {
+      return `Account #${log.accountId}`;
+    }
+
+    return '';
   }
 
   private matchesAccountTransactionStatus(log: TransactionLog, status: StatusFilter): boolean {
@@ -660,18 +1718,6 @@ export class LogsComponent implements OnInit {
     return this.isFailureStatus(log.status);
   }
 
-  private matchesOrderStatus(log: TransactionLog, status: StatusFilter): boolean {
-    if (status === 'ALL') {
-      return true;
-    }
-
-    if (status === 'SUCCESS') {
-      return (log.event === 'ORDER_ACCEPTED' || log.event === 'ORDER_FILLED') && !this.isFailureStatus(log.status);
-    }
-
-    return log.event === 'ORDER_REJECTED' || this.isFailureStatus(log.status);
-  }
-
   private isEligibleOrderTransaction(log: TransactionLog): boolean {
     return Boolean(
       log.transactionId &&
@@ -681,12 +1727,21 @@ export class LogsComponent implements OnInit {
     );
   }
 
-  private isCashTransaction(log: TransactionLog): boolean {
-    return ACCOUNT_TRANSACTION_EVENTS.has(log.event || '');
+  private isAccountTransactionEvent(log: TransactionLog): boolean {
+    if (this.isCashTransaction(log) || this.isEligibleOrderTransaction(log)) {
+      return true;
+    }
+
+    return Boolean(
+      log.transactionId ||
+      ORDER_SIDE_TYPES.has(log.orderType) ||
+      ACCOUNT_ORDER_EVENTS.has(log.event || '') ||
+      ORDER_LIFECYCLE_EVENTS.has(log.event || '')
+    );
   }
 
-  private isOrderLifecycleEvent(log: TransactionLog): boolean {
-    return Boolean(log.orderId && ORDER_LIFECYCLE_EVENTS.has(log.event || ''));
+  private isCashTransaction(log: TransactionLog): boolean {
+    return ACCOUNT_TRANSACTION_EVENTS.has(log.event || '');
   }
 
   private getAccountTransactionKey(log: TransactionLog): string {
@@ -712,5 +1767,51 @@ export class LogsComponent implements OnInit {
     const safeRight = Number.isNaN(rightTime) ? 0 : rightTime;
 
     return safeLeft - safeRight;
+  }
+
+  private matchesSearchFilter(label: string, selected: string, query: string): boolean {
+    if (selected !== 'ALL') {
+      return label === selected;
+    }
+
+    if (!query) {
+      return true;
+    }
+
+    return label.toLowerCase().includes(query);
+  }
+
+  private getFinalStatusEvent(status: AggregatedOrder['finalStatus']): string {
+    switch (status) {
+      case 'FILLED':
+        return 'ORDER_FILLED';
+      case 'ACCEPTED':
+        return 'ORDER_ACCEPTED';
+      case 'REJECTED':
+        return 'ORDER_REJECTED';
+      case 'PLACED':
+      default:
+        return 'ORDER_PLACED';
+    }
+  }
+
+  private focusClientSearchInput() {
+    setTimeout(() => {
+      const input = this.clientSearchInput?.nativeElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  private focusInstrumentSearchInput() {
+    setTimeout(() => {
+      const input = this.instrumentSearchInput?.nativeElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
   }
 }

@@ -5,6 +5,7 @@ import com.tidbits.exception.BusinessException;
 import com.tidbits.mapper.AccountMapper;
 import com.tidbits.model.dto.AccountCreateRequestDTO;
 import com.tidbits.model.dto.AccountDTO;
+import com.tidbits.model.dto.AccountNicknameRequestDTO;
 import com.tidbits.model.entity.Account;
 import com.tidbits.service.AccountService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,12 +52,12 @@ public class AccountController {
 
     @PutMapping("/{id}")
     @PreAuthorize("#userId.toString().equals(authentication.name)")
-    public ResponseEntity<AccountDTO> updateAccount(@PathVariable Integer userId, @PathVariable Integer id, @RequestBody String nickname) {
-        if (nickname.isBlank()) {
+    public ResponseEntity<AccountDTO> updateAccount(@PathVariable Integer userId, @PathVariable Integer id, @RequestBody AccountNicknameRequestDTO request) {
+        if (request.getNickname() == null || request.getNickname().isBlank()) {
             throw new BadRequestException("New account nickname is required.");
         }
 
-        AccountMapper.toDto(accountService.updateAccount(userId, id, nickname));
+        AccountMapper.toDto(accountService.updateAccount(userId, id, request.getNickname()));
 
         return ResponseEntity.accepted().build();
     }

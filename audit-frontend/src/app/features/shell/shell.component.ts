@@ -26,12 +26,7 @@ import { AuthService } from '../../core/services/auth.service';
           </div>
         </div>
 
-        <div class="header-center">
-          <div class="system-status-chip">
-            <span class="pulse-dot"></span>
-            <span>SYSTEM AUDIT STREAM: <strong>ACTIVE</strong></span>
-          </div>
-        </div>
+
 
         <div class="header-right">
           <!-- User Profile Chip -->

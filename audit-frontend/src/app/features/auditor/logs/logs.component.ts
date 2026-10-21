@@ -156,22 +156,111 @@ export interface AggregatedOrder {
             </label>
 
             <!-- Searching Dropdown for Clients -->
-            <label class="filter-field">
+            <div class="filter-field search-dropdown-container">
               <span>Client</span>
-              <select class="input-control select-fixed" [ngModel]="selectedClient()" (ngModelChange)="selectedClient.set($event || 'ALL')">
-                <option value="ALL">All clients</option>
-                <option *ngFor="let client of matchingClients()" [value]="client">{{ client }}</option>
-              </select>
-            </label>
+              <div class="search-dropdown-anchor">
+                <button
+                  type="button"
+                  class="input-control search-dropdown-trigger"
+                  (click)="toggleClientDropdown($event)"
+                >
+                  <span class="trigger-label">{{ selectedClient() === 'ALL' ? 'All clients' : selectedClient() }}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <div *ngIf="clientDropdownOpen()" class="search-dropdown-menu animate-fade-in" (click)="$event.stopPropagation()">
+                  <div class="search-box-wrap">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input
+                      type="text"
+                      class="dropdown-search-input"
+                      placeholder="Search client..."
+                      [ngModel]="clientSearchText()"
+                      (ngModelChange)="clientSearchText.set($event)"
+                    />
+                  </div>
+                  <div class="dropdown-options-list">
+                    <div
+                      class="dropdown-item"
+                      [class.selected]="selectedClient() === 'ALL'"
+                      (click)="selectClient('ALL')"
+                    >
+                      All clients
+                    </div>
+                    <div
+                      *ngFor="let client of filteredClientDropdownOptions()"
+                      class="dropdown-item"
+                      [class.selected]="selectedClient() === client"
+                      (click)="selectClient(client)"
+                    >
+                      {{ client }}
+                    </div>
+                    <div *ngIf="filteredClientDropdownOptions().length === 0" class="dropdown-empty">
+                      No clients found
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <!-- Instrument filter -->
-            <label class="filter-field">
+            <!-- Searching Dropdown for Instruments -->
+            <div class="filter-field search-dropdown-container">
               <span>Instrument</span>
-              <select class="input-control select-fixed" [ngModel]="selectedInstrument()" (ngModelChange)="selectedInstrument.set($event || 'ALL')">
-                <option value="ALL">All instruments</option>
-                <option *ngFor="let instrument of availableInstruments()" [value]="instrument">{{ instrument }}</option>
-              </select>
-            </label>
+              <div class="search-dropdown-anchor">
+                <button
+                  type="button"
+                  class="input-control search-dropdown-trigger"
+                  (click)="toggleInstrumentDropdown($event)"
+                >
+                  <span class="trigger-label">{{ selectedInstrument() === 'ALL' ? 'All instruments' : selectedInstrument() }}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <div *ngIf="instrumentDropdownOpen()" class="search-dropdown-menu animate-fade-in" (click)="$event.stopPropagation()">
+                  <div class="search-box-wrap">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input
+                      type="text"
+                      class="dropdown-search-input"
+                      placeholder="Search instrument..."
+                      [ngModel]="instrumentSearchText()"
+                      (ngModelChange)="instrumentSearchText.set($event)"
+                    />
+                  </div>
+                  <div class="dropdown-options-list">
+                    <div
+                      class="dropdown-item"
+                      [class.selected]="selectedInstrument() === 'ALL'"
+                      (click)="selectInstrument('ALL')"
+                    >
+                      All instruments
+                    </div>
+                    <div
+                      *ngFor="let inst of filteredInstrumentDropdownOptions()"
+                      class="dropdown-item"
+                      [class.selected]="selectedInstrument() === inst"
+                      (click)="selectInstrument(inst)"
+                    >
+                      {{ inst }}
+                    </div>
+                    <div *ngIf="filteredInstrumentDropdownOptions().length === 0" class="dropdown-empty">
+                      No instruments found
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Backdrop to close dropdowns when clicking outside -->
+            <div *ngIf="clientDropdownOpen() || instrumentDropdownOpen()" class="dropdown-backdrop" (click)="closeDropdowns()"></div>
           </div>
 
           <!-- Status Filters -->
@@ -605,6 +694,119 @@ export interface AggregatedOrder {
       width: 130px;
     }
 
+    .search-dropdown-container {
+      position: relative;
+      min-width: 150px;
+    }
+
+    .search-dropdown-anchor {
+      position: relative;
+    }
+
+    .search-dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      text-align: left;
+      font-size: 12.5px;
+      font-weight: 600;
+      width: 100%;
+    }
+
+    .trigger-label {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 130px;
+    }
+
+    .search-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      min-width: 210px;
+      z-index: 100;
+      background: #fffdf9;
+      border: 1px solid rgba(62, 36, 21, 0.2);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .search-box-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      background: #faf6ee;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .search-box-wrap svg {
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .dropdown-search-input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 12px;
+      color: var(--text-primary);
+      width: 100%;
+    }
+
+    .dropdown-options-list {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .dropdown-item {
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .dropdown-item:hover {
+      background: #f5eedf;
+      color: var(--accent-cognac);
+    }
+
+    .dropdown-item.selected {
+      background: #331b0e;
+      color: #f7f2e8;
+    }
+
+    .dropdown-empty {
+      padding: 10px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .dropdown-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99;
+      background: transparent;
+    }
+
     .status-filters-group {
       display: flex;
       gap: 6px;
@@ -915,6 +1117,12 @@ export class LogsComponent implements OnInit {
   endDate = signal('');
   txnSearchQuery = signal('');
 
+  clientSearchText = signal('');
+  clientDropdownOpen = signal(false);
+
+  instrumentSearchText = signal('');
+  instrumentDropdownOpen = signal(false);
+
   selectedOrder = signal<AggregatedOrder | null>(null);
 
   userLogs = signal<UserLog[]>([]);
@@ -1126,6 +1334,20 @@ export class LogsComponent implements OnInit {
     return [...labels].sort((left, right) => left.localeCompare(right));
   });
 
+  filteredClientDropdownOptions = computed(() => {
+    const query = this.clientSearchText().trim().toLowerCase();
+    const all = this.availableClients();
+    if (!query) return all;
+    return all.filter(c => c.toLowerCase().includes(query));
+  });
+
+  filteredInstrumentDropdownOptions = computed(() => {
+    const query = this.instrumentSearchText().trim().toLowerCase();
+    const all = this.availableInstruments();
+    if (!query) return all;
+    return all.filter(i => i.toLowerCase().includes(query));
+  });
+
   matchingClients = computed(() => {
     return this.availableClients();
   });
@@ -1165,6 +1387,37 @@ export class LogsComponent implements OnInit {
     } else {
       this.reportService.exportToCsv('tidbits_orders_summary', this.filteredOrders());
     }
+  }
+
+  toggleClientDropdown(event?: Event) {
+    if (event) event.stopPropagation();
+    this.clientDropdownOpen.set(!this.clientDropdownOpen());
+    if (this.clientDropdownOpen()) {
+      this.instrumentDropdownOpen.set(false);
+    }
+  }
+
+  selectClient(client: string) {
+    this.selectedClient.set(client);
+    this.clientDropdownOpen.set(false);
+  }
+
+  toggleInstrumentDropdown(event?: Event) {
+    if (event) event.stopPropagation();
+    this.instrumentDropdownOpen.set(!this.instrumentDropdownOpen());
+    if (this.instrumentDropdownOpen()) {
+      this.clientDropdownOpen.set(false);
+    }
+  }
+
+  selectInstrument(inst: string) {
+    this.selectedInstrument.set(inst);
+    this.instrumentDropdownOpen.set(false);
+  }
+
+  closeDropdowns() {
+    this.clientDropdownOpen.set(false);
+    this.instrumentDropdownOpen.set(false);
   }
 
   openOrderDetail(order: AggregatedOrder) {

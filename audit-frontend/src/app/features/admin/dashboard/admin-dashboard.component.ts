@@ -72,82 +72,51 @@ import { AdminDashboardStats } from '../../../core/models/models';
         </div>
       </div>
 
-      <!-- Administration Modules Grid -->
-      <div class="admin-modules-grid">
-        <!-- Module 1: Identity & Privilege Governance with clean line divisions -->
-        <div class="module-card glass-panel">
-          <div class="module-header">
-            <h2 class="module-title">Identity & Privilege Governance</h2>
-          </div>
-
-          <div class="action-items-list">
-            <div class="action-item-row">
-              <div class="action-item-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <polyline points="16 11 18 13 22 9"></polyline>
-                </svg>
-              </div>
-              <div class="action-item-body">
-                <div class="item-title">Role Assignment Framework</div>
-                <div class="item-desc">User role assignments, permission hierarchy enforcement, and credential cache invalidation.</div>
-              </div>
-            </div>
-
-            <div class="action-item-row">
-              <div class="action-item-icon text-rose">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-                  <line x1="12" y1="2" x2="12" y2="12"></line>
-                </svg>
-              </div>
-              <div class="action-item-body">
-                <div class="item-title">Global Session Revocation Protocol</div>
-                <div class="item-desc">Immediate JWT authentication token invalidation via database token version increments.</div>
-              </div>
-            </div>
-          </div>
+      <!-- Security Architecture Status Panel -->
+      <div class="module-card glass-panel">
+        <div class="module-header">
+          <h2 class="module-title">Security Architecture Status</h2>
         </div>
 
-        <!-- Module 2: Security & Architecture Overview with clean line divisions -->
-        <div class="module-card glass-panel">
-          <div class="module-header">
-            <h2 class="module-title">Security Architecture Status</h2>
+        <div class="service-health-list">
+          <div class="health-row">
+            <div class="service-meta">
+              <span class="pulse-dot"></span>
+              <span>Client-Service (Spring Boot)</span>
+            </div>
+            <span class="badge badge-success">PORT 8082 ONLINE</span>
           </div>
 
-          <div class="service-health-list">
-            <div class="health-row">
-              <div class="service-meta">
-                <span class="pulse-dot"></span>
-                <span>Audit-Service (Spring Boot)</span>
-              </div>
-              <span class="badge badge-success">PORT 8083 ONLINE</span>
+          <div class="health-row">
+            <div class="service-meta">
+              <span class="pulse-dot"></span>
+              <span>Audit-Service (Spring Boot)</span>
             </div>
+            <span class="badge badge-success">PORT 8083 ONLINE</span>
+          </div>
 
-            <div class="health-row">
-              <div class="service-meta">
-                <span class="pulse-dot"></span>
-                <span>FastAPI Analytics Service</span>
-              </div>
-              <span class="badge badge-success">PORT 8085 ONLINE</span>
+          <div class="health-row">
+            <div class="service-meta">
+              <span class="pulse-dot"></span>
+              <span>FastAPI Analytics Service</span>
             </div>
+            <span class="badge badge-success">PORT 8085 ONLINE</span>
+          </div>
 
-            <div class="health-row">
-              <div class="service-meta">
-                <span class="pulse-dot"></span>
-                <span>Auth-Service (OAuth2 / JWT)</span>
-              </div>
-              <span class="badge badge-success">PORT 4000 ONLINE</span>
+          <div class="health-row">
+            <div class="service-meta">
+              <span class="pulse-dot"></span>
+              <span>Auth Gateway (NestJS)</span>
             </div>
+            <span class="badge badge-success">PORT 3000 ONLINE</span>
+          </div>
 
-            <div class="health-row">
-              <div class="service-meta">
-                <span class="pulse-dot"></span>
-                <span>Kafka Cluster (3 Partitions)</span>
-              </div>
-              <span class="badge badge-success">PORT 9092 ONLINE</span>
+          <div class="health-row">
+            <div class="service-meta">
+              <span class="pulse-dot"></span>
+              <span>Kafka Cluster (3 Partitions)</span>
             </div>
+            <span class="badge badge-success">PORT 9092 ONLINE</span>
           </div>
         </div>
       </div>

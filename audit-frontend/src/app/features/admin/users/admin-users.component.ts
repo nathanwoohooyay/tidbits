@@ -1,7 +1,7 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { AdminService } from '../../../core/services/admin.service';
 import { AdminUser, AdminAccount, RoleDefinition } from '../../../core/models/models';
 import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
@@ -216,7 +216,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               </select>
             </div>
             <p class="role-warning">
-              Updating the user role updates the permissions stored in the database. When the user logs in, their new JWT will reflect these permissions.
+              A user has to relogin for the changes to go into place
             </p>
           </div>
 
@@ -248,9 +248,6 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
           <div class="modal-body">
             <p class="revoke-confirm-text">
               Are you sure you want to revoke access for <strong>{{ selectedUserForRevoke()?.username }}</strong> (User #{{ selectedUserForRevoke()?.userId }})?
-            </p>
-            <p class="revoke-desc">
-              This action increments the authentication token version, immediately invalidates all active session tokens, and logs out the user across devices.
             </p>
           </div>
 
@@ -679,11 +676,13 @@ export class AdminUsersComponent implements OnInit {
     if (!user) return;
 
     this.updatingRole.set(true);
-    this.adminService.updateUserRole(user.userId, this.newRoleSelection).subscribe({
+    this.adminService.updateUserRole(user.userId, this.newRoleSelection).pipe(
+      switchMap(() => this.adminService.revokeUserAccess(user.userId).pipe(catchError(() => of(null))))
+    ).subscribe({
       next: () => {
         this.updatingRole.set(false);
         user.role = this.newRoleSelection;
-        this.showToast(`Successfully assigned role ${this.newRoleSelection} to user #${user.userId} (${user.username}).`, 'success');
+        this.showToast(`Successfully assigned role ${this.newRoleSelection} to user #${user.userId} (${user.username}). A user has to relogin for the changes to go into place.`, 'success');
         this.closeRoleModal();
       },
       error: () => {

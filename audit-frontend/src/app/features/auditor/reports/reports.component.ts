@@ -222,10 +222,6 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
               </div>
             </div>
 
-            <div class="notes-preview">
-              <h3 class="section-heading">Lead Auditor Assessment</h3>
-              <p class="notes-text">{{ complianceNotes }}</p>
-            </div>
           </div>
         </div>
       </div>

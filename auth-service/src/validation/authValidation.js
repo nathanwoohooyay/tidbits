@@ -1,6 +1,7 @@
-const {isPossiblePhoneNumber, parsePhoneNumberFromString} = require("libphonenumber-js")
+const { isPossiblePhoneNumber, parsePhoneNumberFromString } = require('libphonenumber-js');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_REGEX = /^[A-Za-z0-9._-]{3,30}$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,20}$/;
 const PHONE_ALLOWED_CHARS_REGEX = /^\+?[\d\s().-]{7,25}$/;
 
@@ -14,7 +15,11 @@ function isValidPhoneNumber(phoneNumber) {
     return false;
   }
 
-  return isPossiblePhoneNumber(phoneNumber, "US")
+  return isPossiblePhoneNumber(phoneNumber, 'US');
+}
+
+function isValidUsername(username) {
+  return USERNAME_REGEX.test(username.trim());
 }
 
 function validateSignupInput(payload) {
@@ -31,14 +36,24 @@ function validateSignupInput(payload) {
 
   const normalizedUsername = username.trim();
   const normalizedEmail = email.trim();
-  const phoneNumberObject = parsePhoneNumberFromString("+1" + phoneNumber.trim());
+
+  if (!isValidUsername(normalizedUsername)) {
+    return {
+      ok: false,
+      status: 422,
+      errorCode: 'INVALID_USERNAME',
+      message: 'username must be 3-30 characters and use only letters, numbers, periods, underscores, or hyphens',
+    };
+  }
+
+  const phoneNumberObject = parsePhoneNumberFromString(`+1${phoneNumber.trim()}`);
 
   if (!EMAIL_REGEX.test(normalizedEmail)) {
     return {
       ok: false,
       status: 422,
       errorCode: 'INVALID_EMAIL',
-      message: 'email not valid',
+      message: 'enter a valid email address',
     };
   }
 
@@ -47,7 +62,7 @@ function validateSignupInput(payload) {
       ok: false,
       status: 422,
       errorCode: 'INVALID_PHONE_NUMBER',
-      message: 'phone number not valid',
+      message: 'enter a valid 10-digit US phone number',
     };
   }
   const normalizedPhoneNumber = phoneNumberObject.nationalNumber
@@ -57,7 +72,7 @@ function validateSignupInput(payload) {
       ok: false,
       status: 422,
       errorCode: 'INVALID_PASSWORD',
-      message: 'password not valid',
+      message: 'password must be 8-20 characters and include uppercase, lowercase, and a number',
     };
   }
 

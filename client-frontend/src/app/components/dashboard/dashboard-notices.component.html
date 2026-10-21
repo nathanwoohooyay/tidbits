@@ -1,0 +1,20 @@
+@if (hasNotices) {
+  <section class="backend-notices" aria-label="Backend status notices">
+    @if (notices.marketNotice) {
+      <div class="api-notice warning" role="status">{{ notices.marketNotice }}</div>
+    }
+    @if (notices.accountNotice) {
+      <div class="api-notice error" role="alert">{{ notices.accountNotice }}</div>
+    }
+    @if (notices.holdingsNotice) {
+      <div class="api-notice info" role="status">{{ notices.holdingsNotice }}</div>
+    }
+    @if (notices.ordersNotice) {
+      <div class="api-notice info" role="status">{{ notices.ordersNotice }}</div>
+    }
+    @if (notices.reportingNotice) {
+      <div class="api-notice info" role="status">{{ notices.reportingNotice }}</div>
+    }
+  </section>
+}
+

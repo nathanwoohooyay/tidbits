@@ -217,6 +217,27 @@ services:
       - metrics-service
     networks:
       - tidbits-network
+           
+  client-frontend:
+    build:
+      context: ./client-frontend
+      dockerfile: Dockerfile
+    container_name: tidbits-client-frontend
+    ports:
+      - "8090:80"
+    depends_on:
+      client-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      gateway:
+        condition: service_started
+    networks:
+      - tidbits-network
 
 volumes:
   postgres_data:

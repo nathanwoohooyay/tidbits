@@ -128,8 +128,8 @@ class AccountControllerTest {
                 .thenReturn(account(10, 42, "Updated", 300.0));
 
         mockMvc.perform(put("/api/users/{userId}/accounts/{id}", 42, 10)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content("Updated"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"Updated\"}"))
                 .andExpect(status().isAccepted());
 
         verify(accountService).updateAccount(42, 10, "Updated");
@@ -138,8 +138,8 @@ class AccountControllerTest {
     @Test
     void updateAccount_returnsBadRequestWhenNicknameIsBlank() throws Exception {
         mockMvc.perform(put("/api/users/{userId}/accounts/{id}", 42, 10)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content(" \t "))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\" \t \"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.message").value("New account nickname is required."))
@@ -154,8 +154,8 @@ class AccountControllerTest {
                 .thenThrow(new ResourceNotFoundException("Account 10 not found for user 42."));
 
         mockMvc.perform(put("/api/users/{userId}/accounts/{id}", 42, 10)
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .content("Updated"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"Updated\"}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"))
                 .andExpect(jsonPath("$.status").value(404));

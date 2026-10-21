@@ -176,7 +176,7 @@ return true;
         console.log(placedOrder);
         this.tradeExecuted.emit(placedOrder);
         this.tradeLoading.set(false);
-        this.tradeSuccess.set(`Sample order filled: ${payload.orderType} ${quantity} share${quantity > 1 ? 's' : ''} of ${stock.ticker}.`);
+        this.tradeSuccess.set(`Order filled: ${payload.orderType} ${quantity} share${quantity > 1 ? 's' : ''} of ${stock.ticker}.`);
         this.tradeQuantity.set(null);
 
       },

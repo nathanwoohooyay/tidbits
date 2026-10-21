@@ -71,7 +71,7 @@ export interface ReportOverview {
   liveSummary: {
     totalOrders: number;
     filledOrders: number;
-    acceptedOrders: number;
+    placedOrders: number;
     totalNotional: number;
   };
   topInstrumentNotional: Array<{ instrumentId: number; notional: number }>;

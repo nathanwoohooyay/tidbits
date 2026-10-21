@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -18,24 +18,24 @@ export class AccountPageComponent implements OnInit {
   private readonly userApi = inject(UserService);
   private readonly router = inject(Router);
 
-  currentUsername = '';
-  currentEmail = '';
-  currentPhoneNumber = '';
+  currentUsername = signal('');
+  currentEmail = signal('');
+  currentPhoneNumber = signal('');
 
   // Profile form state
-  updateEmail = '';
-  updatePhoneNumber = '';
-  updateLoading = false;
-  updateError = '';
-  updateSuccess = '';
+  updateEmail = signal('');
+  updatePhoneNumber = signal('');
+  updateLoading = signal(false);
+  updateError = signal('');
+  updateSuccess = signal('');
 
   // Password change form state
-  currentPassword = '';
-  newPassword = '';
-  confirmPassword = '';
-  passwordLoading = false;
-  passwordError = '';
-  passwordSuccess = '';
+  currentPassword = signal('');
+  newPassword = signal('');
+  confirmPassword = signal('');
+  passwordLoading = signal(false);
+  passwordError = signal('');
+  passwordSuccess = signal('');
 
   ngOnInit() {
     const user = this.session.currentUser();
@@ -45,36 +45,36 @@ export class AccountPageComponent implements OnInit {
       return;
     }
 
-    this.currentUsername = user.username;
-    this.currentEmail = user.email;
-    this.currentPhoneNumber = user.phoneNumber ?? '';
-    this.updateEmail = this.currentEmail;
-    this.updatePhoneNumber = this.currentPhoneNumber;
+    this.currentUsername.set(user.username);
+    this.currentEmail.set(user.email);
+    this.currentPhoneNumber.set(user.phoneNumber ?? '');
+    this.updateEmail.set(this.currentEmail());
+    this.updatePhoneNumber.set(this.currentPhoneNumber());
   }
 
   async updateAccount() {
     const user = this.session.currentUser();
     if (!user) return;
 
-    const nextEmail = this.updateEmail.trim();
-    const nextPhoneNumber = this.updatePhoneNumber.trim();
+    const nextEmail = this.updateEmail().trim();
+    const nextPhoneNumber = this.updatePhoneNumber().trim();
 
     if (!nextEmail || !nextPhoneNumber) {
-      this.updateError = 'Email and phone number are required.';
+      this.updateError.set('Email and phone number are required.');
       return;
     }
 
-    const emailChanged = nextEmail !== this.currentEmail.trim();
-    const phoneChanged = nextPhoneNumber !== this.currentPhoneNumber.trim();
+    const emailChanged = nextEmail !== this.currentEmail().trim();
+    const phoneChanged = nextPhoneNumber !== this.currentPhoneNumber().trim();
 
     if (!emailChanged && !phoneChanged) {
-      this.updateError = 'No changes to save.';
+      this.updateError.set('No changes to save.');
       return;
     }
 
-    this.updateLoading = true;
-    this.updateError = '';
-    this.updateSuccess = '';
+    this.updateLoading.set(true);
+    this.updateError.set('');
+    this.updateSuccess.set('');
 
     try {
       let updatedUser = user;
@@ -96,57 +96,57 @@ export class AccountPageComponent implements OnInit {
       });
 
 // Update form values
-      this.currentUsername = updatedUser.username;
-      this.currentEmail = updatedUser.email;
-      this.currentPhoneNumber = updatedUser.phoneNumber ?? nextPhoneNumber;
-      this.updateEmail = this.currentEmail;
-      this.updatePhoneNumber = this.currentPhoneNumber;
-      this.updateSuccess = 'Account updated successfully.';
+      this.currentUsername.set(updatedUser.username);
+      this.currentEmail.set(updatedUser.email);
+      this.currentPhoneNumber.set(updatedUser.phoneNumber ?? nextPhoneNumber);
+      this.updateEmail.set(this.currentEmail());
+      this.updatePhoneNumber.set(this.currentPhoneNumber());
+      this.updateSuccess.set('Account updated successfully.');
     } catch (err: any) {
-      this.updateError = err?.error?.error ?? err?.error?.message ?? 'Failed to update account.';
+      this.updateError.set(err?.error?.error ?? err?.error?.message ?? 'Failed to update account.');
     } finally {
-      this.updateLoading = false;
+      this.updateLoading.set(false);
     }
   }
 
   changePassword() {
-    if (!this.currentPassword || !this.newPassword || !this.confirmPassword) {
-      this.passwordError = 'All password fields are required.';
+    if (!this.currentPassword() || !this.newPassword() || !this.confirmPassword()) {
+      this.passwordError.set('All password fields are required.');
       return;
     }
 
-    if (this.newPassword !== this.confirmPassword) {
-      this.passwordError = 'New password and confirmation do not match.';
+    if (this.newPassword() !== this.confirmPassword()) {
+      this.passwordError.set('New password and confirmation do not match.');
       return;
     }
 
-    if (this.newPassword.length < 8) {
-      this.passwordError = 'New password must be at least 8 characters.';
+    if (this.newPassword().length < 8) {
+      this.passwordError.set('New password must be at least 8 characters.');
       return;
     }
 
     const user = this.session.currentUser();
     if (!user) return;
 
-    this.passwordLoading = true;
-    this.passwordError = '';
-    this.passwordSuccess = '';
+    this.passwordLoading.set(true);
+    this.passwordError.set('');
+    this.passwordSuccess.set('');
 
     this.userApi.changePassword(user.userId,  {
-      currentPassword: this.currentPassword,
-      newPassword: this.newPassword,
-      confirmPassword: this.confirmPassword
+      currentPassword: this.currentPassword(),
+      newPassword: this.newPassword(),
+      confirmPassword: this.confirmPassword()
     }).subscribe({
       next: () => {
-        this.passwordLoading = false;
-        this.passwordSuccess = 'Password changed successfully.';
-        this.currentPassword = '';
-        this.newPassword = '';
-        this.confirmPassword = '';
+        this.passwordLoading.set(false);
+        this.passwordSuccess.set('Password changed successfully.');
+        this.currentPassword.set('');
+        this.newPassword.set('');
+        this.confirmPassword.set('');
       },
       error: err => {
-        this.passwordLoading = false;
-        this.passwordError = err?.error?.error ?? err?.error?.message ?? 'Failed to change password.';
+        this.passwordLoading.set(false);
+        this.passwordError.set(err?.error?.error ?? err?.error?.message ?? 'Failed to change password.');
       }
     });
   }

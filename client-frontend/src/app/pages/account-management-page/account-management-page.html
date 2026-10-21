@@ -15,18 +15,18 @@
             <h2>Trading Accounts</h2>
             <p class="section-subtitle sidebar-subtitle">Choose a trading account to manage.</p>
           </div>
-          @if (accountsLoading) {
+          @if (accountsLoading()) {
             <span class="muted-text">Loading…</span>
           }
         </div>
 
-        @if (accounts.length) {
+        @if (accounts().length) {
           <div class="account-list-grid">
-            @for (account of accounts; track account.accountId) {
+            @for (account of accounts(); track account.accountId) {
               <button
                 type="button"
                 class="account-option"
-                [class.selected]="account.accountId === selectedManagedAccountId"
+                [class.selected]="account.accountId === selectedManagedAccountId()"
                 (click)="selectManagedAccount(account.accountId)"
               >
                 <span class="account-option-name">{{ account.nickname }}</span>
@@ -52,11 +52,11 @@
           </div>
         </div>
 
-        @if (accountsError) {
-          <div class="error-message" role="alert">{{ accountsError }}</div>
+        @if (accountsError()) {
+          <div class="error-message" role="alert">{{ accountsError() }}</div>
         }
-        @if (accountsSuccess) {
-          <div class="success-message" role="status">{{ accountsSuccess }}</div>
+        @if (accountsSuccess()) {
+          <div class="success-message" role="status">{{ accountsSuccess() }}</div>
         }
 
         <div class="account-create-panel">
@@ -67,7 +67,8 @@
               <input
                 id="new-account-nickname"
                 type="text"
-                [(ngModel)]="newAccountNickname"
+                [ngModel]="newAccountNickname()"
+                (ngModelChange)="newAccountNickname.set($event)"
                 name="newAccountNickname"
                 placeholder="Enter an account nickname"
               />
@@ -76,9 +77,9 @@
             <button
               type="submit"
               class="btn-primary"
-              [disabled]="createAccountLoading"
+              [disabled]="createAccountLoading()"
             >
-              {{ createAccountLoading ? 'Creating…' : 'Create Account' }}
+              {{ createAccountLoading() ? 'Creating…' : 'Create Account' }}
             </button>
           </form>
         </div>
@@ -101,11 +102,11 @@
             </div>
           </div>
 
-          @if (cashError) {
-            <div class="error-message" role="alert">{{ cashError }}</div>
+          @if (cashError()) {
+            <div class="error-message" role="alert">{{ cashError() }}</div>
           }
-          @if (cashSuccess) {
-            <div class="success-message" role="status">{{ cashSuccess }}</div>
+          @if (cashSuccess()) {
+            <div class="success-message" role="status">{{ cashSuccess() }}</div>
           }
 
           <div class="action-grid">
@@ -116,7 +117,8 @@
                 <input
                   id="rename-account-nickname"
                   type="text"
-                  [(ngModel)]="renameNickname"
+                  [ngModel]="renameNickname()"
+                  (ngModelChange)="renameNickname.set($event)"
                   name="renameNickname"
                   placeholder="Update account nickname"
                 />
@@ -125,9 +127,9 @@
               <button
                 type="submit"
                 class="btn-primary"
-                [disabled]="renameLoading"
+                [disabled]="renameLoading()"
               >
-                {{ renameLoading ? 'Saving…' : 'Save Account Name' }}
+                {{ renameLoading() ? 'Saving…' : 'Save Account Name' }}
               </button>
             </form>
 
@@ -139,7 +141,8 @@
                   <input
                     id="cash-amount"
                     type="number"
-                    [(ngModel)]="cashAmount"
+                    [ngModel]="cashAmount()"
+                    (ngModelChange)="cashAmount.set($event)"
                     name="cashAmount"
                     min="0.01"
                     step="0.01"
@@ -151,18 +154,18 @@
                   <button
                     type="button"
                     class="btn-primary"
-                    [disabled]="cashLoading"
+                    [disabled]="cashLoading()"
                     (click)="depositToAccount()"
                   >
-                    {{ cashLoading ? 'Processing…' : 'Deposit Funds' }}
+                    {{ cashLoading() ? 'Processing…' : 'Deposit Funds' }}
                   </button>
                   <button
                     type="button"
                     class="btn-secondary"
-                    [disabled]="cashLoading"
+                    [disabled]="cashLoading()"
                     (click)="withdrawFromAccount()"
                   >
-                    {{ cashLoading ? 'Processing…' : 'Withdraw Funds' }}
+                    {{ cashLoading() ? 'Processing…' : 'Withdraw Funds' }}
                   </button>
                 </div>
               </div>
@@ -173,11 +176,11 @@
             <h3>Delete Trading Account</h3>
             <p class="section-subtitle compact">Remove only the selected trading account. This does not delete your user profile.</p>
 
-            @if (tradingDeleteError) {
-              <div class="error-message" role="alert">{{ tradingDeleteError }}</div>
+            @if (tradingDeleteError()) {
+              <div class="error-message" role="alert">{{ tradingDeleteError() }}</div>
             }
 
-            @if (!showTradingDeleteConfirm) {
+            @if (!showTradingDeleteConfirm()) {
               <button
                 type="button"
                 class="btn-outline-danger"
@@ -190,9 +193,12 @@
                 <p class="warning-text">
                   ⚠️ Type <strong>{{ account.nickname }}</strong> to confirm deletion of this trading account.
                 </p>
+                <label for="trading-delete-confirmation" class="sr-only">Confirm trading account deletion</label>
                 <input
+                  id="trading-delete-confirmation"
                   type="text"
-                  [(ngModel)]="tradingDeleteConfirmation"
+                  [ngModel]="tradingDeleteConfirmation()"
+                  (ngModelChange)="tradingDeleteConfirmation.set($event)"
                   name="tradingDeleteConfirmation"
                   placeholder="Type the account nickname"
                   class="delete-confirm-input"
@@ -201,15 +207,15 @@
                   <button
                     type="button"
                     class="btn-danger-confirm"
-                    [disabled]="tradingDeleteLoading || tradingDeleteConfirmation.trim() !== account.nickname"
+                    [disabled]="tradingDeleteLoading() || tradingDeleteConfirmation().trim() !== account.nickname"
                     (click)="deleteTradingAccount()"
                   >
-                    {{ tradingDeleteLoading ? 'Deleting…' : 'Delete Trading Account' }}
+                    {{ tradingDeleteLoading() ? 'Deleting…' : 'Delete Trading Account' }}
                   </button>
                   <button
                     type="button"
                     class="btn-cancel"
-                    [disabled]="tradingDeleteLoading"
+                    [disabled]="tradingDeleteLoading()"
                     (click)="toggleTradingDeleteConfirm()"
                   >
                     Cancel

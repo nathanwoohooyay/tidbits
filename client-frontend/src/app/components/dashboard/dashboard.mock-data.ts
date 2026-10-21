@@ -301,7 +301,7 @@ const mockReportingOverview: ReportOverview = {
   liveSummary: {
     totalOrders: 182,
     filledOrders: 141,
-    acceptedOrders: 27,
+    placedOrders: 27,
     totalNotional: 1245820.24,
   },
   topInstrumentNotional: [

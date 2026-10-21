@@ -1,6 +1,8 @@
 package com.tidbits.audit.model.entity;
 
+import com.tidbits.audit.model.converter.LogStatusConverter;
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 import com.tidbits.audit.model.enums.LogStatus;
 import java.time.LocalDateTime;
 
@@ -13,8 +15,11 @@ public class UserLog {
     @Column(name = "log_id")
     private Integer logId;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private Integer userId;
+
+    @Column(name = "username")
+    private String username;
 
     @Column(name = "ip_address")
     private String ipAddress;
@@ -22,20 +27,22 @@ public class UserLog {
     @Column(name = "event")
     private String event;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = LogStatusConverter.class)
     @Column(name = "status")
     private LogStatus status;
 
+    @CreationTimestamp
     @Column(name = "happened_at")
     private LocalDateTime happenedAt;
 
     public UserLog() {
     }
 
-    public UserLog(Integer logId, Integer userId, String ipAddress, String event,
+    public UserLog(Integer logId, Integer userId, String username, String ipAddress, String event,
                    LogStatus status, LocalDateTime happenedAt) {
         this.logId = logId;
         this.userId = userId;
+        this.username = username;
         this.ipAddress = ipAddress;
         this.event = event;
         this.status = status;
@@ -47,6 +54,9 @@ public class UserLog {
 
     public Integer getUserId() { return userId; }
     public void setUserId(Integer userId) { this.userId = userId; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
     public String getIpAddress() { return ipAddress; }
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }

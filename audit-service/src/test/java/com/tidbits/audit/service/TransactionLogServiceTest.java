@@ -5,7 +5,6 @@ import com.tidbits.audit.model.enums.LogStatus;
 import com.tidbits.audit.repository.TransactionLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,7 +20,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@Disabled("Enable after TransactionLogService methods are implemented")
 @DisplayName("TransactionLogService Tests")
 class TransactionLogServiceTest {
 
@@ -40,7 +38,7 @@ class TransactionLogServiceTest {
             100,
             200,
             "TRANSFER_INITIATED",
-            "192.168.1.1",
+            2500.00,
             500,
             LogStatus.SUCCESS,
             LocalDateTime.now()
@@ -59,11 +57,15 @@ class TransactionLogServiceTest {
     }
 
     @Test
-    @DisplayName("Should return empty optional when retrieving transaction log by ID")
+    @DisplayName("Should return transaction log optional when retrieving by ID")
     void testGetTransactionLogById() {
+        when(transactionLogRepository.findById(1)).thenReturn(Optional.of(testTransactionLog));
+
         Optional<TransactionLog> result = transactionLogService.getTransactionLogById(1);
 
-        assertTrue(result.isEmpty());
+        assertTrue(result.isPresent());
+        assertEquals(testTransactionLog, result.orElseThrow());
+        verify(transactionLogRepository).findById(1);
     }
 
     @Test
@@ -135,13 +137,12 @@ class TransactionLogServiceTest {
     @Test
     @DisplayName("Should update and return the modified transaction log")
     void testUpdateTransactionLog() {
-        when(transactionLogRepository.findById(1)).thenReturn(Optional.of(testTransactionLog));
         when(transactionLogRepository.save(any(TransactionLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TransactionLog result = transactionLogService.updateTransactionLog(1, testTransactionLog);
 
         assertNotNull(result);
-        verify(transactionLogRepository).findById(1);
+        assertEquals(1, result.getLogId());
         verify(transactionLogRepository).save(any(TransactionLog.class));
     }
 

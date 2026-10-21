@@ -1,0 +1,54 @@
+<section class="section-card" aria-label="Trending stocks">
+  <div class="section-header">
+    <span class="section-title">Market Snapshot</span>
+    @if (usingPlaceholderMarketData) {
+      <span class="placeholder-pill">Placeholder Quotes Active</span>
+    }
+    <div class="filter-tabs" role="group" aria-label="Stock filter">
+      @for (filter of filters; track filter[0]) {
+        <button class="filter-tab" [class.active]="trendFilter === filter[0]" (click)="trendFilterChange.emit(filter[0])">
+          {{ filter[1] }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="section-body" style="padding:0 1.5rem 1.5rem">
+    <table class="stock-table" aria-label="Stock market data">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Symbol</th>
+          <th>Company</th>
+          <th class="right">Price</th>
+          <th class="right">Change</th>
+          <th class="right">Volume</th>
+          <th class="right">Market Cap</th>
+          <th class="right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (stock of trendingStocks; track stock.instrument_id; let i = $index) {
+          <tr>
+            <td style="color:var(--clr-sienna);font-weight:600">{{ i + 1 }}</td>
+            <td><span class="ticker-badge">{{ stock.ticker }}</span></td>
+            <td><div class="stock-name">{{ stock.name }}</div></td>
+            <td class="right"><span class="price-value">{{ formatCurrency(stock.price) }}</span></td>
+            <td class="right">
+              <span class="change-badge" [class.positive]="stock.changePercent >= 0" [class.negative]="stock.changePercent < 0">
+                {{ stock.changePercent >= 0 ? '▲' : '▼' }} {{ formatPercent(stock.changePercent) }}
+              </span>
+            </td>
+            <td class="right" style="font-size:.82rem;color:var(--clr-sienna)">{{ stock.volumeFormatted }}</td>
+            <td class="right" style="font-size:.82rem;color:var(--clr-sienna)">{{ stock.marketCap }}</td>
+            <td class="right">
+              <button class="btn-quick-trade btn-quick-buy" (click)="quickTrade.emit({ instrumentId: stock.instrument_id, mode: 'buy' })">Buy</button>
+              <button class="btn-quick-trade btn-quick-sell" (click)="quickTrade.emit({ instrumentId: stock.instrument_id, mode: 'sell' })">Sell</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+

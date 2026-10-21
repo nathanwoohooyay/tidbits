@@ -11,11 +11,12 @@ test('validateSignupInput returns 400 for non-string or missing required fields'
   const cases = [
     undefined,
     {},
-    { username: null, password: 'Password1', email: 'user@example.com', phoneNumber: '555 555 5555' },
-    { username: 'alice', password: null, email: 'user@example.com', phoneNumber: '555 555 5555' },
-    { username: 'alice', password: 'Password1', email: 12, phoneNumber: '555 555 5555' },
-    { username: 'alice', password: 'Password1', email: 'user@example.com', phoneNumber: {} },
-    { username: '   ', password: 'Password1', email: 'user@example.com', phoneNumber: '555 555 5555' },
+    { username: null, password: 'Password1', email: 'user@example.com', phoneNumber: '555 555 5555', dateOfBirth: '1990-01-01' },
+    { username: 'alice', password: null, email: 'user@example.com', phoneNumber: '555 555 5555', dateOfBirth: '1990-01-01' },
+    { username: 'alice', password: 'Password1', email: 12, phoneNumber: '555 555 5555', dateOfBirth: '1990-01-01' },
+    { username: 'alice', password: 'Password1', email: 'user@example.com', phoneNumber: {}, dateOfBirth: '1990-01-01' },
+    { username: '   ', password: 'Password1', email: 'user@example.com', phoneNumber: '555 555 5555', dateOfBirth: '1990-01-01' },
+    { username: 'alice', password: 'Password1', email: 'user@example.com', phoneNumber: '555 555 5555', dateOfBirth: '   ' },
   ];
 
   for (const payload of cases) {
@@ -32,13 +33,30 @@ test('validateSignupInput returns 422 for invalid email', () => {
     password: 'Password1',
     email: 'invalid-email',
     phoneNumber: '5555555555',
+    dateOfBirth: '1990-01-01',
   });
 
   assert.deepEqual(result, {
     ok: false,
     status: 422,
     errorCode: 'INVALID_EMAIL',
-    message: 'email not valid',
+    message: 'enter a valid email address',
+  });
+});
+
+test('validateSignupInput returns 422 for invalid username', () => {
+  const result = validateSignupInput({
+    username: 'a',
+    password: 'Password1',
+    email: 'alice@example.com',
+    phoneNumber: '5555555555',
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    status: 422,
+    errorCode: 'INVALID_USERNAME',
+    message: 'username must be 3-30 characters and use only letters, numbers, periods, underscores, or hyphens',
   });
 });
 
@@ -48,13 +66,14 @@ test('validateSignupInput returns 422 for invalid phone number', () => {
     password: 'Password1',
     email: 'alice@example.com',
     phoneNumber: '12345',
+    dateOfBirth: '1990-01-01',
   });
 
   assert.deepEqual(result, {
     ok: false,
     status: 422,
     errorCode: 'INVALID_PHONE_NUMBER',
-    message: 'phone number not valid',
+    message: 'enter a valid 10-digit US phone number',
   });
 });
 
@@ -64,13 +83,14 @@ test('validateSignupInput returns 422 for invalid password', () => {
     password: 'password',
     email: 'alice@example.com',
     phoneNumber: '5555555555',
+    dateOfBirth: '1990-01-01',
   });
 
   assert.deepEqual(result, {
     ok: false,
     status: 422,
     errorCode: 'INVALID_PASSWORD',
-    message: 'password not valid',
+    message: 'password must be 8-20 characters and include uppercase, lowercase, and a number',
   });
 });
 
@@ -80,6 +100,7 @@ test('validateSignupInput returns normalized data for valid input', () => {
     password: 'Password1',
     email: '  alice@example.com  ',
     phoneNumber: '  5555555555  ',
+    dateOfBirth: '1990-01-01',
   });
 
   assert.equal(result.ok, true);
@@ -88,6 +109,7 @@ test('validateSignupInput returns normalized data for valid input', () => {
     normalizedEmail: 'alice@example.com',
     normalizedPhoneNumber: '5555555555',
     password: 'Password1',
+    dateOfBirth: '1990-01-01',
   });
 });
 

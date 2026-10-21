@@ -10,4 +10,5 @@ import java.util.List;
 public interface AccountTransactionRepository extends JpaRepository<AccountTransaction, Integer> {
     List<AccountTransaction> findByAccountId(Integer accountId);
     List<AccountTransaction> findByOrderId(Integer orderId);
+    List<AccountTransaction> findAllByAccountId(Integer accountId);
 }

@@ -4,6 +4,7 @@ import com.tidbits.exception.BusinessException;
 import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.entity.Account;
 import com.tidbits.repository.AccountRepository;
+import com.tidbits.repository.AccountHoldingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,6 +19,9 @@ public class AccountService {
 
     @Autowired
     private AccountRepository accountRepository;
+
+    @Autowired
+    private AccountHoldingRepository accountHoldingRepository;
 
     public Account createAccount(String nickname, int userId) {
 

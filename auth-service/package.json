@@ -2,18 +2,45 @@
   "name": "mission-auth-stub",
   "version": "1.0.0",
   "description": "Minimal Node.js auth service for Sprint 6 - issues JWTs the mission service validates.",
-  "main": "src/server.js",
+  "main": "dist/main.js",
   "scripts": {
-    "start": "node src/server.js",
-    "test": "node --test \"test/**/*.test.js\"",
-    "test:auth-validation": "node --test \"test/validation/authValidation.test.js\""
+    "build": "tsc -p tsconfig.build.json",
+    "start": "npm run start:prod",
+    "start:prod": "node dist/main.js",
+    "start:dev": "tsx src/main.ts",
+    "test": "node --import tsx --test \"test/**/*.test.{js,ts}\"",
+    "test:auth-validation": "node --test \"test/validation/authValidation.test.js\"",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@nestjs/common": "^12.0.1",
+    "@nestjs/core": "^12.0.1",
+    "@nestjs/passport": "^12.0.0",
+    "@nestjs/platform-express": "^12.0.1",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "kafkajs": "^2.2.4",
     "jsonwebtoken": "^9.0.2",
+    "cookie-parser": "^1.4.6",
     "libphonenumber-js": "^1.13.14",
-    "pg": "^8.12.0"
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.12.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "tsx": "^4.20.6"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^12.0.1",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.0.0",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/pg": "^8.15.5",
+    "@types/supertest": "^7.0.2",
+    "supertest": "^7.1.4",
+    "typescript": "^6.0.2"
   }
 }

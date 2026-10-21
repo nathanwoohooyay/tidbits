@@ -57,6 +57,7 @@ auth-service/coverage/
 .settings/
 *.sublime-project
 *.sublime-workspace
+.github
 
 # Build & Compilation
 build/
@@ -84,5 +85,9 @@ application-*.properties.local
 .cache/
 .code-workspace
 *.lock
-package-lock.json
 yarn.lock
+*package-lock.json
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+.ignore

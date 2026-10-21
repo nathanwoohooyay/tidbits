@@ -20,7 +20,8 @@ public final class UserMapper {
                 user.getUsername(),
                 user.getEmail(),
                 user.getPhoneNumber(),
-                user.getRewardPoints()
+                user.getRewardPoints(),
+                user.getDateOfBirth()
         );
     }
 
@@ -33,7 +34,7 @@ public final class UserMapper {
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber());
-        user.setPasswordHash(request.getPassword());
+        user.setDateOfBirth(request.getDateOfBirth());
         return user;
     }
 

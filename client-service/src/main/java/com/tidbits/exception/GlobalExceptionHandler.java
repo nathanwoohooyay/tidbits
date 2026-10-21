@@ -1,11 +1,18 @@
 package com.tidbits.exception;
 
 import com.tidbits.model.dto.ErrorResponseDTO;
+import com.tidbits.exception.ResourceNotFoundException;
+import com.tidbits.exception.BadRequestException;
+import com.tidbits.exception.BusinessException;
+import org.springframework.security.core.AuthenticationException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -14,8 +21,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ErrorResponseDTO> handleAuthenticationException(AuthenticationException ex) {
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        ErrorResponseDTO error = ErrorResponseDTO.of("METHOD_NOT_ALLOWED", ex.getMessage(), HttpStatus.METHOD_NOT_ALLOWED.value());
+        return new ResponseEntity<>(error, HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler({AuthenticationException.class, BadJwtException.class})
+    public ResponseEntity<ErrorResponseDTO> handleAuthenticationException(Exception ex) {
         ErrorResponseDTO error = ErrorResponseDTO.of("AUTHENTICATION_ERROR", ex.getMessage(), HttpStatus.UNAUTHORIZED.value());
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
@@ -26,8 +39,8 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ErrorResponseDTO> handleBusinessException(BadRequestException ex) {
+    @ExceptionHandler({BadRequestException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<ErrorResponseDTO> handleBusinessException(Exception ex) {
         ErrorResponseDTO error = ErrorResponseDTO.of("BAD_REQUEST", ex.getMessage(), HttpStatus.BAD_REQUEST.value());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }

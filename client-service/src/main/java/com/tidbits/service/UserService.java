@@ -1,7 +1,10 @@
 package com.tidbits.service;
 
+import com.tidbits.exception.BadRequestException;
+import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.entity.User;
 import com.tidbits.repository.UserRepository;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,9 +17,8 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
-    public User createUser(User user) {
-        return null;
-    }
+    @Autowired
+    private UserAuditEventPublisher userAuditEventPublisher;
 
     public Optional<User> getUserById(Integer userId) {
         return userRepository.findById(userId);
@@ -34,18 +36,43 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User updateUser(Integer userId, User user) {
-        return null;
+    public User changeEmail(Integer userId, String newEmail) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found."));
+
+        try {
+            if (newEmail == null || newEmail.isBlank()) {
+                throw new BadRequestException("New email is required.");
+            }
+
+            user.setEmail(newEmail.trim());
+            User saved = userRepository.save(user);
+
+            userAuditEventPublisher.publish("CHANGE_EMAIL", userId, saved.getUsername(), "SUCCESS", "Email changed");
+            return saved;
+        } catch (RuntimeException ex) {
+            userAuditEventPublisher.publish("CHANGE_EMAIL", userId, user.getUsername(), "FAILURE", ex.getMessage());
+            throw ex;
+        }
     }
 
-    public User partiallyUpdateUser(Integer userId, User user) {
-        return null;
-    }
+    public User changePhoneNumber(Integer userId, String newPhoneNumber) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found."));
 
-    public User changePassword(Integer userId, String newPassword, String currentPassword, String confirmPassword) {
-        return null;
-    }
+        try {
+            if (newPhoneNumber == null || newPhoneNumber.isBlank()) {
+                throw new BadRequestException("New phone number is required.");
+            }
 
-    public void deleteUser(Integer userId) {
+            user.setPhoneNumber(newPhoneNumber.trim());
+            User saved = userRepository.save(user);
+
+            userAuditEventPublisher.publish("CHANGE_PHONE_NUMBER", userId, saved.getUsername(), "SUCCESS", "Phone number changed");
+            return saved;
+        } catch (RuntimeException ex) {
+            userAuditEventPublisher.publish("CHANGE_PHONE_NUMBER", userId, user.getUsername(), "FAILURE", ex.getMessage());
+            throw ex;
+        }
     }
 }

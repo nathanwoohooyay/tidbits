@@ -1,19 +1,21 @@
 package com.tidbits.model.dto;
-
+import java.time.LocalDate;
 public class UserCreateRequestDTO {
 	private String username;
 	private String password;
 	private String email;
 	private String phoneNumber;
+	private LocalDate dateOfBirth;
 
 	public UserCreateRequestDTO() {
 	}
 
-	public UserCreateRequestDTO(String username, String password, String email, String phoneNumber) {
+	public UserCreateRequestDTO(String username, String password, String email, String phoneNumber, LocalDate dateOfBirth) {
 		this.username = username;
 		this.password = password;
 		this.email = email;
 		this.phoneNumber = phoneNumber;
+		this.dateOfBirth = dateOfBirth;
 	}
 
 	public String getUsername() {
@@ -46,5 +48,13 @@ public class UserCreateRequestDTO {
 
 	public void setPhoneNumber(String phoneNumber) {
 		this.phoneNumber = phoneNumber;
+	}
+
+	public LocalDate getDateOfBirth() {
+		return dateOfBirth;
+	}
+
+	public void setDateOfBirth(LocalDate dateOfBirth) {
+		this.dateOfBirth = dateOfBirth;
 	}
 }

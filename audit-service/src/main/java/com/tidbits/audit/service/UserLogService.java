@@ -15,25 +15,27 @@ public class UserLogService {
     private UserLogRepository userLogRepository;
 
     public UserLog createUserLog(UserLog userLog) {
-        return null;
+        return userLogRepository.save(userLog);
     }
 
     public Optional<UserLog> getUserLogById(Integer logId) {
-        return Optional.empty();
+        return userLogRepository.findById(logId);
     }
 
     public List<UserLog> getLogsByUserId(Integer userId) {
-        return List.of();
+        return userLogRepository.findByUserId(userId);
     }
 
     public List<UserLog> getAllUserLogs() {
-        return List.of();
+        return userLogRepository.findAll();
     }
 
     public UserLog updateUserLog(Integer logId, UserLog userLog) {
-        return null;
+        userLog.setLogId(logId);
+        return userLogRepository.save(userLog);
     }
 
     public void deleteUserLog(Integer logId) {
+        userLogRepository.deleteById(logId);
     }
 }

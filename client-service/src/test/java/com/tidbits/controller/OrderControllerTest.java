@@ -19,11 +19,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,7 +40,7 @@ class OrderControllerTest {
     private OrderService orderService;
 
     @Test
-    void createOrder_setsAccountFromPathAndReturnsMappedResponse() throws Exception {
+    void requestOrder_setsAccountFromPathAndReturnsMappedResponse() throws Exception {
         Order saved = order(42, 2, 10.0, 100.0, OrderType.BUY, OrderStatus.PLACED);
         saved.setOrderId(501);
 
@@ -53,7 +51,7 @@ class OrderControllerTest {
         response.setOrderType("BUY");
         response.setStatus("PLACED");
 
-        when(orderService.createOrder(any(Order.class))).thenReturn(saved);
+        when(orderService.requestOrder(any(Order.class))).thenReturn(saved);
         when(orderService.toResponseDto(saved)).thenReturn(response);
 
         mockMvc.perform(post("/api/accounts/{accountId}/orders", 42)
@@ -66,12 +64,12 @@ class OrderControllerTest {
                                   "orderType": "BUY"
                                 }
                                 """))
-                .andExpect(status().isOk())
+                .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.orderId").value(501))
                 .andExpect(jsonPath("$.status").value("PLACED"));
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
-        verify(orderService).createOrder(orderCaptor.capture());
+        verify(orderService).requestOrder(orderCaptor.capture());
         assertEquals(42, orderCaptor.getValue().getAccountId());
     }
 
@@ -97,33 +95,23 @@ class OrderControllerTest {
     }
 
     @Test
-    void updateOrderStatus_returnsBadRequestForBlankStatus() throws Exception {
-        mockMvc.perform(patch("/api/accounts/{accountId}/orders/{orderId}/status", 42, 501)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"  \"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"));
-
-        verify(orderService, never()).updateOrderStatus(any(Integer.class), any(Integer.class), any(OrderStatus.class));
-    }
-
-    @Test
-    void updateOrderStatus_acceptsCaseInsensitiveStatus() throws Exception {
-        Order updatedOrder = order(42, 2, 10.0, 100.0, OrderType.BUY, OrderStatus.ACCEPTED);
-        updatedOrder.setOrderId(501);
+    void getOrderById_returnsMappedResponse() throws Exception {
+        Order order = order(42, 2, 10.0, 100.0, OrderType.BUY, OrderStatus.PLACED);
+        order.setOrderId(501);
 
         OrderResponseDTO response = new OrderResponseDTO();
         response.setOrderId(501);
-        response.setStatus("ACCEPTED");
+        response.setOrderType("BUY");
+        response.setStatus("PLACED");
 
-        when(orderService.updateOrderStatus(42, 501, OrderStatus.ACCEPTED)).thenReturn(updatedOrder);
-        when(orderService.toResponseDto(updatedOrder)).thenReturn(response);
+        when(orderService.getOrderByIdForAccount(42, 501)).thenReturn(order);
+        when(orderService.toResponseDto(order)).thenReturn(response);
 
-        mockMvc.perform(patch("/api/accounts/{accountId}/orders/{orderId}/status", 42, 501)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"accepted\"}"))
+        mockMvc.perform(get("/api/accounts/{accountId}/orders/{orderId}", 42, 501))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+                .andExpect(jsonPath("$.orderId").value(501))
+                .andExpect(jsonPath("$.orderType").value("BUY"))
+            .andExpect(jsonPath("$.status").value("PLACED"));
     }
 
     private Order order(Integer accountId, Integer instrumentId, Double quantity, Double price,

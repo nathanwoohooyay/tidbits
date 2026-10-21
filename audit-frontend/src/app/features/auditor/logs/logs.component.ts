@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuditLogService } from '../../../core/services/audit-log.service';
@@ -156,7 +156,7 @@ export interface AggregatedOrder {
             </label>
 
             <!-- Searching Dropdown for Clients -->
-            <div class="filter-field search-dropdown-container">
+            <div class="filter-field search-dropdown-container" [class.open]="clientDropdownOpen()">
               <span>Client</span>
               <div class="search-dropdown-anchor">
                 <button
@@ -176,11 +176,12 @@ export interface AggregatedOrder {
                       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                     <input
+                      #clientSearchInput
                       type="text"
                       class="dropdown-search-input"
                       placeholder="Search client..."
                       [ngModel]="clientSearchText()"
-                      (ngModelChange)="clientSearchText.set($event)"
+                      (ngModelChange)="onClientSearchChange($event)"
                     />
                   </div>
                   <div class="dropdown-options-list">
@@ -208,7 +209,7 @@ export interface AggregatedOrder {
             </div>
 
             <!-- Searching Dropdown for Instruments -->
-            <div class="filter-field search-dropdown-container">
+            <div class="filter-field search-dropdown-container" [class.open]="instrumentDropdownOpen()">
               <span>Instrument</span>
               <div class="search-dropdown-anchor">
                 <button
@@ -228,11 +229,12 @@ export interface AggregatedOrder {
                       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                     <input
+                      #instrumentSearchInput
                       type="text"
                       class="dropdown-search-input"
                       placeholder="Search instrument..."
                       [ngModel]="instrumentSearchText()"
-                      (ngModelChange)="instrumentSearchText.set($event)"
+                      (ngModelChange)="onInstrumentSearchChange($event)"
                     />
                   </div>
                   <div class="dropdown-options-list">
@@ -459,76 +461,84 @@ export interface AggregatedOrder {
           </div>
 
           <div class="modal-body">
-            <!-- Order Lifecycle Progression Timeline -->
-            <div class="lifecycle-timeline">
-              <div class="timeline-step" [class.completed]="selectedOrder()!.timePlaced">
-                <div class="step-dot"></div>
-                <div class="step-content">
-                  <div class="step-label">Time Placed</div>
-                  <div class="step-time mono-font">
-                    {{ selectedOrder()!.timePlaced ? (selectedOrder()!.timePlaced | date:'medium') : '—' }}
+            <div class="modal-overview-layout">
+              <div class="lifecycle-panel">
+                <h3 class="overview-title">Status History</h3>
+                <div class="lifecycle-timeline">
+                  <div class="timeline-step" [class.completed]="selectedOrder()!.timePlaced">
+                    <div class="step-dot"></div>
+                    <div class="step-content">
+                      <div class="step-label">Placed</div>
+                      <div class="step-time mono-font">
+                        {{ selectedOrder()!.timePlaced ? (selectedOrder()!.timePlaced | date:'medium') : '—' }}
+                      </div>
+                    </div>
                   </div>
+
+                  <div class="timeline-connector" [class.active]="selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected"></div>
+
+                  <div
+                    class="timeline-step"
+                    [class.completed]="selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected"
+                    [class.rejected]="selectedOrder()!.timeRejected"
+                  >
+                    <div class="step-dot"></div>
+                    <div class="step-content">
+                      <div class="step-label">
+                        {{ selectedOrder()!.timeRejected ? 'Rejected' : 'Accepted' }}
+                      </div>
+                      <div class="step-time mono-font">
+                        {{ (selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected) ? ((selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected) | date:'medium') : '—' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <ng-container *ngIf="shouldShowFilledStep(selectedOrder()!)">
+                    <div class="timeline-connector" [class.active]="selectedOrder()!.timeFilled"></div>
+
+                    <div class="timeline-step" [class.completed]="selectedOrder()!.timeFilled">
+                      <div class="step-dot"></div>
+                      <div class="step-content">
+                        <div class="step-label">Filled</div>
+                        <div class="step-time mono-font">
+                          {{ selectedOrder()!.timeFilled ? (selectedOrder()!.timeFilled | date:'medium') : '—' }}
+                        </div>
+                      </div>
+                    </div>
+                  </ng-container>
                 </div>
               </div>
 
-              <div class="timeline-connector" [class.active]="selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected"></div>
-
-              <div
-                class="timeline-step"
-                [class.completed]="selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected"
-                [class.rejected]="selectedOrder()!.timeRejected"
-              >
-                <div class="step-dot"></div>
-                <div class="step-content">
-                  <div class="step-label">
-                    {{ selectedOrder()!.timeRejected ? 'Time Rejected' : 'Time Accepted' }}
+              <div class="metrics-panel">
+                <h3 class="overview-title">Order Snapshot</h3>
+                <div class="order-metrics-grid">
+                  <div class="metric-item">
+                    <span class="metric-lbl">Instrument</span>
+                    <span class="metric-val">{{ selectedOrder()!.ticker || ('Inst #' + selectedOrder()!.instrumentId) }}</span>
                   </div>
-                  <div class="step-time mono-font">
-                    {{ (selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected) ? ((selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected) | date:'medium') : '—' }}
+                  <div class="metric-item">
+                    <span class="metric-lbl">Side</span>
+                    <span class="metric-val" [class.text-emerald]="selectedOrder()!.orderType === 'BUY'" [class.text-warning]="selectedOrder()!.orderType === 'SELL'">
+                      {{ selectedOrder()!.orderType }}
+                    </span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-lbl">Quantity</span>
+                    <span class="metric-val mono-font">{{ selectedOrder()!.quantity | number }}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-lbl">Price</span>
+                    <span class="metric-val mono-font">\${{ selectedOrder()!.price | number:'1.2-2' }}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-lbl">Total Value</span>
+                    <span class="metric-val mono-font font-bold">\${{ selectedOrder()!.totalValue | number:'1.2-2' }}</span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-lbl">Account / User</span>
+                    <span class="metric-val mono-font">Acc #{{ selectedOrder()!.accountId }}</span>
                   </div>
                 </div>
-              </div>
-
-              <div class="timeline-connector" [class.active]="selectedOrder()!.timeFilled"></div>
-
-              <div class="timeline-step" [class.completed]="selectedOrder()!.timeFilled">
-                <div class="step-dot"></div>
-                <div class="step-content">
-                  <div class="step-label">Time Filled</div>
-                  <div class="step-time mono-font">
-                    {{ selectedOrder()!.timeFilled ? (selectedOrder()!.timeFilled | date:'medium') : '—' }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Financial Metrics Grid -->
-            <div class="order-metrics-grid">
-              <div class="metric-item">
-                <span class="metric-lbl">Instrument</span>
-                <span class="metric-val">{{ selectedOrder()!.ticker || ('Inst #' + selectedOrder()!.instrumentId) }}</span>
-              </div>
-              <div class="metric-item">
-                <span class="metric-lbl">Side</span>
-                <span class="metric-val" [class.text-emerald]="selectedOrder()!.orderType === 'BUY'" [class.text-warning]="selectedOrder()!.orderType === 'SELL'">
-                  {{ selectedOrder()!.orderType }}
-                </span>
-              </div>
-              <div class="metric-item">
-                <span class="metric-lbl">Quantity</span>
-                <span class="metric-val mono-font">{{ selectedOrder()!.quantity | number }}</span>
-              </div>
-              <div class="metric-item">
-                <span class="metric-lbl">Price</span>
-                <span class="metric-val mono-font">\${{ selectedOrder()!.price | number:'1.2-2' }}</span>
-              </div>
-              <div class="metric-item">
-                <span class="metric-lbl">Total Value</span>
-                <span class="metric-val mono-font font-bold">\${{ selectedOrder()!.totalValue | number:'1.2-2' }}</span>
-              </div>
-              <div class="metric-item">
-                <span class="metric-lbl">Account / User</span>
-                <span class="metric-val mono-font">Acc #{{ selectedOrder()!.accountId }}</span>
               </div>
             </div>
 
@@ -547,7 +557,7 @@ export interface AggregatedOrder {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let ev of selectedOrder()!.lifecycleEvents">
+                    <tr *ngFor="let ev of getOrderEventRows(selectedOrder()!)">
                       <td class="mono-font">#{{ ev.logId }}</td>
                       <td>
                         <span class="action-tag">{{ ev.event || 'ORDER_EVENT' }}</span>
@@ -605,6 +615,9 @@ export interface AggregatedOrder {
       display: flex;
       flex-direction: column;
       gap: 14px;
+      position: relative;
+      z-index: 25;
+      overflow: visible;
     }
 
     .tabs-wrap {
@@ -697,6 +710,11 @@ export interface AggregatedOrder {
     .search-dropdown-container {
       position: relative;
       min-width: 150px;
+      z-index: 15;
+    }
+
+    .search-dropdown-container.open {
+      z-index: 1350;
     }
 
     .search-dropdown-anchor {
@@ -727,7 +745,7 @@ export interface AggregatedOrder {
       top: calc(100% + 4px);
       left: 0;
       min-width: 210px;
-      z-index: 100;
+      z-index: 1400;
       background: #fffdf9;
       border: 1px solid rgba(62, 36, 21, 0.2);
       border-radius: var(--radius-sm);
@@ -803,7 +821,7 @@ export interface AggregatedOrder {
       left: 0;
       width: 100vw;
       height: 100vh;
-      z-index: 99;
+      z-index: 1300;
       background: transparent;
     }
 
@@ -848,6 +866,8 @@ export interface AggregatedOrder {
     .table-panel {
       padding: 0;
       overflow: hidden;
+      position: relative;
+      z-index: 1;
     }
 
     .user-pill {
@@ -927,7 +947,7 @@ export interface AggregatedOrder {
 
     .modal-card {
       width: 100%;
-      max-width: 660px;
+      max-width: 1060px;
       background: #fffdf9;
       border: 1px solid rgba(62, 36, 21, 0.2);
       border-radius: var(--radius-lg);
@@ -978,6 +998,22 @@ export interface AggregatedOrder {
       gap: 18px;
     }
 
+    .modal-overview-layout {
+      display: grid;
+      grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .overview-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
     .modal-footer {
       display: flex;
       justify-content: flex-end;
@@ -988,8 +1024,9 @@ export interface AggregatedOrder {
     /* Order Lifecycle Timeline */
     .lifecycle-timeline {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
       padding: 16px 14px;
       background: #faf6ee;
       border: 1px solid var(--border-subtle);
@@ -998,9 +1035,9 @@ export interface AggregatedOrder {
 
     .timeline-step {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 10px;
-      flex: 1;
+      width: 100%;
     }
 
     .step-dot {
@@ -1048,10 +1085,10 @@ export interface AggregatedOrder {
     }
 
     .timeline-connector {
-      width: 32px;
-      height: 2px;
+      width: 2px;
+      height: 24px;
       background: #d8cebe;
-      margin: 0 6px;
+      margin: 4px 0 4px 5px;
       flex-shrink: 0;
     }
 
@@ -1062,7 +1099,7 @@ export interface AggregatedOrder {
     /* Financial metrics */
     .order-metrics-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
       padding: 12px 14px;
       background: #fdfbf7;
@@ -1101,8 +1138,23 @@ export interface AggregatedOrder {
     }
 
     .events-table-wrap {
-      max-height: 180px;
+      max-height: 220px;
       overflow-y: auto;
+    }
+
+    @media (max-width: 960px) {
+      .modal-card {
+        max-width: 94vw;
+        padding: 18px;
+      }
+
+      .modal-overview-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .order-metrics-grid {
+        grid-template-columns: 1fr;
+      }
     }
   `]
 })
@@ -1122,6 +1174,9 @@ export class LogsComponent implements OnInit {
 
   instrumentSearchText = signal('');
   instrumentDropdownOpen = signal(false);
+
+  @ViewChild('clientSearchInput') clientSearchInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('instrumentSearchInput') instrumentSearchInput?: ElementRef<HTMLInputElement>;
 
   selectedOrder = signal<AggregatedOrder | null>(null);
 
@@ -1263,6 +1318,8 @@ export class LogsComponent implements OnInit {
     const side = this.selectedSide();
     const instrument = this.selectedInstrument();
     const client = this.selectedClient();
+    const instrumentQuery = this.instrumentSearchText().trim().toLowerCase();
+    const clientQuery = this.clientSearchText().trim().toLowerCase();
     const txnQuery = this.txnSearchQuery().trim().toLowerCase();
 
     // Date range
@@ -1281,20 +1338,16 @@ export class LogsComponent implements OnInit {
     }
 
     // Instrument filter
-    if (instrument !== 'ALL') {
-      orders = orders.filter(o => {
-        const label = o.ticker ? o.ticker.toUpperCase() : (o.instrumentId ? `INST #${o.instrumentId}` : '');
-        return label === instrument;
-      });
-    }
+    orders = orders.filter((o) => {
+      const label = o.ticker ? o.ticker.toUpperCase() : (o.instrumentId ? `INST #${o.instrumentId}` : '');
+      return this.matchesSearchFilter(label, instrument, instrumentQuery);
+    });
 
     // Client filter
-    if (client !== 'ALL') {
-      orders = orders.filter(o => {
-        const clientLabel = o.userId ? `Client #${o.userId}` : (o.accountId ? `Account #${o.accountId}` : '');
-        return clientLabel === client;
-      });
-    }
+    orders = orders.filter((o) => {
+      const clientLabel = o.userId ? `Client #${o.userId}` : (o.accountId ? `Account #${o.accountId}` : '');
+      return this.matchesSearchFilter(clientLabel, client, clientQuery);
+    });
 
     // Search query
     if (txnQuery) {
@@ -1394,11 +1447,18 @@ export class LogsComponent implements OnInit {
     this.clientDropdownOpen.set(!this.clientDropdownOpen());
     if (this.clientDropdownOpen()) {
       this.instrumentDropdownOpen.set(false);
+      this.focusClientSearchInput();
     }
+  }
+
+  onClientSearchChange(value: string) {
+    this.clientSearchText.set(value || '');
+    this.selectedClient.set('ALL');
   }
 
   selectClient(client: string) {
     this.selectedClient.set(client);
+    this.clientSearchText.set('');
     this.clientDropdownOpen.set(false);
   }
 
@@ -1407,17 +1467,45 @@ export class LogsComponent implements OnInit {
     this.instrumentDropdownOpen.set(!this.instrumentDropdownOpen());
     if (this.instrumentDropdownOpen()) {
       this.clientDropdownOpen.set(false);
+      this.focusInstrumentSearchInput();
     }
+  }
+
+  onInstrumentSearchChange(value: string) {
+    this.instrumentSearchText.set(value || '');
+    this.selectedInstrument.set('ALL');
   }
 
   selectInstrument(inst: string) {
     this.selectedInstrument.set(inst);
+    this.instrumentSearchText.set('');
     this.instrumentDropdownOpen.set(false);
   }
 
   closeDropdowns() {
     this.clientDropdownOpen.set(false);
     this.instrumentDropdownOpen.set(false);
+  }
+
+  shouldShowFilledStep(order: AggregatedOrder): boolean {
+    return Boolean((order.timeAccepted || order.timeFilled) && !order.timeRejected);
+  }
+
+  getOrderEventRows(order: AggregatedOrder): TransactionLog[] {
+    const events = order.lifecycleEvents;
+    if (!events.length) {
+      return [];
+    }
+
+    const preferredEvent = this.getFinalStatusEvent(order.finalStatus);
+    for (let i = events.length - 1; i >= 0; i--) {
+      const ev = events[i];
+      if ((ev.event || '') === preferredEvent || (ev.status || '') === order.finalStatus) {
+        return [ev];
+      }
+    }
+
+    return [events[events.length - 1]];
   }
 
   openOrderDetail(order: AggregatedOrder) {
@@ -1525,12 +1613,16 @@ export class LogsComponent implements OnInit {
   private matchesSpecificFilters(log: TransactionLog): boolean {
     const selectedInstrument = this.selectedInstrument();
     const selectedClient = this.selectedClient();
+    const instrumentQuery = this.instrumentSearchText().trim().toLowerCase();
+    const clientQuery = this.clientSearchText().trim().toLowerCase();
+    const instrumentLabel = this.getInstrumentLabel(log);
+    const clientLabel = this.getClientLabel(log);
 
-    if (selectedInstrument !== 'ALL' && this.getInstrumentLabel(log) !== selectedInstrument) {
+    if (!this.matchesSearchFilter(instrumentLabel, selectedInstrument, instrumentQuery)) {
       return false;
     }
 
-    if (selectedClient !== 'ALL' && this.getClientLabel(log) !== selectedClient) {
+    if (!this.matchesSearchFilter(clientLabel, selectedClient, clientQuery)) {
       return false;
     }
 
@@ -1656,5 +1748,51 @@ export class LogsComponent implements OnInit {
     const safeRight = Number.isNaN(rightTime) ? 0 : rightTime;
 
     return safeLeft - safeRight;
+  }
+
+  private matchesSearchFilter(label: string, selected: string, query: string): boolean {
+    if (selected !== 'ALL') {
+      return label === selected;
+    }
+
+    if (!query) {
+      return true;
+    }
+
+    return label.toLowerCase().includes(query);
+  }
+
+  private getFinalStatusEvent(status: AggregatedOrder['finalStatus']): string {
+    switch (status) {
+      case 'FILLED':
+        return 'ORDER_FILLED';
+      case 'ACCEPTED':
+        return 'ORDER_ACCEPTED';
+      case 'REJECTED':
+        return 'ORDER_REJECTED';
+      case 'PLACED':
+      default:
+        return 'ORDER_PLACED';
+    }
+  }
+
+  private focusClientSearchInput() {
+    setTimeout(() => {
+      const input = this.clientSearchInput?.nativeElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  private focusInstrumentSearchInput() {
+    setTimeout(() => {
+      const input = this.instrumentSearchInput?.nativeElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
   }
 }

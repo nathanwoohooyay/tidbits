@@ -20,14 +20,13 @@ export class DashboardMarketSnapshotComponent implements OnInit {
   readonly filters: Array<[TrendFilter, string]> = [
     ['gainers', 'Top Gainers'],
     ['losers', 'Top Losers'],
-    ['volume', 'Volume'],
   ];
 
   readonly formatCurrency = formatCurrency;
   readonly formatPercent = formatPercent;
 
   private readonly pricingService = inject(PricingService);
-  private readonly symbols = ['AAPL', 'MSFT', 'GOOGL', 'WMT', 'AMZN'];
+  private readonly symbols = ['AAPL', 'MSFT', 'GOOGL', 'WMT', 'AMZN', 'META', 'TSLA'];
   readonly instruments = signal<Instrument[]>([]);
   readonly loading = signal(false);
   readonly error = signal('');

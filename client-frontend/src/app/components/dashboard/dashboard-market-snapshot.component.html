@@ -26,8 +26,6 @@
           <th>Company</th>
           <th class="right">Price</th>
           <th class="right">Change</th>
-          <th class="right">Volume</th>
-          <th class="right">Market Cap</th>
           <th class="right">Action</th>
         </tr>
       </thead>
@@ -43,8 +41,7 @@
                 {{ stock.changePercent >= 0 ? '▲' : '▼' }} {{ formatPercent(stock.changePercent) }}
               </span>
             </td>
-            <td class="right" style="font-size:.82rem;color:var(--clr-sienna)">{{ stock.volumeFormatted }}</td>
-            <td class="right" style="font-size:.82rem;color:var(--clr-sienna)">{{ stock.marketCap }}</td>
+          
             <td class="right">
               <button class="btn-quick-trade btn-quick-buy" (click)="quickTrade.emit({ instrumentId: stock.instrument_id, mode: 'buy' })">Buy</button>
               <button class="btn-quick-trade btn-quick-sell" (click)="quickTrade.emit({ instrumentId: stock.instrument_id, mode: 'sell' })">Sell</button>

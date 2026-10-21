@@ -302,7 +302,7 @@ body {
 
 .app-shell {
   display: grid;
-  grid-template-rows: 72px 1fr;
+  grid-template-rows: 88px 1fr;
   min-height: 100vh;
   background: var(--page-background);
   background-color: var(--clr-cream)
@@ -320,7 +320,8 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
-  gap: 1rem
+  gap: 2rem;
+  min-height: 88px
 }
 
 .header-brand {
@@ -342,7 +343,7 @@ body {
 
 .brand-title {
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 1.35rem;
   color: var(--clr-header-text);
   letter-spacing: .035em;
   overflow-wrap: anywhere
@@ -443,6 +444,16 @@ body {
 
 .theme-toggle:hover {
   background: color-mix(in oklab, var(--clr-header-control-bg) 70%, var(--clr-header-text) 30%)
+}
+
+.account-management-toggle {
+  color: var(--clr-header-accent)
+}
+
+.account-management-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block
 }
 
 .login-theme-toggle {
@@ -1275,8 +1286,9 @@ body {
   }
 
   .app-header {
-    padding: .85rem 1rem;
+    padding: 1rem;
     height: auto;
+    min-height: 112px;
     align-items: flex-start
   }
 
@@ -1286,7 +1298,7 @@ body {
   }
 
   .brand-title {
-    font-size: .82rem
+    font-size: 1rem
   }
 
   .header-right {

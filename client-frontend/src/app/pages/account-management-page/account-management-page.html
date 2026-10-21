@@ -30,7 +30,6 @@
                 (click)="selectManagedAccount(account.accountId)"
               >
                 <span class="account-option-name">{{ account.nickname }}</span>
-                <span class="account-option-meta">Account #{{ account.accountId }}</span>
                 <span class="account-option-balance">${{ account.cashBalance | number:'1.2-2' }}</span>
               </button>
             }
@@ -94,7 +93,6 @@
             <div>
               <p class="summary-label">Active account</p>
               <h3>{{ account.nickname }}</h3>
-              <p class="summary-meta">Account #{{ account.accountId }}</p>
             </div>
             <div class="summary-balance-block">
               <p class="summary-label">Cash balance</p>

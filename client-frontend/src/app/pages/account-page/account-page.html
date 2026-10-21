@@ -1,0 +1,115 @@
+<div class="account-page">
+  <header class="account-header">
+    <div>
+      <h1>Account Settings</h1>
+      <p class="subtitle">Manage your account, password, and preferences</p>
+    </div>
+    <button type="button" class="btn-back" (click)="goBack()">← Back to Dashboard</button>
+  </header>
+
+  <main class="account-content">
+    <!-- Update Account Section -->
+    <section class="account-card">
+      <h2>Update Account Information</h2>
+
+      @if (updateError) {
+        <div class="error-message" role="alert">{{ updateError }}</div>
+      }
+      @if (updateSuccess) {
+        <div class="success-message" role="status">{{ updateSuccess }}</div>
+      }
+
+      <form (ngSubmit)="updateAccount()" class="form-grid">
+<br>
+        <div class="form-group">
+          <label for="update-email">Email</label>
+          <input
+            id="update-email"
+            type="email"
+            [(ngModel)]="updateEmail"
+            name="updateEmail"
+            placeholder="Enter new email"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="update-phone-number">Phone Number</label>
+          <input
+            id="update-phone-number"
+            type="text"
+            [(ngModel)]="updatePhoneNumber"
+            name="updatePhoneNumber"
+            placeholder="Enter new phone number"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn-primary"
+          [disabled]="updateLoading"
+        >
+          {{ updateLoading ? 'Updating…' : 'Update Account' }}
+        </button>
+      </form>
+    </section>
+
+    <!-- Change Password Section -->
+    <section class="account-card">
+      <h2>Change Password</h2>
+     <br>
+      @if (passwordError) {
+        <div class="error-message" role="alert">{{ passwordError }}</div>
+      }
+      @if (passwordSuccess) {
+        <div class="success-message" role="status">{{ passwordSuccess }}</div>
+      }
+
+      <form (ngSubmit)="changePassword()" class="form-grid">
+        <div class="form-group">
+          <label for="old-password">Current Password</label>
+          <input
+            id="old-password"
+            type="password"
+            [(ngModel)]="currentPassword"
+            name="currentPassword"
+            placeholder="Enter current password"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="new-password">New Password</label>
+          <input
+            id="new-password"
+            type="password"
+            [(ngModel)]="newPassword"
+            name="newPassword"
+            placeholder="Enter new password (min 8 characters)"
+            autocomplete="new-password"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="confirm-password">Confirm New Password</label>
+          <input
+            id="confirm-password"
+            type="password"
+            [(ngModel)]="confirmPassword"
+            name="confirmPassword"
+            placeholder="Confirm new password"
+            autocomplete="new-password"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn-primary"
+          [disabled]="passwordLoading"
+        >
+          {{ passwordLoading ? 'Changing…' : 'Change Password' }}
+        </button>
+      </form>
+    </section>
+
+  </main>
+</div>

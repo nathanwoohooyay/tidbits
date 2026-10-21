@@ -82,7 +82,13 @@ export class AppService {
     const headers = new Headers();
 
     for (const [key, value] of Object.entries(request.headers)) {
-      if (value === undefined || value === null || this.isHopByHopHeader(key) || key === 'host') {
+      if (
+        value === undefined ||
+        value === null ||
+        this.isHopByHopHeader(key) ||
+        key === 'host' 
+         || this.isCorsRequestHeader(key)
+      ) {
         continue;
       }
 
@@ -158,5 +164,10 @@ export class AppService {
       'transfer-encoding',
       'upgrade',
     ]).has(headerName.toLowerCase());
+  }
+
+  private isCorsRequestHeader(headerName: string): boolean {
+    const normalized = headerName.toLowerCase();
+    return normalized === 'origin' || normalized.startsWith('access-control-request-');
   }
 }

@@ -1,0 +1,85 @@
+<div class="app-shell">
+  <app-dashboard-header
+    [accounts]="accounts()"
+    [selectedAccountId]="selectedAccountId()"
+    [themeMode]="themeMode()"
+    (accountChange)="onAccountChange($event)"
+    (toggleTheme)="toggleTheme()"
+    (goToAccount)="goToAccount()"
+    (goToAccountManagement)="goToAccountManagement()"
+    (signOut)="signOut()">
+  </app-dashboard-header>
+
+  <main class="app-content" role="main">
+    <div class="dashboard-grid">
+      <app-dashboard-greeting
+        [username]="currentUser()?.username ?? ''"
+        [accountNickname]="selectedAccount()?.nickname ?? 'No account selected'"
+        [today]="today"
+        [usingPlaceholderMarketData]="usingPlaceholderMarketData()"
+        [accountCount]="accounts().length">
+      </app-dashboard-greeting>
+
+      <app-dashboard-notices [notices]="notices()"></app-dashboard-notices>
+
+      <app-dashboard-metrics
+        [totalNetWorth]="totalNetWorth()"
+        [cashBalance]="cashBalance()"
+        [portfolioValue]="portfolioValue()"
+        [portfolioGainLoss]="portfolioGainLoss()">
+      </app-dashboard-metrics>
+
+      <app-dashboard-cash-panel
+        [selectedAccountId]="selectedAccountId()"
+        [cashBalance]="cashBalance()"
+        [cashAmount]="cashAmount"
+        [cashLoading]="cashLoading"
+        [cashError]="cashError"
+        [cashSuccess]="cashSuccess"
+        (cashAmountChange)="cashAmount = $event"
+        (deposit)="depositToSelectedAccount()"
+        (withdraw)="withdrawFromSelectedAccount()">
+      </app-dashboard-cash-panel>
+
+
+
+
+      <app-dashboard-insight-feed
+        [reportingOverview]="reportingOverview()"
+        [instrumentLabels]="instrumentLabels()">
+      </app-dashboard-insight-feed>
+
+      <app-dashboard-chart
+        [dataByTimeframe]="chartData()"
+        [chartTimeframe]="chartTimeframe()"
+        (chartTimeframeChange)="setChartTimeframe($event)">
+      </app-dashboard-chart>
+
+      <app-dashboard-market-snapshot
+        [instruments]="instruments()"
+        [trendFilter]="trendFilter()"
+        [usingPlaceholderMarketData]="usingPlaceholderMarketData()"
+        (trendFilterChange)="setTrendFilter($event)"
+        (quickTrade)="onQuickTrade($event)">
+      </app-dashboard-market-snapshot>
+
+      <app-dashboard-holdings
+        [selectedAccountId]="selectedAccountId()"
+        (quickTrade)="onQuickTrade($event)">
+      </app-dashboard-holdings>
+
+      <app-dashboard-trade-desk
+        [selectedAccountId]="selectedAccountId()"
+        [cashBalance]="cashBalance()"
+        [selectedMode]="quickTradeSelection()?.mode ?? 'buy'"
+        [selectedInstrumentId]="quickTradeSelection()?.instrumentId ?? null"
+        (tradeExecuted)="onTradeExecuted($event)">
+      </app-dashboard-trade-desk>
+
+      <app-dashboard-trade-history
+        [selectedAccountId]="selectedAccountId()">
+      </app-dashboard-trade-history>
+    </div>
+  </main>
+</div>
+

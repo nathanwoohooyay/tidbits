@@ -1,4 +1,5 @@
 import { computed, Injectable, signal } from '@angular/core';
+import { JwtHelperService } from '@auth0/angular-jwt';
 
 export interface SessionUser {
   userId: number;
@@ -24,8 +25,13 @@ export class SessionService {
   currentUser = signal<SessionUser | null>(null);
   accounts = signal<SessionAccount[]>([]);
   selectedAccountId = signal<number>(0);
+  private expiresAt: number | null = null;
 
-  readonly isAuthenticated = computed(() => this.authToken() !== null);
+  constructor() {
+    this.updateExpiryFromToken(this.authToken());
+  }
+
+  readonly isAuthenticated = computed(() => this.authToken() !== null && !this.isTokenExpired());
 
   selectedAccount = computed(() =>
     this.accounts().find(a => a.account_id === this.selectedAccountId()) ?? null
@@ -34,6 +40,13 @@ export class SessionService {
   setAuthToken(token: string) {
     this.authToken.set(token);
     localStorage.setItem(this.tokenStorageKey, token);
+    this.updateExpiryFromToken(token);
+  }
+
+  private updateExpiryFromToken(token: string | null) {
+    const helper = new JwtHelperService();
+    const decodedToken = token ? helper.decodeToken(token) : null;
+    this.expiresAt = decodedToken?.exp ? decodedToken.exp * 1000 : null;
   }
 
   getAuthToken() {
@@ -53,6 +66,13 @@ export class SessionService {
     } catch {
       return null;
     }
+  }
+
+  isTokenExpired(): boolean {
+    if (!this.expiresAt) {
+      return true;
+    }
+    return Date.now() > this.expiresAt;
   }
 
   clearAuthToken() {

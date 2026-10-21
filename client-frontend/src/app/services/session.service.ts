@@ -25,7 +25,7 @@ export class SessionService {
   currentUser = signal<SessionUser | null>(null);
   accounts = signal<SessionAccount[]>([]);
   selectedAccountId = signal<number>(0);
-  private expiresAt: number | null = null;
+  expiresAt= signal<number | null>(null);
 
   constructor() {
     this.updateExpiryFromToken(this.authToken());
@@ -46,7 +46,7 @@ export class SessionService {
   private updateExpiryFromToken(token: string | null) {
     const helper = new JwtHelperService();
     const decodedToken = token ? helper.decodeToken(token) : null;
-    this.expiresAt = decodedToken?.exp ? decodedToken.exp * 1000 : null;
+    this.expiresAt.set(decodedToken?.exp ? decodedToken.exp * 1000 : null);
   }
 
   getAuthToken() {
@@ -69,15 +69,16 @@ export class SessionService {
   }
 
   isTokenExpired(): boolean {
-    if (!this.expiresAt) {
+    if (!this.expiresAt()) {
       return true;
     }
-    return Date.now() > this.expiresAt;
+    return Date.now() > this.expiresAt()!;
   }
 
   clearAuthToken() {
     this.authToken.set(null);
     localStorage.removeItem(this.tokenStorageKey);
+    this.expiresAt.set(null);
   }
 
   setCurrentUser(user: SessionUser | null) {

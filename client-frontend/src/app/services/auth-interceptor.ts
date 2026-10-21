@@ -16,9 +16,7 @@ export const authInterceptor: HttpInterceptorFn =
         setHeaders: { Authorization: `Bearer ${token}` },
       });
       console.log(authedReq);
-      return next(authedReq);
-    }
-    return next(req).pipe(
+      return next(authedReq).pipe(
         catchError((error) => {
           if (error.status === 401) {
             session.clearAuthToken();
@@ -27,4 +25,6 @@ export const authInterceptor: HttpInterceptorFn =
       return throwError(() => error); // required: return ObservableInput
         })
     );
+    }
+    return next(req)
   };

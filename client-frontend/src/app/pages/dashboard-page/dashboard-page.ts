@@ -181,7 +181,7 @@ setPortfolioValue(value: number) {
 
     private startPolling() {
         console.log("\nStarting polling");
-      interval(20_000).pipe(
+      interval(30_000).pipe(
         startWith(0),
         takeUntilDestroyed(this.destroyRef)
       ).subscribe(() => {
@@ -192,11 +192,6 @@ setPortfolioValue(value: number) {
       });
     }
   refreshData(accountId: number){
-      if (!this.session.isAuthenticated()) {
-          this.signOut();
-          return;
-      }
-
       console.log("\nRefreshing data for accountId:", accountId);
       this.refreshSelectedAccount(accountId);
       const tradeHistory = this.tradeHistoryRef();

@@ -15,7 +15,6 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       <div class="page-header">
         <div>
           <h1 class="page-title">User & Role Management</h1>
-          <p class="page-subtitle">Inspect registered accounts, reassign role permissions, and execute session revocations</p>
         </div>
         <div class="header-actions">
           <button id="btn-refresh-users" class="btn btn-secondary btn-sm" (click)="loadUsers()">
@@ -158,7 +157,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
         <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <div>
-              <div class="badge badge-admin">ACCOUNT DOSSIER</div>
+              <div class="badge badge-admin">ACCOUNT DETAILS</div>
               <h2 class="modal-title">Accounts: {{ selectedUserForAccounts()?.username }}</h2>
               <span class="modal-sub">User ID #{{ selectedUserForAccounts()?.userId }}</span>
             </div>
@@ -174,7 +173,6 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               <div *ngFor="let acc of userAccounts()" class="account-item">
                 <div class="acc-top">
                   <span class="acc-id mono-font">ACC #{{ acc.accountId }}</span>
-                  <span class="badge badge-success">ACTIVE</span>
                 </div>
                 <div class="acc-name">{{ acc.nickname || 'Standard Custody Account' }}</div>
                 <div class="acc-balance">
@@ -191,7 +189,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
           </div>
 
           <div class="modal-footer">
-            <button class="btn btn-secondary" (click)="closeAccountsModal()">Close Dossier</button>
+            <button class="btn btn-secondary" (click)="closeAccountsModal()">Close</button>
           </div>
         </div>
       </div>
@@ -242,7 +240,6 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
         <div class="modal-card glass-panel modal-sm" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <div>
-              <div class="badge badge-danger">SECURITY ENFORCEMENT</div>
               <h2 class="modal-title">Confirm Access Revocation</h2>
             </div>
             <button class="modal-close" (click)="closeRevokeModal()">✕</button>
@@ -250,15 +247,11 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
 
           <div class="modal-body">
             <p class="revoke-confirm-text">
-              Are you sure you want to immediately revoke all access for <strong>{{ selectedUserForRevoke()?.username }}</strong> (User #{{ selectedUserForRevoke()?.userId }})?
+              Are you sure you want to revoke access for <strong>{{ selectedUserForRevoke()?.username }}</strong> (User #{{ selectedUserForRevoke()?.userId }})?
             </p>
-            <div class="revoke-consequences">
-              <ul>
-                <li>Increments the auth token version and clears the active refresh token</li>
-                <li>Immediately rejects all existing JWT tokens</li>
-                <li>Forces immediate logout across all active browser sessions</li>
-              </ul>
-            </div>
+            <p class="revoke-desc">
+              This action increments the authentication token version, immediately invalidates all active session tokens, and logs out the user across devices.
+            </p>
           </div>
 
           <div class="modal-footer">
@@ -553,17 +546,14 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       line-height: 1.5;
     }
 
-    .revoke-consequences {
-      background: rgba(163, 50, 36, 0.08);
-      border: 1px solid rgba(163, 50, 36, 0.25);
+    .revoke-desc {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      padding: 10px 12px;
+      background: #faf6ee;
+      border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
-      padding: 12px 16px;
-    }
-
-    .revoke-consequences ul {
-      margin-left: 18px;
-      font-size: 12px;
-      color: #8c2417;
     }
 
     .empty-cell {

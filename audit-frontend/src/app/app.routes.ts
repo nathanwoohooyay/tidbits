@@ -30,9 +30,13 @@ export const routes: Routes = [
         canActivate: [auditorGuard]
       },
       {
-        path: 'auditor/reports',
+        path: 'auditor/compliance',
         component: ReportsComponent,
         canActivate: [auditorGuard]
+      },
+      {
+        path: 'auditor/reports',
+        redirectTo: 'auditor/compliance'
       },
       {
         path: 'auditor/logs',

@@ -1,101 +1,87 @@
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { AdminService } from '../../../core/services/admin.service';
 import { AdminDashboardStats } from '../../../core/models/models';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   template: `
     <div class="admin-dash-container animate-fade-in">
       <div class="page-header">
         <div>
           <h1 class="page-title">Executive Administration</h1>
-          <p class="page-subtitle">Platform-wide identity governance, token versioning, and account supervision</p>
-        </div>
-        <div class="header-actions">
-          <a id="btn-goto-users" routerLink="/admin/users" class="btn btn-primary btn-sm">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-            <span>Manage User Roles</span>
-          </a>
         </div>
       </div>
 
-      <!-- Stats Grid -->
-      <div class="stats-grid">
-        <div class="stat-card glass-panel">
-          <div class="stat-icon purple">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
+      <!-- Unified KPI Stats Panel with Line Dividers -->
+      <div class="stats-panel glass-panel">
+        <div class="stat-col">
+          <div class="stat-title-row">
+            <div class="stat-icon-wrap purple">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <span class="stat-label">Registered Users</span>
           </div>
-          <div class="stat-info">
-            <div class="stat-label">Registered Users</div>
-            <div class="stat-val mono-font">{{ stats().totalUsers | number }}</div>
-          </div>
+          <div class="stat-val mono-font">{{ stats().totalUsers | number }}</div>
         </div>
 
-        <div class="stat-card glass-panel">
-          <div class="stat-icon blue">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-            </svg>
+        <div class="stat-col">
+          <div class="stat-title-row">
+            <div class="stat-icon-wrap blue">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+            </div>
+            <span class="stat-label">Trading Accounts</span>
           </div>
-          <div class="stat-info">
-            <div class="stat-label">Trading Accounts</div>
-            <div class="stat-val mono-font">{{ stats().totalAccounts | number }}</div>
-          </div>
+          <div class="stat-val mono-font">{{ stats().totalAccounts | number }}</div>
         </div>
 
-        <div class="stat-card glass-panel">
-          <div class="stat-icon cyan">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <line x1="12" y1="18" x2="12" y2="12"></line>
-              <line x1="9" y1="15" x2="15" y2="15"></line>
-            </svg>
+        <div class="stat-col">
+          <div class="stat-title-row">
+            <div class="stat-icon-wrap cyan">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+            </div>
+            <span class="stat-label">User Event Records</span>
           </div>
-          <div class="stat-info">
-            <div class="stat-label">User Event Records</div>
-            <div class="stat-val mono-font">{{ stats().totalUserLogs | number }}</div>
-          </div>
+          <div class="stat-val mono-font">{{ stats().totalUserLogs | number }}</div>
         </div>
 
-        <div class="stat-card glass-panel">
-          <div class="stat-icon emerald">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="20" x2="18" y2="10"></line>
-              <line x1="12" y1="20" x2="12" y2="4"></line>
-              <line x1="6" y1="20" x2="6" y2="14"></line>
-            </svg>
+        <div class="stat-col">
+          <div class="stat-title-row">
+            <div class="stat-icon-wrap emerald">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+            </div>
+            <span class="stat-label">Transactions Tracked</span>
           </div>
-          <div class="stat-info">
-            <div class="stat-label">Transactions Tracked</div>
-            <div class="stat-val mono-font">{{ stats().totalTransactionLogs | number }}</div>
-          </div>
+          <div class="stat-val mono-font">{{ stats().totalTransactionLogs | number }}</div>
         </div>
       </div>
 
       <!-- Administration Modules Grid -->
       <div class="admin-modules-grid">
-        <!-- Module 1: Access Control Direct Actions -->
+        <!-- Module 1: Identity & Privilege Governance with clean line divisions -->
         <div class="module-card glass-panel">
           <div class="module-header">
             <h2 class="module-title">Identity & Privilege Governance</h2>
-            <span class="module-sub">Role escalation, session revocation, and security posture</span>
           </div>
 
           <div class="action-items-list">
-            <div class="action-item">
+            <div class="action-item-row">
               <div class="action-item-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -104,13 +90,12 @@ import { AdminDashboardStats } from '../../../core/models/models';
                 </svg>
               </div>
               <div class="action-item-body">
-                <div class="item-title">Role Assignment Interface</div>
-                <div class="item-desc">Promote users to AUDITOR or ADMIN, or downgrade privileges with immediate cache invalidation.</div>
+                <div class="item-title">Role Assignment Framework</div>
+                <div class="item-desc">User role assignments, permission hierarchy enforcement, and credential cache invalidation.</div>
               </div>
-              <a routerLink="/admin/users" class="btn btn-secondary btn-sm">Manage Users</a>
             </div>
 
-            <div class="action-item">
+            <div class="action-item-row">
               <div class="action-item-icon text-rose">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
@@ -118,26 +103,24 @@ import { AdminDashboardStats } from '../../../core/models/models';
                 </svg>
               </div>
               <div class="action-item-body">
-                <div class="item-title">Global Session Revocation</div>
-                <div class="item-desc">Invalidate existing JWT tokens on demand via TokenVersion incrementing in database.</div>
+                <div class="item-title">Global Session Revocation Protocol</div>
+                <div class="item-desc">Immediate JWT authentication token invalidation via database token version increments.</div>
               </div>
-              <a routerLink="/admin/users" class="btn btn-danger btn-sm">Inspect Users</a>
             </div>
           </div>
         </div>
 
-        <!-- Module 2: Security & Architecture Overview -->
+        <!-- Module 2: Security & Architecture Overview with clean line divisions -->
         <div class="module-card glass-panel">
           <div class="module-header">
             <h2 class="module-title">Security Architecture Status</h2>
-            <span class="module-sub">Microservice health check</span>
           </div>
 
           <div class="service-health-list">
             <div class="health-row">
               <div class="service-meta">
                 <span class="pulse-dot"></span>
-                <strong>Audit-Service (Spring Boot)</strong>
+                <span>Audit-Service (Spring Boot)</span>
               </div>
               <span class="badge badge-success">PORT 8083 ONLINE</span>
             </div>
@@ -145,7 +128,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
             <div class="health-row">
               <div class="service-meta">
                 <span class="pulse-dot"></span>
-                <strong>FastAPI Analytics Service</strong>
+                <span>FastAPI Analytics Service</span>
               </div>
               <span class="badge badge-success">PORT 8085 ONLINE</span>
             </div>
@@ -153,7 +136,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
             <div class="health-row">
               <div class="service-meta">
                 <span class="pulse-dot"></span>
-                <strong>Auth-Service (OAuth2 / JWT)</strong>
+                <span>Auth-Service (OAuth2 / JWT)</span>
               </div>
               <span class="badge badge-success">PORT 4000 ONLINE</span>
             </div>
@@ -161,7 +144,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
             <div class="health-row">
               <div class="service-meta">
                 <span class="pulse-dot"></span>
-                <strong>Kafka Cluster (3 Partitions)</strong>
+                <span>Kafka Cluster (3 Partitions)</span>
               </div>
               <span class="badge badge-success">PORT 9092 ONLINE</span>
             </div>
@@ -174,156 +157,189 @@ import { AdminDashboardStats } from '../../../core/models/models';
     .admin-dash-container {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
     }
 
     .page-header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
+      align-items: center;
+      padding-bottom: 2px;
     }
 
     .page-title {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 800;
       color: var(--text-primary);
-      margin-top: 6px;
+      letter-spacing: -0.3px;
     }
 
-    .page-subtitle {
-      font-size: 13px;
-      color: var(--text-secondary);
-    }
-
-    .stats-grid {
+    /* Unified Stats Panel - fewer boxes, line divisions, clean spacing */
+    .stats-panel {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 0;
+      overflow: hidden;
     }
 
-    .stat-card {
-      padding: 20px;
+    .stat-col {
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-right: 1px solid var(--border-subtle);
+    }
+
+    .stat-col:last-child {
+      border-right: none;
+    }
+
+    .stat-title-row {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 10px;
     }
 
-    .stat-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: var(--radius-md);
+    .stat-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
     }
 
-    .stat-icon.purple {
-      background: rgba(51, 27, 14, 0.12);
-      border: 1px solid rgba(51, 27, 14, 0.28);
+    .stat-icon-wrap.purple {
+      background: rgba(51, 27, 14, 0.08);
       color: #331b0e;
+      border: 1px solid rgba(51, 27, 14, 0.18);
     }
 
-    .stat-icon.blue {
-      background: rgba(138, 78, 35, 0.12);
-      border: 1px solid rgba(138, 78, 35, 0.28);
+    .stat-icon-wrap.blue {
+      background: rgba(138, 78, 35, 0.08);
       color: #8a4e23;
+      border: 1px solid rgba(138, 78, 35, 0.18);
     }
 
-    .stat-icon.cyan {
-      background: rgba(184, 117, 20, 0.12);
-      border: 1px solid rgba(184, 117, 20, 0.28);
+    .stat-icon-wrap.cyan {
+      background: rgba(184, 117, 20, 0.08);
       color: #b87514;
+      border: 1px solid rgba(184, 117, 20, 0.18);
     }
 
-    .stat-icon.emerald {
-      background: rgba(42, 97, 66, 0.12);
-      border: 1px solid rgba(42, 97, 66, 0.28);
+    .stat-icon-wrap.emerald {
+      background: rgba(42, 97, 66, 0.08);
       color: #2a6142;
+      border: 1px solid rgba(42, 97, 66, 0.18);
     }
 
     .stat-label {
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.5px;
       color: var(--text-muted);
     }
 
     .stat-val {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 800;
       color: var(--text-primary);
-      margin: 2px 0;
-    }
-
-    .stat-sub {
-      font-size: 11.5px;
-      color: var(--text-dim);
+      line-height: 1.1;
     }
 
     .admin-modules-grid {
       display: grid;
-      grid-template-columns: 1.4fr 1fr;
-      gap: 18px;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 16px;
     }
 
     @media (max-width: 1024px) {
+      .stats-panel {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .stat-col:nth-child(2) {
+        border-right: none;
+      }
+      .stat-col:nth-child(1), .stat-col:nth-child(2) {
+        border-bottom: 1px solid var(--border-subtle);
+      }
       .admin-modules-grid {
         grid-template-columns: 1fr;
       }
     }
 
+    @media (max-width: 640px) {
+      .stats-panel {
+        grid-template-columns: 1fr;
+      }
+      .stat-col {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .stat-col:last-child {
+        border-bottom: none;
+      }
+    }
+
     .module-card {
-      padding: 24px;
+      padding: 20px 22px;
       display: flex;
       flex-direction: column;
     }
 
     .module-header {
-      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 12px;
     }
 
     .module-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       color: var(--text-primary);
+      letter-spacing: -0.2px;
     }
 
-    .module-sub {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
+    /* Action items - clean line divisions instead of nested rounded boxes */
     .action-items-list {
       display: flex;
       flex-direction: column;
-      gap: 14px;
     }
 
-    .action-item {
+    .action-item-row {
       display: flex;
-      align-items: center;
-      gap: 16px;
-      background: #fbf7ee;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 16px;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .action-item-row:last-child {
+      border-bottom: none;
+      padding-bottom: 4px;
     }
 
     .action-item-icon {
-      width: 38px;
-      height: 38px;
+      width: 32px;
+      height: 32px;
       border-radius: var(--radius-sm);
-      background: #f0e6d6;
+      background: rgba(138, 78, 35, 0.08);
+      border: 1px solid rgba(138, 78, 35, 0.16);
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
       color: var(--accent-cognac);
+      margin-top: 2px;
     }
 
-    .text-rose { color: #a33224; }
+    .text-rose {
+      color: #a33224;
+      background: rgba(163, 50, 36, 0.08);
+      border-color: rgba(163, 50, 36, 0.2);
+    }
 
     .action-item-body {
       flex: 1;
@@ -338,23 +354,27 @@ import { AdminDashboardStats } from '../../../core/models/models';
     .item-desc {
       font-size: 12px;
       color: var(--text-secondary);
-      margin-top: 2px;
+      margin-top: 3px;
+      line-height: 1.45;
     }
 
+    /* Service health - clean line divisions */
     .service-health-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
     }
 
     .health-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 14px;
-      background: #fbf7ee;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .health-row:last-child {
+      border-bottom: none;
+      padding-bottom: 4px;
     }
 
     .service-meta {
@@ -362,6 +382,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
       align-items: center;
       gap: 10px;
       font-size: 13px;
+      font-weight: 600;
       color: var(--text-primary);
     }
   `]

@@ -37,7 +37,7 @@ export interface AggregatedOrder {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="logs-container animate-fade-in">
+    <div class="logs-container">
       <div class="page-header">
         <div>
           <h1 class="page-title">Audit Event Logs</h1>
@@ -465,7 +465,11 @@ export interface AggregatedOrder {
               <div class="lifecycle-panel">
                 <h3 class="overview-title">Status History</h3>
                 <div class="lifecycle-timeline">
-                  <div class="timeline-step" [class.completed]="selectedOrder()!.timePlaced">
+                  <div
+                    class="timeline-step timeline-step-chain"
+                    [class.completed]="selectedOrder()!.timePlaced"
+                    [class.next-active]="selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected"
+                  >
                     <div class="step-dot"></div>
                     <div class="step-content">
                       <div class="step-label">Placed</div>
@@ -475,12 +479,12 @@ export interface AggregatedOrder {
                     </div>
                   </div>
 
-                  <div class="timeline-connector" [class.active]="selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected"></div>
-
                   <div
                     class="timeline-step"
+                    [class.timeline-step-chain]="shouldShowFilledStep(selectedOrder()!)"
                     [class.completed]="selectedOrder()!.timeAccepted || selectedOrder()!.timeRejected"
                     [class.rejected]="selectedOrder()!.timeRejected"
+                    [class.next-active]="selectedOrder()!.timeFilled"
                   >
                     <div class="step-dot"></div>
                     <div class="step-content">
@@ -494,8 +498,6 @@ export interface AggregatedOrder {
                   </div>
 
                   <ng-container *ngIf="shouldShowFilledStep(selectedOrder()!)">
-                    <div class="timeline-connector" [class.active]="selectedOrder()!.timeFilled"></div>
-
                     <div class="timeline-step" [class.completed]="selectedOrder()!.timeFilled">
                       <div class="step-dot"></div>
                       <div class="step-content">
@@ -588,6 +590,7 @@ export interface AggregatedOrder {
       display: flex;
       flex-direction: column;
       gap: 16px;
+      min-height: 0;
     }
 
     .page-header {
@@ -868,6 +871,14 @@ export interface AggregatedOrder {
       overflow: hidden;
       position: relative;
       z-index: 1;
+      height: clamp(360px, 58vh, 680px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-container {
+      height: 100%;
+      overflow: auto;
     }
 
     .user-pill {
@@ -932,16 +943,13 @@ export interface AggregatedOrder {
     /* Modal Styling */
     .modal-backdrop {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      inset: 0;
       background: rgba(40, 22, 13, 0.6);
       backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 1000;
+      z-index: 2200;
       padding: 20px;
     }
 
@@ -1027,6 +1035,7 @@ export interface AggregatedOrder {
       flex-direction: column;
       align-items: flex-start;
       justify-content: flex-start;
+      gap: 12px;
       padding: 16px 14px;
       background: #faf6ee;
       border: 1px solid var(--border-subtle);
@@ -1034,10 +1043,31 @@ export interface AggregatedOrder {
     }
 
     .timeline-step {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
+      display: grid;
+      grid-template-columns: 12px 1fr;
+      align-items: start;
+      column-gap: 10px;
       width: 100%;
+      position: relative;
+    }
+
+    .timeline-step-chain::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 14px;
+      bottom: -12px;
+      width: 2px;
+      background: #d8cebe;
+      border-radius: 2px;
+    }
+
+    .timeline-step-chain.next-active::after {
+      background: #2a6142;
+    }
+
+    .timeline-step.rejected.timeline-step-chain.next-active::after {
+      background: #a33224;
     }
 
     .step-dot {
@@ -1047,6 +1077,7 @@ export interface AggregatedOrder {
       background: #d8cebe;
       border: 2px solid #b5a48e;
       flex-shrink: 0;
+      margin-top: 2px;
     }
 
     .timeline-step.completed .step-dot {
@@ -1082,18 +1113,6 @@ export interface AggregatedOrder {
       font-size: 11px;
       color: var(--text-secondary);
       margin-top: 2px;
-    }
-
-    .timeline-connector {
-      width: 2px;
-      height: 24px;
-      background: #d8cebe;
-      margin: 4px 0 4px 5px;
-      flex-shrink: 0;
-    }
-
-    .timeline-connector.active {
-      background: #2a6142;
     }
 
     /* Financial metrics */

@@ -13,6 +13,7 @@ import com.tidbits.model.entity.AccountTransaction;
 import com.tidbits.model.entity.Instrument;
 import com.tidbits.model.entity.Order;
 import com.tidbits.model.entity.OrderStatusHistory;
+import com.tidbits.model.entity.User;
 import com.tidbits.model.enums.OrderStatus;
 import com.tidbits.model.enums.OrderType;
 import com.tidbits.model.enums.TransactionType;
@@ -22,6 +23,7 @@ import com.tidbits.repository.AccountTransactionRepository;
 import com.tidbits.repository.InstrumentRepository;
 import com.tidbits.repository.OrderRepository;
 import com.tidbits.repository.OrderStatusHistoryRepository;
+import com.tidbits.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -69,6 +71,9 @@ public class OrderService {
 
     @Autowired
     private OrderEventPublisher orderEventPublisher;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private static final Set<OrderStatus> FINAL_STATUSES = Set.of(
             OrderStatus.FILLED,
@@ -131,11 +136,25 @@ public class OrderService {
         transaction.setCreatedAt(LocalDateTime.now());
         AccountTransaction at = accountTransactionRepository.save(transaction);
 
+        awardRewardPoints(account, totalAmount);
+
         orderStatusEvent(currOrder, OrderStatus.PLACED, OrderStatus.ACCEPTED, at.getTransactionId());
 
         orderStatusEvent(currOrder, OrderStatus.ACCEPTED, OrderStatus.FILLED, at.getTransactionId());
 
         return currOrder;
+    }
+
+    private void awardRewardPoints(Account account, double tradedVolume) {
+        User user = userRepository.findById(account.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User " + account.getUserId() + " not found."));
+
+        int points = BigDecimal.valueOf(tradedVolume)
+                .setScale(0, RoundingMode.FLOOR)
+                .intValueExact();
+        int currentPoints = user.getRewardPoints() == null ? 0 : user.getRewardPoints();
+        user.setRewardPoints(Math.addExact(currentPoints, points));
+        userRepository.save(user);
     }
 
     private void orderStatusEvent(Order order, OrderStatus oldStatus, OrderStatus newStatus, Integer transactionId) {

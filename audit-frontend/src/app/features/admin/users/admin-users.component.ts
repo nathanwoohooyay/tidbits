@@ -1,5 +1,5 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Inject, OnDestroy, OnInit, Renderer2, signal, computed } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { AdminService } from '../../../core/services/admin.service';
@@ -189,6 +189,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               <div class="badge badge-admin">ACCOUNT DETAILS</div>
               <h2 class="modal-title">Accounts: {{ selectedUserForAccounts()?.username }}</h2>
               <span class="modal-sub">User ID #{{ selectedUserForAccounts()?.userId }}</span>
+              <h3 class="modal-sub">Reward Points: {{ (selectedUserForAccounts()?.rewardPoints || 0) | number }}</h3>
             </div>
             <button class="modal-close" (click)="closeAccountsModal()">✕</button>
           </div>
@@ -489,6 +490,15 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     .table-card {
       padding: 0;
       overflow: hidden;
+      height: clamp(360px, 58vh, 680px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-container {
+      height: 100%;
+      min-height: 0;
+      overflow: auto;
     }
 
     .user-name-cell {
@@ -509,10 +519,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     /* Modal Styling */
     .modal-backdrop {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      inset: 0;
       background: rgba(40, 22, 13, 0.65);
       backdrop-filter: blur(8px);
       display: flex;
@@ -520,6 +527,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       justify-content: center;
       z-index: 1000;
       padding: 20px;
+      overflow: hidden;
     }
 
     .modal-card {
@@ -533,6 +541,8 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       display: flex;
       flex-direction: column;
       gap: 20px;
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     .modal-card.modal-sm {
@@ -589,8 +599,6 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       display: grid;
       grid-template-columns: 1fr;
       gap: 12px;
-      max-height: 380px;
-      overflow-y: auto;
     }
 
     .account-item {
@@ -683,7 +691,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     }
   `]
 })
-export class AdminUsersComponent implements OnInit {
+export class AdminUsersComponent implements OnInit, OnDestroy {
   users = signal<AdminUser[]>([]);
   searchQuery = signal('');
   roleFilter = signal('ALL');
@@ -738,7 +746,15 @@ export class AdminUsersComponent implements OnInit {
     });
   });
 
-  constructor(private adminService: AdminService) {}
+  constructor(
+    private adminService: AdminService,
+    @Inject(DOCUMENT) private document: Document,
+    private renderer: Renderer2
+  ) {}
+
+  ngOnDestroy() {
+    this.unlockPageScroll();
+  }
 
   ngOnInit() {
     this.loadUsers();
@@ -785,6 +801,7 @@ export class AdminUsersComponent implements OnInit {
 
   // View accounts
   viewAccounts(user: AdminUser) {
+    this.lockPageScroll();
     this.selectedUserForAccounts.set(user);
     this.loadingAccounts.set(true);
     this.adminService.getUserAccounts(user.userId).subscribe((accounts: AdminAccount[]) => {
@@ -796,16 +813,19 @@ export class AdminUsersComponent implements OnInit {
   closeAccountsModal() {
     this.selectedUserForAccounts.set(null);
     this.userAccounts.set([]);
+    this.unlockPageScroll();
   }
 
   // Change role
   openRoleModal(user: AdminUser) {
+    this.lockPageScroll();
     this.selectedUserForRole.set(user);
     this.newRoleSelection = user.role || 'USER';
   }
 
   closeRoleModal() {
     this.selectedUserForRole.set(null);
+    this.unlockPageScroll();
   }
 
   saveRoleChange() {
@@ -831,11 +851,21 @@ export class AdminUsersComponent implements OnInit {
 
   // Revoke access
   confirmRevoke(user: AdminUser) {
+    this.lockPageScroll();
     this.selectedUserForRevoke.set(user);
   }
 
   closeRevokeModal() {
     this.selectedUserForRevoke.set(null);
+    this.unlockPageScroll();
+  }
+
+  private lockPageScroll() {
+    this.renderer.setStyle(this.document.body, 'overflow', 'hidden');
+  }
+
+  private unlockPageScroll() {
+    this.renderer.removeStyle(this.document.body, 'overflow');
   }
 
   executeRevoke() {

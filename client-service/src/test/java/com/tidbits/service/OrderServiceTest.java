@@ -5,9 +5,11 @@ import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.dto.OrderEventDTO;
 import com.tidbits.model.dto.PricingQuoteDTO;
 import com.tidbits.model.entity.Account;
+import com.tidbits.model.entity.AccountTransaction;
 import com.tidbits.model.entity.AccountHolding;
 import com.tidbits.model.entity.Instrument;
 import com.tidbits.model.entity.Order;
+import com.tidbits.model.entity.User;
 import com.tidbits.model.enums.InstrumentType;
 import com.tidbits.model.enums.OrderStatus;
 import com.tidbits.model.enums.OrderType;
@@ -16,6 +18,7 @@ import com.tidbits.repository.AccountRepository;
 import com.tidbits.repository.AccountTransactionRepository;
 import com.tidbits.repository.InstrumentRepository;
 import com.tidbits.repository.OrderRepository;
+import com.tidbits.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +50,7 @@ class OrderServiceTest {
     @BeforeEach
     void setUpAuthentication() {
         SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("1", null));
+        when(userRepository.findById(1)).thenReturn(Optional.of(user(1, 0)));
     }
 
     @AfterEach
@@ -80,6 +84,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderEventPublisher orderEventPublisher;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private OrderService orderService;
@@ -193,6 +200,8 @@ class OrderServiceTest {
 
         when(accountService.getAccountById(1)).thenReturn(Optional.of(account));
         when(orderRepository.findById(3)).thenReturn(Optional.of(order));
+        User user = user(1, 25);
+        when(userRepository.findById(1)).thenReturn(Optional.of(user));
         when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument));
         when(pricingService.getRequestedQuotes(anyList(), anyMap())).thenReturn(List.of(
                 new PricingQuoteDTO(2, "AAPL", 100.0, null, 99.5, 100.0, null, null, "USD", null, false, "test", null, null)
@@ -204,10 +213,38 @@ class OrderServiceTest {
 
         assertEquals(OrderStatus.FILLED, updated.getStatus());
         assertEquals(900.0, account.getCashBalance());
+        assertEquals(125, user.getRewardPoints());
         verify(orderStatusHistoryService).switchStatus(updated, OrderStatus.PLACED, OrderStatus.ACCEPTED);
         verify(orderStatusHistoryService).switchStatus(updated, OrderStatus.ACCEPTED, OrderStatus.FILLED);
         verify(orderEventPublisher).publish(eq("ORDER_ACCEPTED"), eq(updated), any());
         verify(orderEventPublisher).publish(eq("ORDER_FILLED"), eq(updated), any());
+    }
+
+    @Test
+    void fillOrder_awardsOnlyWholeDollarsAndAccumulatesPoints() {
+        Order order = order(1, 2, 3.0, 10.0, OrderType.BUY, OrderStatus.PLACED);
+        order.setOrderId(30);
+        Account account = account(1, 1000.0);
+        User user = user(1, 10);
+        OrderEventDTO orderEvent = new OrderEventDTO(
+                "ORDER_PLACED", LocalDateTime.now(), 30, 1, null, 2, 3.0, null,
+                null, "BUY", "PLACED", null, null);
+
+        when(accountService.getAccountById(1)).thenReturn(Optional.of(account));
+        when(orderRepository.findById(30)).thenReturn(Optional.of(order));
+        when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
+        when(pricingService.getRequestedQuotes(anyList(), anyMap())).thenReturn(List.of(
+                new PricingQuoteDTO(2, "AAPL", 100.0, null, 100.1666667, 100.1666667, null, null, "USD", null, false, "test", null, null)
+        ));
+        when(userRepository.findById(1)).thenReturn(Optional.of(user));
+        when(orderStatusHistoryService.getHistoryByOrderId(30)).thenReturn(List.of());
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(accountTransactionRepository.save(any(AccountTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.fillOrder(orderEvent);
+
+        assertEquals(310, user.getRewardPoints());
+        verify(userRepository).save(user);
     }
 
     @Test
@@ -298,6 +335,13 @@ class OrderServiceTest {
         account.setUserId(1);
         account.setCashBalance(balance);
         return account;
+    }
+
+    private User user(Integer userId, Integer rewardPoints) {
+        User user = new User();
+        user.setUserId(userId);
+        user.setRewardPoints(rewardPoints);
+        return user;
     }
 
     private Instrument instrument(Integer instrumentId) {

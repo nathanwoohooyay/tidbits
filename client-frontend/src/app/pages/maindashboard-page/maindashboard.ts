@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { AccountHoldingDto, AccountService, AccountDto, PortfolioSnapshotDto } from '../../services/account.service';
 import { GetHoldingsResponseDTO, PricingService } from '../../services/pricing.service';
 import { SessionService } from '../../services/session.service';
 import { tickerToName } from '../../components/dashboard/stock';
 import { DashboardChartComponent } from '../../components/dashboard/dashboard-chart.component';
-import { ChartPoint, ChartTimeframe } from '../../components/dashboard/dashboard.models';
+import { ChartPoint, ChartTimeframe, ThemeMode } from '../../components/dashboard/dashboard.models';
+import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-header.component';
 
 interface AccountSummary {
   accountId: number;
@@ -20,7 +21,7 @@ interface AccountSummary {
 
 @Component({
   standalone: true,
-  imports: [CommonModule, DashboardChartComponent],
+  imports: [CommonModule, DashboardChartComponent, DashboardHeaderComponent, RouterLink],
   selector: 'app-maindashboard',
   styleUrl: './maindashboard.css',
   templateUrl: './maindashboard.html',
@@ -30,9 +31,13 @@ export class Maindashboard implements OnInit {
   private readonly session = inject(SessionService);
   private readonly accountApi = inject(AccountService);
   private readonly pricingApi = inject(PricingService);
+  private readonly themeStorageKey = 'tidbits_theme_mode';
 
   readonly loading = signal(false);
   readonly error = signal('');
+  readonly accounts = signal<AccountDto[]>([]);
+  readonly selectedAccountId = signal(0);
+  readonly themeMode = signal<ThemeMode>('light');
 
   readonly totalCashBalance = signal(0);
   readonly totalPortfolioValue = signal(0);
@@ -48,6 +53,7 @@ export class Maindashboard implements OnInit {
   );
 
   ngOnInit() {
+    this.restoreThemePreference();
     const userId = this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
     if (!userId) {
       void this.router.navigateByUrl('/login');
@@ -58,9 +64,25 @@ export class Maindashboard implements OnInit {
     this.loadPortfolioSnapshotChart(userId);
   }
 
+  toggleTheme() {
+    const nextMode = this.themeMode() === 'dark' ? 'light' : 'dark';
+    this.applyTheme(nextMode);
+  }
+
+  signOut() {
+    this.session.clearSession();
+    void this.router.navigateByUrl('/login');
+  }
+
+  onAccountChange(accountId: number) {
+    this.selectedAccountId.set(accountId);
+    this.session.setSelectedAccountId(accountId);
+  }
+
 
   openAccountDashboard(accountId: number) {
     this.session.setSelectedAccountId(accountId);
+    console.log('Opening dashboard for accountId:', accountId);
     void this.router.navigateByUrl('/dashboard');
   }
 
@@ -74,6 +96,15 @@ export class Maindashboard implements OnInit {
 
     this.accountApi.listAccounts(userId).subscribe({
       next: accounts => {
+        this.accounts.set(accounts);
+        const preferredAccountId = this.session.selectedAccountId();
+        const nextAccountId = accounts.some(account => account.accountId === preferredAccountId)
+          ? preferredAccountId
+          : accounts[0]?.accountId ?? 0;
+        this.selectedAccountId.set(nextAccountId);
+        this.session.setSelectedAccountId(nextAccountId);
+
+
         this.totalCashBalance.set(accounts.reduce((sum, account) => sum + account.cashBalance, 0));
 
         if (!accounts.length) {
@@ -102,6 +133,18 @@ export class Maindashboard implements OnInit {
         this.error.set(err?.error?.message ?? 'Failed to load accounts.');
       }
     });
+  }
+
+  private restoreThemePreference() {
+    const saved = localStorage.getItem(this.themeStorageKey);
+    const mode = saved === 'dark' ? 'dark' : 'light';
+    this.applyTheme(mode);
+  }
+
+  private applyTheme(mode: ThemeMode) {
+    this.themeMode.set(mode);
+    localStorage.setItem(this.themeStorageKey, mode);
+    document.body.classList.toggle('dark-mode', mode === 'dark');
   }
 
   private loadPortfolioFromHoldings(accounts: AccountDto[], holdingsByAccount: Map<number, AccountHoldingDto[]>) {

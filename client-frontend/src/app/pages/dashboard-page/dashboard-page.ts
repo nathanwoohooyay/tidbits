@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal, viewChild, DestroyRef } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin, interval } from 'rxjs';
 import { startWith } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -221,14 +221,6 @@ setPortfolioValue(value: number) {
 
   }
 
-  goToAccount() {
-    void this.router.navigateByUrl('/account');
-  }
-
-  goToAccountManagement() {
-    void this.router.navigateByUrl('/account-management');
-  }
-
   signOut() {
     this.session.clearSession();
     void this.router.navigateByUrl('/login');
@@ -328,6 +320,7 @@ setPortfolioValue(value: number) {
 
   private loadAccounts(userId: number) {
     const preferredAccountId = this.session.selectedAccountId();
+    console.log('/n/n/nPreferred accountId:', preferredAccountId);
 
     this.accountApi.listAccounts(userId).subscribe({
       next: accounts => {
@@ -337,7 +330,9 @@ setPortfolioValue(value: number) {
           ? preferredAccountId
           : accounts[0]?.accountId ?? 0;
 
+        console.log("NEXT ACCT ID/n/n/n"+nextAccountId);
         this.selectedAccountId.set(nextAccountId);
+
         this.session.setAccounts(accounts.map(account => this.toSessionAccount(account)));
         this.session.setSelectedAccountId(nextAccountId);
         this.loadPortfolioSnapshotChart(userId, nextAccountId || null);

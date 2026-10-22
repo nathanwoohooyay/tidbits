@@ -1,4 +1,14 @@
+<app-dashboard-header
+  [accounts]="accounts()"
+  [selectedAccountId]="selectedAccountId()"
+  [themeMode]="themeMode()"
+  [showAccountSelector]="false"
+  (accountChange)="onAccountChange($event)"
+  (toggleTheme)="toggleTheme()"
+  (signOut)="signOut()">
+</app-dashboard-header>
 <main class="app-content" role="main">
+
   <div class="dashboard-grid">
 	<section class="greeting-section" aria-label="Main dashboard overview">
 	  <div class="greeting-text">
@@ -28,7 +38,7 @@
 		  <div class="summary-item">
 			<span class="stat-label">Total Portfolio Value</span>
 			<span class="summary-value">{{ totalPortfolioValue() | currency:'USD' }}</span>
-			<span class="summary-value" [class.gain-text]="totalPortfolioChangePct() >= 0" [class.loss-text]="totalPortfolioChangePct() < 0">
+			<span class="metric-change" [class.gain-text]="totalPortfolioChangePct() >= 0" [class.loss-text]="totalPortfolioChangePct() < 0">
 			  {{ totalPortfolioChangePct() >= 0 ? '+' : '' }}{{ totalPortfolioChangePct() | number:'1.2-2' }}%
 			</span>
 		  </div>
@@ -50,7 +60,14 @@
 		  <span class="section-title">Accounts</span>
 		  <span style="font-size:.82rem;color:var(--clr-sienna)">{{ accountSummaries().length }} account{{ accountSummaries().length !== 1 ? 's' : '' }}</span>
 		</div>
+
+
 		<div class="section-body account-card-grid">
+      @if (accountSummaries().length === 0) {
+        <div class="no-accounts-message" routerLink="/account-management">
+          <p>No accounts found. Please <span style="font-weight:bold; cursor:pointer;">add an account</span> to view portfolio summaries.</p>
+        </div>
+      }
 		  @for (account of accountSummaries(); track account.accountId) {
 			<button type="button" class="account-summary-card" (click)="openAccountDashboard(account.accountId)">
 			  <div class="account-card-header">

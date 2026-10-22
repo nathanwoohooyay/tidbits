@@ -13,6 +13,13 @@ import {
   AumMetric
 } from '../../../core/models/models';
 
+interface TradingSummary {
+  label: string;
+  orderCount: number;
+  quantity: number;
+  value: number;
+}
+
 Chart.register(...registerables);
 
 @Component({
@@ -237,18 +244,90 @@ Chart.register(...registerables);
         </div>
       </div>
 
-      <!-- Charts Grid (Volume Velocity & Instrument Distribution) -->
-      <div class="charts-grid">
-        <!-- Main Line Chart: Volume Over Time -->
-        <div class="chart-card glass-panel line-chart-card">
+      <div class="chart-card glass-panel full-width-chart">
+        <div class="card-title-row">
+          <h2 class="card-title">Trading Volume Velocity (Over Time)</h2>
+        </div>
+        <div class="chart-wrapper volume-chart-wrapper">
+          <canvas #volumeTimeCanvas></canvas>
+        </div>
+      </div>
+
+      <div class="business-insights-grid">
+        <div class="insight-panel glass-panel">
           <div class="card-title-row">
-            <h2 class="card-title">Trading Volume Velocity (Over Time)</h2>
+            <h2 class="card-title">Top Stocks Traded</h2>
+            <label class="period-select-wrap">
+              <span class="panel-caption">By traded value</span>
+              <select class="input-control period-select" [ngModel]="selectedStockPeriod()" (ngModelChange)="onStockPeriodChange($event)">
+                <option value="week">Weekly</option>
+                <option value="month">Monthly</option>
+                <option value="year">Yearly</option>
+                <option value="all">All time</option>
+              </select>
+            </label>
           </div>
-          <div class="chart-wrapper">
-            <canvas #volumeTimeCanvas></canvas>
+          <div class="stock-chart-wrapper">
+            <canvas #topStocksCanvas></canvas>
           </div>
         </div>
 
+        <div class="insight-panel glass-panel">
+          <div class="card-title-row">
+            <h2 class="card-title">Top Clients by Volume</h2>
+            <span class="panel-caption">By traded value</span>
+          </div>
+          <div class="table-container compact-table">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Orders</th>
+                  <th>Quantity</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let client of topClientsByVolume()">
+                  <td>{{ client.label }}</td>
+                  <td class="mono-font">{{ client.orderCount | number }}</td>
+                  <td class="mono-font">{{ client.quantity | number }}</td>
+                  <td class="mono-font font-bold">\${{ client.value | number:'1.0-0' }}</td>
+                </tr>
+                <tr *ngIf="topClientsByVolume().length === 0">
+                  <td colspan="4" class="empty-cell">No filled trades in this period.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="insight-panel glass-panel cash-flow-panel">
+          <div class="card-title-row">
+            <h2 class="card-title">Cash Flow</h2>
+            <span class="panel-caption">Selected period</span>
+          </div>
+          <div class="cash-flow-grid">
+            <div>
+              <span class="summary-label">Deposits</span>
+              <strong class="cash-value positive">\${{ depositsFormatted() }}</strong>
+            </div>
+            <div>
+              <span class="summary-label">Withdrawals</span>
+              <strong class="cash-value negative">\${{ withdrawalsFormatted() }}</strong>
+            </div>
+            <div>
+              <span class="summary-label">Net Cash Flow</span>
+              <strong class="cash-value" [class.positive]="netCashFlow() >= 0" [class.negative]="netCashFlow() < 0">
+                \${{ netCashFlowFormatted() }}
+              </strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Grid (Volume Velocity & Instrument Distribution) -->
+      <div class="charts-grid">
         <!-- Doughnut Chart: By Instrument Type -->
         <div class="chart-card glass-panel doughnut-chart-card">
           <div class="card-title-row">
@@ -256,6 +335,15 @@ Chart.register(...registerables);
           </div>
           <div class="chart-wrapper square">
             <canvas #instrumentTypeCanvas></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card glass-panel">
+          <div class="card-title-row">
+            <h2 class="card-title">Buy vs Sell Volume</h2>
+          </div>
+          <div class="chart-wrapper square">
+            <canvas #buySellCanvas></canvas>
           </div>
         </div>
       </div>
@@ -362,7 +450,7 @@ Chart.register(...registerables);
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: var(--text-muted);
+      color: #5d4638;
     }
 
     .stat-val {
@@ -452,7 +540,7 @@ Chart.register(...registerables);
     }
 
     .input-control {
-      border: 1px solid var(--border-subtle);
+      border: 1px solid rgba(62, 36, 21, 0.24);
       border-radius: var(--radius-sm);
       padding: 8px 10px;
       background: #ffffff;
@@ -582,6 +670,73 @@ Chart.register(...registerables);
       border-top: 1px solid var(--border-subtle);
     }
 
+    .business-insights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .insight-panel {
+      padding: 18px 22px;
+      min-width: 0;
+    }
+
+    .cash-flow-panel {
+      grid-column: 1 / -1;
+    }
+
+    .panel-caption {
+      color: #5d4638;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .period-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .period-select {
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+
+    .stock-chart-wrapper {
+      position: relative;
+      height: 260px;
+      width: 100%;
+    }
+
+    .compact-table {
+      max-height: 270px;
+      overflow-y: auto;
+    }
+
+    .cash-flow-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .cash-flow-grid > div {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 14px;
+      background: #faf6ee;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .cash-value {
+      color: var(--text-primary);
+      font-size: 18px;
+    }
+
+    .cash-value.positive { color: #2a6142; }
+    .cash-value.negative { color: #a23b2a; }
+
     .summary-pill {
       background: #faf6ee;
       border: 1px solid var(--border-subtle);
@@ -595,7 +750,7 @@ Chart.register(...registerables);
     .summary-label {
       font-size: 11px;
       text-transform: uppercase;
-      color: var(--text-muted);
+      color: #5d4638;
       letter-spacing: 0.45px;
       font-weight: 700;
     }
@@ -606,10 +761,18 @@ Chart.register(...registerables);
       font-weight: 800;
     }
 
-    /* Charts Grid - 2 columns: Line velocity and Doughnut */
+    .full-width-chart {
+      width: 100%;
+    }
+
+    .volume-chart-wrapper {
+      height: 320px;
+    }
+
+    /* Secondary charts share the row below the business insight panels. */
     .charts-grid {
       display: grid;
-      grid-template-columns: 1.6fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 16px;
     }
 
@@ -633,12 +796,28 @@ Chart.register(...registerables);
       .charts-grid {
         grid-template-columns: 1fr;
       }
+
+      .business-insights-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cash-flow-panel {
+        grid-column: auto;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .cash-flow-grid {
+        grid-template-columns: 1fr;
+      }
     }
   `]
 })
 export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('volumeTimeCanvas') volumeTimeCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('instrumentTypeCanvas') instrumentTypeCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('buySellCanvas') buySellCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('topStocksCanvas') topStocksCanvas!: ElementRef<HTMLCanvasElement>;
 
   loading = signal(false);
   totalVolume = signal(0);
@@ -648,6 +827,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   selectedInstrument = signal('ALL');
   selectedClient = signal('ALL');
   selectedPeriodDays = signal(30);
+  selectedStockPeriod = signal<'week' | 'month' | 'year' | 'all'>('month');
 
   clientSearchText = signal('');
   clientDropdownOpen = signal(false);
@@ -739,6 +919,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.auditLogService.getTransactionLogs().subscribe((logs: TransactionLog[]) => {
       this.txnLogs.set(logs);
       this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+      this.updateBuySellChart();
+      this.updateTopStocksChart();
     });
   }
 
@@ -851,19 +1033,56 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     return total.toLocaleString(undefined, { maximumFractionDigits: 0 });
   }
 
+  topClientsByVolume(): TradingSummary[] {
+    return this.summarizeTrades('client').slice(0, 5);
+  }
+
+  deposits(): number {
+    return this.cashFlowTotals().deposits;
+  }
+
+  withdrawals(): number {
+    return this.cashFlowTotals().withdrawals;
+  }
+
+  netCashFlow(): number {
+    return this.deposits() - this.withdrawals();
+  }
+
+  depositsFormatted(): string {
+    return this.deposits().toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
+  withdrawalsFormatted(): string {
+    return this.withdrawals().toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
+  netCashFlowFormatted(): string {
+    return this.netCashFlow().toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
   onInstrumentChange(nextValue: string) {
     this.selectedInstrument.set(nextValue || 'ALL');
     this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+    this.updateBuySellChart();
   }
 
   onPeriodChange(nextValue: number) {
     this.selectedPeriodDays.set(Number(nextValue || 0));
     this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+    this.updateBuySellChart();
   }
 
   onClientChange(nextValue: string) {
     this.selectedClient.set(nextValue || 'ALL');
     this.updateLineChart(this.activityBuckets().length > 0 ? this.activityBuckets() : this.baseTimeData);
+    this.updateBuySellChart();
+  }
+
+  onStockPeriodChange(nextValue: string) {
+    const period = nextValue === 'week' || nextValue === 'year' || nextValue === 'all' ? nextValue : 'month';
+    this.selectedStockPeriod.set(period);
+    this.updateTopStocksChart();
   }
 
   toggleClientDropdown(event?: Event) {
@@ -916,9 +1135,63 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private isTradeTransaction(txn: TransactionLog): boolean {
     const event = String(txn.event || '').toUpperCase();
-    const orderType = String(txn.orderType || '').toUpperCase();
 
-    return event === 'ORDER_FILLED' || event === 'ORDER_ACCEPTED' || orderType === 'BUY' || orderType === 'SELL';
+    return event === 'ORDER_FILLED';
+  }
+
+  private isInSelectedPeriod(txn: TransactionLog, periodDays = this.selectedPeriodDays()): boolean {
+    const eventTime = Date.parse(txn.timestamp || txn.happenedAt || '');
+    if (Number.isNaN(eventTime)) return false;
+
+    return periodDays === 0 || eventTime >= Date.now() - (periodDays * 24 * 60 * 60 * 1000);
+  }
+
+  private matchesSelectedFilters(txn: TransactionLog): boolean {
+    return (this.selectedClient() === 'ALL' || this.getClientLabel(txn) === this.selectedClient())
+      && (this.selectedInstrument() === 'ALL' || this.getInstrumentLabel(txn) === this.selectedInstrument());
+  }
+
+  private selectedTradeLogs(periodDays = this.selectedPeriodDays()): TransactionLog[] {
+    return this.txnLogs().filter(txn =>
+      this.isTradeTransaction(txn)
+      && this.isInSelectedPeriod(txn, periodDays)
+      && this.matchesSelectedFilters(txn)
+    );
+  }
+
+  private summarizeTrades(groupBy: 'stock' | 'client', periodDays = this.selectedPeriodDays()): TradingSummary[] {
+    const summaries = new Map<string, TradingSummary>();
+
+    this.selectedTradeLogs(periodDays).forEach(txn => {
+      const label = groupBy === 'stock' ? this.getInstrumentLabel(txn) : this.getClientLabel(txn);
+      if (!label) return;
+
+      const quantity = Number(txn.quantity || 0);
+      const price = Number(txn.price || txn.stockPrice || 0);
+      const amount = txn.amount == null ? quantity * price : Number(txn.amount);
+      const existing = summaries.get(label) || { label, orderCount: 0, quantity: 0, value: 0 };
+
+      existing.orderCount += 1;
+      existing.quantity += Number.isFinite(quantity) ? quantity : 0;
+      existing.value += Number.isFinite(amount) ? Math.abs(amount) : 0;
+      summaries.set(label, existing);
+    });
+
+    return [...summaries.values()].sort((left, right) => right.value - left.value);
+  }
+
+  private cashFlowTotals(): { deposits: number; withdrawals: number } {
+    return this.txnLogs()
+      .filter(txn => this.isInSelectedPeriod(txn)
+        && (this.selectedClient() === 'ALL' || this.getClientLabel(txn) === this.selectedClient()))
+      .reduce((totals, txn) => {
+        const event = String(txn.event || '').toUpperCase();
+        const amount = Math.abs(Number(txn.amount || 0));
+
+        if (event === 'DEPOSIT') totals.deposits += Number.isFinite(amount) ? amount : 0;
+        if (event === 'WITHDRAW') totals.withdrawals += Number.isFinite(amount) ? amount : 0;
+        return totals;
+      }, { deposits: 0, withdrawals: 0 });
   }
 
   private getInstrumentLabel(txn: TransactionLog): string {
@@ -966,8 +1239,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     const values = data.map(d => d.total_value);
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 250);
-    gradient.addColorStop(0, 'rgba(138, 78, 35, 0.22)');
-    gradient.addColorStop(1, 'rgba(138, 78, 35, 0.0)');
+    gradient.addColorStop(0, 'rgba(192, 106, 36, 0.30)');
+    gradient.addColorStop(1, 'rgba(192, 106, 36, 0.02)');
 
     const chart = new Chart(ctx, {
       type: 'line',
@@ -976,11 +1249,11 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         datasets: [{
           label: 'Daily Traded Volume ($)',
           data: values,
-          borderColor: '#331b0e',
+          borderColor: '#3a2114',
           backgroundColor: gradient,
           fill: true,
           tension: 0.35,
-          pointBackgroundColor: '#8a4e23',
+          pointBackgroundColor: '#c06a24',
           pointBorderColor: '#ffffff',
           pointRadius: 4,
           pointHoverRadius: 6
@@ -1002,13 +1275,13 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(62, 36, 21, 0.06)' },
-            ticks: { color: '#6b5344', font: { size: 11 } }
+            grid: { color: 'rgba(62, 36, 21, 0.12)' },
+            ticks: { color: '#4f392b', font: { size: 11 } }
           },
           y: {
-            grid: { color: 'rgba(62, 36, 21, 0.06)' },
+            grid: { color: 'rgba(62, 36, 21, 0.12)' },
             ticks: {
-              color: '#6b5344',
+              color: '#4f392b',
               font: { size: 11 },
               callback: (val) => '$' + Number(val).toLocaleString()
             }
@@ -1037,7 +1310,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         labels,
         datasets: [{
           data: values,
-          backgroundColor: ['#331b0e', '#8a4e23', '#c27d38', '#2a6142'],
+          backgroundColor: ['#3a2114', '#c06a24', '#1f6b4a', '#b8432d'],
           borderColor: '#ffffff',
           borderWidth: 2
         }]
@@ -1048,10 +1321,123 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         plugins: {
           legend: {
             position: 'right',
-            labels: { color: '#574032', font: { size: 12 }, padding: 14 }
+            labels: { color: '#3f2a1d', font: { size: 12 }, padding: 14 }
           }
         },
         cutout: '70%'
+      }
+    });
+
+    this.charts.push(chart);
+  }
+
+  private updateBuySellChart() {
+    if (!this.buySellCanvas) return;
+    const ctx = this.buySellCanvas.nativeElement.getContext('2d');
+    if (!ctx) return;
+
+    const existing = this.charts.find(c => c.canvas === this.buySellCanvas.nativeElement);
+    if (existing) existing.destroy();
+
+    const totals = this.selectedTradeLogs().reduce((summary, txn) => {
+      const side = String(txn.orderType || '').toUpperCase();
+      const quantity = Number(txn.quantity || 0);
+      const price = Number(txn.price || txn.stockPrice || 0);
+      const amount = txn.amount == null ? quantity * price : Number(txn.amount);
+
+      if (side === 'BUY' || side === 'SELL') {
+        summary[side] += Number.isFinite(amount) ? Math.abs(amount) : 0;
+      }
+      return summary;
+    }, { BUY: 0, SELL: 0 });
+
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['BUY', 'SELL'],
+        datasets: [{
+          label: 'Traded Value ($)',
+          data: [totals.BUY, totals.SELL],
+          backgroundColor: ['#2a6142', '#a23b2a'],
+          borderRadius: 4,
+          maxBarThickness: 52
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: context => '$' + Number(context.raw || 0).toLocaleString()
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            beginAtZero: true,
+            ticks: { callback: value => '$' + Number(value).toLocaleString() }
+          }
+        }
+      }
+    });
+
+    this.charts.push(chart);
+  }
+
+  private updateTopStocksChart() {
+    if (!this.topStocksCanvas) return;
+    const ctx = this.topStocksCanvas.nativeElement.getContext('2d');
+    if (!ctx) return;
+
+    const existing = this.charts.find(c => c.canvas === this.topStocksCanvas.nativeElement);
+    if (existing) existing.destroy();
+
+    const periodDays = this.selectedStockPeriod() === 'week'
+      ? 7
+      : this.selectedStockPeriod() === 'year'
+        ? 365
+        : this.selectedStockPeriod() === 'all'
+          ? 0
+          : 30;
+    const summaries = this.summarizeTrades('stock', periodDays);
+    const topStocks = summaries.slice(0, 8);
+    const otherValue = summaries.slice(8).reduce((total, stock) => total + stock.value, 0);
+    const labels = topStocks.map(stock => stock.label);
+    const values = topStocks.map(stock => stock.value);
+
+    if (otherValue > 0) {
+      labels.push('Other');
+      values.push(otherValue);
+    }
+
+    const chart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: ['#3a2114', '#c06a24', '#1f6b4a', '#b8432d', '#6d3d22', '#d28b2c', '#477658', '#9b6943', '#7c6a5d'],
+          borderColor: '#fffdf9',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { color: '#3f2a1d', font: { size: 11 }, padding: 10 }
+          },
+          tooltip: {
+            callbacks: {
+              label: context => ' $' + Number(context.raw || 0).toLocaleString()
+            }
+          }
+        }
       }
     });
 

@@ -17,7 +17,8 @@ export class AuthService {
   readonly isAuthenticated = computed(() => !!this.currentUser());
   readonly userRole = computed<UserRole | null>(() => this.currentUser()?.role || null);
   readonly isAdmin = computed(() => this.userRole() === 'ADMIN');
-  readonly isAuditor = computed(() => ['ADMIN', 'AUDITOR', 'REPORTER'].includes(this.userRole() || ''));
+  readonly canViewAnalytics = computed(() => ['ADMIN', 'REPORTER'].includes(this.userRole() || ''));
+  readonly canViewAuditLogs = computed(() => ['ADMIN', 'AUDITOR'].includes(this.userRole() || ''));
   readonly roleBadgeClass = computed(() => {
     switch (this.userRole()) {
       case 'ADMIN':
@@ -116,6 +117,8 @@ export class AuthService {
     const targetRole = role || this.userRole();
     if (targetRole === 'ADMIN') {
       this.router.navigate(['/admin/dashboard']);
+    } else if (targetRole === 'AUDITOR') {
+      this.router.navigate(['/auditor/logs']);
     } else {
       this.router.navigate(['/auditor/analytics']);
     }

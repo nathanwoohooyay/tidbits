@@ -38,6 +38,35 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
         <button class="toast-close" (click)="toastMessage.set(null)">✕</button>
       </div>
 
+      <div class="role-overview glass-panel">
+        <div class="role-overview-header">
+          <div>
+            <h2 class="section-title">Role Distribution</h2>
+            <p class="section-subtitle">Current user access across the platform</p>
+          </div>
+          <div class="role-total">
+            <strong>{{ users().length | number }}</strong>
+            <span>Total users</span>
+          </div>
+        </div>
+        <div class="role-bars">
+          <div *ngFor="let role of roleDistribution()" class="role-bar-row">
+            <div class="role-bar-label">
+              <span class="badge" [ngClass]="getRoleBadgeClass(role.name)">{{ role.name }}</span>
+              <span class="role-count mono-font">{{ role.count | number }}</span>
+            </div>
+            <div class="role-track">
+              <div
+                class="role-fill"
+                [ngClass]="getRoleBadgeClass(role.name)"
+                [style.width.%]="role.percent"
+              ></div>
+            </div>
+            <span class="role-percent mono-font">{{ role.percent | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Filter Controls -->
       <div class="filter-card glass-panel">
         <div class="search-wrap">
@@ -210,7 +239,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               <label>Select Authorization Tier:</label>
               <select class="input-control" [(ngModel)]="newRoleSelection">
                 <option value="USER">USER (Standard Trader)</option>
-                <option value="AUDITOR">AUDITOR (Compliance & Surveillance)</option>
+                <option value="AUDITOR">AUDITOR</option>
                 <option value="REPORTER">REPORTER (Read-Only Reporting)</option>
                 <option value="ADMIN">ADMIN (Full Administrative Control)</option>
               </select>
@@ -291,6 +320,89 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       font-size: 13px;
       color: var(--text-secondary);
     }
+
+    .role-overview {
+      padding: 18px 22px;
+    }
+
+    .role-overview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      color: var(--text-primary);
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .section-subtitle {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .role-total {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .role-total strong {
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+    }
+
+    .role-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .role-bar-row {
+      display: grid;
+      grid-template-columns: 112px minmax(120px, 1fr) 42px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .role-bar-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .role-count,
+    .role-percent {
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .role-track {
+      height: 9px;
+      overflow: hidden;
+      background: #e5dac9;
+      border-radius: 999px;
+    }
+
+    .role-fill {
+      height: 100%;
+      min-width: 2px;
+      border-radius: inherit;
+    }
+
+    .role-fill.badge-admin { background: #713b22; }
+    .role-fill.badge-auditor { background: #1f6b4a; }
+    .role-fill.badge-reporter { background: #a8651b; }
+    .role-fill.badge-user { background: #46617a; }
 
     .toast-banner {
       display: flex;
@@ -558,6 +670,17 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       padding: 30px;
       color: var(--text-muted);
     }
+
+    @media (max-width: 640px) {
+      .role-overview-header {
+        align-items: flex-start;
+      }
+
+      .role-bar-row {
+        grid-template-columns: 102px minmax(80px, 1fr) 36px;
+        gap: 8px;
+      }
+    }
   `]
 })
 export class AdminUsersComponent implements OnInit {
@@ -599,6 +722,20 @@ export class AdminUsersComponent implements OnInit {
     }
 
     return list;
+  });
+
+  roleDistribution = computed(() => {
+    const roles = ['ADMIN', 'AUDITOR', 'REPORTER', 'USER'];
+    const total = this.users().length;
+
+    return roles.map(name => {
+      const count = this.users().filter((user: AdminUser) => this.getUserRole(user) === name).length;
+      return {
+        name,
+        count,
+        percent: total === 0 ? 0 : (count / total) * 100
+      };
+    });
   });
 
   constructor(private adminService: AdminService) {}

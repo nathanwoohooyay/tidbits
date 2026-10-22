@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(req -> req
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/admin/**").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "AUDITOR")
+                    .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "AUDITOR", "REPORTER")
                     .anyRequest().denyAll())
                 .oauth2ResourceServer((OAuth2ResourceServerConfigurer<HttpSecurity> oauth2) ->
                         oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(authenticationConverter)));

@@ -22,9 +22,8 @@ export const adminGuard: CanActivateFn = () => {
     return true;
   }
 
-  // If auditor, redirect to auditor dashboard instead of login
   if (authService.isAuthenticated()) {
-    router.navigate(['/auditor/analytics']);
+    authService.redirectByRole();
     return false;
   }
 
@@ -32,12 +31,34 @@ export const adminGuard: CanActivateFn = () => {
   return false;
 };
 
-export const auditorGuard: CanActivateFn = () => {
+export const analyticsGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.isAuthenticated() && authService.isAuditor()) {
+  if (authService.isAuthenticated() && authService.canViewAnalytics()) {
     return true;
+  }
+
+  if (authService.isAuthenticated()) {
+    authService.redirectByRole();
+    return false;
+  }
+
+  router.navigate(['/login']);
+  return false;
+};
+
+export const auditLogsGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isAuthenticated() && authService.canViewAuditLogs()) {
+    return true;
+  }
+
+  if (authService.isAuthenticated()) {
+    authService.redirectByRole();
+    return false;
   }
 
   router.navigate(['/login']);

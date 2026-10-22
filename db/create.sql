@@ -1,7 +1,7 @@
-CREATE TYPE order_type_enum AS ENUM('buy', 'sell');
-CREATE TYPE order_status_type AS ENUM('created', 'pending', 'placed', 'accepted', 'filled', 'canceled', 'rejected');
-CREATE TYPE transaction_type AS ENUM('buy', 'sell', 'deposit', 'withdraw');
-CREATE TYPE log_status_type AS ENUM('success', 'failure');
+CREATE TYPE order_type_enum AS ENUM('BUY', 'SELL');
+CREATE TYPE order_status_type AS ENUM('CREATED', 'PENDING', 'PLACED', 'ACCEPTED', 'FILLED', 'CANCELED', 'REJECTED');
+CREATE TYPE transaction_type AS ENUM('BUY', 'SELL', 'DEPOSIT', 'WITHDRAW');
+CREATE TYPE log_status_type AS ENUM('SUCCESS', 'FAILURE');
 
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
@@ -60,7 +60,7 @@ CREATE TABLE orders (
     quantity NUMERIC(17, 4) NOT NULL CHECK (quantity > 0),
     stock_price NUMERIC(15, 2) CHECK (stock_price > 0),
     order_type order_type_enum NOT NULL,
-    status order_status_type DEFAULT 'created' NOT NULL
+    status order_status_type DEFAULT 'CREATED' NOT NULL
 );
 
 CREATE TABLE order_status_history(

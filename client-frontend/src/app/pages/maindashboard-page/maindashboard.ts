@@ -2,11 +2,12 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { AccountHoldingDto, AccountService, AccountDto } from '../../services/account.service';
+import { AccountHoldingDto, AccountService, AccountDto, PortfolioSnapshotDto } from '../../services/account.service';
 import { GetHoldingsResponseDTO, PricingService } from '../../services/pricing.service';
 import { SessionService } from '../../services/session.service';
 import { tickerToName } from '../../components/dashboard/stock';
 import { DashboardChartComponent } from '../../components/dashboard/dashboard-chart.component';
+import { ChartPoint, ChartTimeframe } from '../../components/dashboard/dashboard.models';
 
 interface AccountSummary {
   accountId: number;
@@ -37,6 +38,8 @@ export class Maindashboard implements OnInit {
   readonly totalPortfolioValue = signal(0);
   readonly totalPortfolioChangePct = signal(0);
   readonly accountSummaries = signal<AccountSummary[]>([]);
+  readonly portfolioSnapshotPoints = signal<ChartPoint[]>([]);
+  readonly chartTimeframe = signal<ChartTimeframe>('1M');
 
   readonly totalNetWorth = computed(() => this.totalCashBalance() + this.totalPortfolioValue());
 
@@ -52,12 +55,17 @@ export class Maindashboard implements OnInit {
     }
 
     this.loadAggregatePortfolio(userId);
+    this.loadPortfolioSnapshotChart(userId);
   }
 
 
   openAccountDashboard(accountId: number) {
     this.session.setSelectedAccountId(accountId);
     void this.router.navigateByUrl('/dashboard');
+  }
+
+  setChartTimeframe(timeframe: ChartTimeframe) {
+    this.chartTimeframe.set(timeframe);
   }
 
   private loadAggregatePortfolio(userId: number) {
@@ -178,5 +186,48 @@ export class Maindashboard implements OnInit {
         this.error.set(err?.error?.message ?? 'Failed to load pricing data.');
       }
     });
+  }
+
+  private loadPortfolioSnapshotChart(userId: number) {
+    this.accountApi.listPortfolioSnapshotsByUser(userId).subscribe({
+      next: snapshots => {
+        this.portfolioSnapshotPoints.set(this.aggregateSnapshotsByDay(snapshots));
+      },
+      error: err => {
+        this.portfolioSnapshotPoints.set([]);
+        this.error.set(err?.error?.message ?? err?.error?.error ?? 'Failed to load portfolio history.');
+      },
+    });
+  }
+
+  private aggregateSnapshotsByDay(snapshots: PortfolioSnapshotDto[]): ChartPoint[] {
+    const latestByAccountDay = new Map<string, PortfolioSnapshotDto>();
+    const totalsByDay = new Map<string, number>();
+
+    for (const snapshot of snapshots) {
+      const day = snapshot.createdAt?.slice(0, 10);
+      if (!day || !Number.isFinite(snapshot.totalValue)) {
+        continue;
+      }
+
+      const accountDayKey = `${snapshot.accountId}:${day}`;
+      const current = latestByAccountDay.get(accountDayKey);
+
+      if (!current || snapshot.createdAt > current.createdAt) {
+        latestByAccountDay.set(accountDayKey, snapshot);
+      }
+    }
+
+    for (const snapshot of latestByAccountDay.values()) {
+      const day = snapshot.createdAt.slice(0, 10);
+      totalsByDay.set(day, (totalsByDay.get(day) ?? 0) + snapshot.totalValue);
+    }
+
+    return Array.from(totalsByDay.entries())
+      .sort(([leftDay], [rightDay]) => leftDay.localeCompare(rightDay))
+      .map(([day, totalValue]) => ({
+        date: `${day}T00:00:00`,
+        value: Number(totalValue.toFixed(2)),
+      }));
   }
 }

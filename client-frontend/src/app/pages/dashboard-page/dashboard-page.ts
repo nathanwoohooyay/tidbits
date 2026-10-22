@@ -130,7 +130,6 @@ setPortfolioValue(value: number) {
         this.currentUser.set(user);
         this.session.setCurrentUser(user);
         this.loadAccounts(user.userId);
-        this.loadPortfolioSnapshotChart(user.userId);
         this.startPolling();
       },
       error: err => {
@@ -155,6 +154,12 @@ setPortfolioValue(value: number) {
   onAccountChange(accountId: number) {
     this.selectedAccountId.set(accountId);
     this.session.setSelectedAccountId(accountId);
+
+    const userId = this.currentUser()?.userId ?? this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
+    if (userId) {
+      this.loadPortfolioSnapshotChart(userId, accountId || null);
+    }
+
     this.quickTradeSelection.set(null);
     this.clearCashMessages();
   }
@@ -199,7 +204,7 @@ setPortfolioValue(value: number) {
       this.refreshSelectedAccount(accountId);
       const userId = this.currentUser()?.userId ?? this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
       if (userId) {
-        this.loadPortfolioSnapshotChart(userId);
+        this.loadPortfolioSnapshotChart(userId, accountId || null);
       }
       const tradeHistory = this.tradeHistoryRef();
         if (!tradeHistory) {
@@ -336,6 +341,7 @@ setPortfolioValue(value: number) {
         this.selectedAccountId.set(nextAccountId);
         this.session.setAccounts(accounts.map(account => this.toSessionAccount(account)));
         this.session.setSelectedAccountId(nextAccountId);
+        this.loadPortfolioSnapshotChart(userId, nextAccountId || null);
         this.calculateOrderOverview(accounts);
       },
       error: err => {
@@ -450,8 +456,12 @@ setPortfolioValue(value: number) {
     };
   }
 
-  private loadPortfolioSnapshotChart(userId: number) {
-    this.accountApi.listPortfolioSnapshotsByUser(userId).subscribe({
+  private loadPortfolioSnapshotChart(userId: number, accountId: number | null = null) {
+    const request$ = accountId
+      ? this.accountApi.listPortfolioSnapshotsByAccount(accountId)
+      : this.accountApi.listPortfolioSnapshotsByUser(userId);
+
+    request$.subscribe({
       next: snapshots => {
         this.portfolioSnapshotPoints.set(this.aggregateSnapshotsByDay(snapshots));
       },

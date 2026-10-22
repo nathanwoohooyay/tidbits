@@ -58,6 +58,10 @@ export class AccountService {
     return this.http.get<PortfolioSnapshotDto[]>(`${this.portfolioSnapshotApiBase}/users/${userId}`);
   }
 
+  listPortfolioSnapshotsByAccount(accountId: number): Observable<PortfolioSnapshotDto[]> {
+    return this.http.get<PortfolioSnapshotDto[]>(`${this.portfolioSnapshotApiBase}/accounts/${accountId}`);
+  }
+
   createAccount(userId: number, nickname: string): Observable<AccountDto> {
     return this.http.post<AccountDto>(`${this.userApiBase}/${userId}/accounts`, {"nickname":nickname});
   }

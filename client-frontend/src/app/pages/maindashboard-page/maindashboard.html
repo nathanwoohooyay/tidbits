@@ -39,7 +39,11 @@
 		</div>
 	  </section>
 
-	  <app-dashboard-chart></app-dashboard-chart>
+	  <app-dashboard-chart
+		[dataPoints]="portfolioSnapshotPoints()"
+		[chartTimeframe]="chartTimeframe()"
+		(chartTimeframeChange)="setChartTimeframe($event)">
+	  </app-dashboard-chart>
 
 	  <section class="section-card" aria-label="Account portfolio summaries">
 		<div class="section-header">

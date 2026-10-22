@@ -1,0 +1,75 @@
+<main class="app-content" role="main">
+  <div class="dashboard-grid">
+	<section class="greeting-section" aria-label="Main dashboard overview">
+	  <div class="greeting-text">
+		<h2>Portfolio Overview</h2>
+		<p class="greeting-sub">Combined balances and performance across all trading accounts.</p>
+	  </div>
+	</section>
+
+	@if (loading()) {
+	  <section class="section-card">
+		<div class="section-body">Loading portfolio summary...</div>
+	  </section>
+	} @else if (error()) {
+	  <section class="section-card">
+		<div class="section-body">{{ error() }}</div>
+	  </section>
+	} @else {
+	  <section class="section-card" aria-label="Aggregate portfolio metrics">
+		<div class="section-header">
+		  <span class="section-title">All Accounts Summary</span>
+		</div>
+		<div class="section-body summary-grid">
+		  <div class="summary-item">
+			<span class="stat-label">Total Cash Balance</span>
+			<span class="summary-value">{{ totalCashBalance() | currency:'USD' }}</span>
+		  </div>
+		  <div class="summary-item">
+			<span class="stat-label">Total Portfolio Value</span>
+			<span class="summary-value">{{ totalPortfolioValue() | currency:'USD' }}</span>
+			<span class="summary-value" [class.gain-text]="totalPortfolioChangePct() >= 0" [class.loss-text]="totalPortfolioChangePct() < 0">
+			  {{ totalPortfolioChangePct() >= 0 ? '+' : '' }}{{ totalPortfolioChangePct() | number:'1.2-2' }}%
+			</span>
+		  </div>
+		  <div class="summary-item">
+			<span class="stat-label">Total Net Worth</span>
+			<span class="summary-value">{{ totalNetWorth() | currency:'USD' }}</span>
+		  </div>
+		</div>
+	  </section>
+
+	  <app-dashboard-chart></app-dashboard-chart>
+
+	  <section class="section-card" aria-label="Account portfolio summaries">
+		<div class="section-header">
+		  <span class="section-title">Accounts</span>
+		  <span style="font-size:.82rem;color:var(--clr-sienna)">{{ accountSummaries().length }} account{{ accountSummaries().length !== 1 ? 's' : '' }}</span>
+		</div>
+		<div class="section-body account-card-grid">
+		  @for (account of accountSummaries(); track account.accountId) {
+			<button type="button" class="account-summary-card" (click)="openAccountDashboard(account.accountId)">
+			  <div class="account-card-header">
+				<span class="account-name">{{ account.nickname }}</span>
+			  </div>
+			  <div class="account-card-metric">
+				<span class="stat-label">Net Worth</span>
+				<span class="summary-value">{{ account.netWorth | currency:'USD' }}</span>
+			  </div>
+			  <div class="account-card-metric">
+				<span class="stat-label">Cash Balance</span>
+				<span class="stat-value">{{ account.cashBalance | currency:'USD' }}</span>
+			  </div>
+			  <div class="account-card-metric">
+				<span class="stat-label">Portfolio Change</span>
+				<span [class.gain-text]="account.portfolioChangePct >= 0" [class.loss-text]="account.portfolioChangePct < 0">
+				  {{ account.portfolioChangePct | number:'1.2-2' }}%
+				</span>
+			  </div>
+			</button>
+		  }
+		</div>
+	  </section>
+	}
+  </div>
+</main>

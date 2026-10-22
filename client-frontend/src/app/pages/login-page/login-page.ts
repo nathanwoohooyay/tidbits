@@ -54,7 +54,7 @@ export class LoginPageComponent {
 
         this.session.setAuthToken(res.token);
         this.loginLoading = false;
-        await this.router.navigateByUrl('/dashboard');
+        await this.router.navigateByUrl('/maindashboard');
       },
       error: err => {
         this.loginLoading = false;

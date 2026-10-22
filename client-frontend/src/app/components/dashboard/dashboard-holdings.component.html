@@ -36,8 +36,8 @@
                 {{ formatPercent(holding.changePercent) }}
               </td>
               <td class="right">
-                <button class="btn-quick-trade btn-quick-buy" (click)="quickTrade.emit({ instrumentId: holding.instrument_id, mode: 'buy' })">Buy</button>
-                <button class="btn-quick-trade btn-quick-sell" (click)="quickTrade.emit({ instrumentId: holding.instrument_id, mode: 'sell' })">Sell</button>
+                <button class="btn-quick-trade btn-quick-buy" (click)="quickTrade.emit({ instrumentId: holding.instrument_id, ticker: holding.ticker, name: holding.name, mode: 'buy' })">Buy</button>
+                <button class="btn-quick-trade btn-quick-sell" (click)="quickTrade.emit({ instrumentId: holding.instrument_id, ticker: holding.ticker, name: holding.name, mode: 'sell' })">Sell</button>
               </td>
             </tr>
           }

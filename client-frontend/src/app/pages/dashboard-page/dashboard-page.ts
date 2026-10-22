@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal, viewChild, DestroyRef, effect } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild, DestroyRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin, interval } from 'rxjs';
 import { startWith } from 'rxjs/operators';
@@ -55,7 +55,6 @@ export class DashboardPageComponent implements OnInit {
   readonly today = new Date();
 
   readonly tradeHistoryRef = viewChild(DashboardTradeHistoryComponent);
-  readonly holdingsRef = viewChild(DashboardHoldingsComponent);
   private readonly router = inject(Router);
   private readonly session = inject(SessionService);
   private readonly accountApi = inject(AccountService);
@@ -83,6 +82,7 @@ export class DashboardPageComponent implements OnInit {
   trendFilter = signal<TrendFilter>('trending');
   chartTimeframe = signal<'1W' | '1M' | '3M' | '1Y' | 'ALL'>('1M');
   quickTradeSelection = signal<QuickTradeSelection | null>(null);
+  holdingsRefreshToken = signal(0);
   portfolioValue = signal(0);
   portfolioChange = signal(0);
   portfolioSnapshotPoints = signal<ChartPoint[]>([]);
@@ -179,12 +179,19 @@ setPortfolioValue(value: number) {
 
   onTradeExecuted(execution: placedOrderDTO) {
     const tradeHistory = this.tradeHistoryRef();
-    if (!tradeHistory) {
-        console.log("Trade history component not found.");
-        return;
+    if (tradeHistory) {
+      const placedOrder: placedOrderDTO = {
+        ...execution,
+        status: 'PLACED',
+      };
+      tradeHistory.ordersArray.update(existing => [placedOrder, ...existing]);
+      tradeHistory.setDateSort('desc');
     }
-    tradeHistory.ordersArray.update(existing => [execution, ...existing]);
-    tradeHistory.setDateSort('desc');
+
+    const accountId = this.selectedAccountId();
+    if (accountId > 0) {
+      this.refreshSelectedAccount(accountId);
+    }
   }
 
     private startPolling() {
@@ -201,24 +208,16 @@ setPortfolioValue(value: number) {
     }
   refreshData(accountId: number){
       console.log("\nRefreshing data for accountId:", accountId);
+      this.holdingsRefreshToken.update(token => token + 1);
       this.refreshSelectedAccount(accountId);
       const userId = this.currentUser()?.userId ?? this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
       if (userId) {
         this.loadPortfolioSnapshotChart(userId, accountId || null);
       }
       const tradeHistory = this.tradeHistoryRef();
-        if (!tradeHistory) {
-            console.log("Trade history component not found.");
-            return;
+      if (tradeHistory) {
+        tradeHistory.loadHistory(accountId);
         }
-    tradeHistory.loadHistory(accountId);
-
-    const holdings = this.holdingsRef();
-    if (!holdings) {
-        console.log("Holdings component not found.");
-        return;
-    }
-    holdings.loadHoldings(accountId);
 
   }
 

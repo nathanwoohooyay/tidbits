@@ -65,6 +65,7 @@
               (portfolioValue)="setPortfolioValue($event)"
               (portfolioChange)="setPortfolioChange($event)"
         [selectedAccountId]="selectedAccountId()"
+        [refreshToken]="holdingsRefreshToken()"
         (quickTrade)="onQuickTrade($event)">
       </app-dashboard-holdings>
 
@@ -73,6 +74,8 @@
         [cashBalance]="cashBalance()"
         [selectedMode]="quickTradeSelection()?.mode ?? 'buy'"
         [selectedInstrumentId]="quickTradeSelection()?.instrumentId ?? null"
+        [selectedTicker]="quickTradeSelection()?.ticker ?? null"
+        [selectedInstrumentName]="quickTradeSelection()?.name ?? null"
         (tradeExecuted)="onTradeExecuted($event)">
       </app-dashboard-trade-desk>
 

@@ -14,8 +14,6 @@ interface StockOption {
   name: string;
 }
 
-type SelectedQuoteView = Omit<PricingQuoteDTO, 'instrumentId' | 'stale' | 'currency'>;
-
 @Component({
   selector: 'app-dashboard-trade-desk',
   standalone: true,
@@ -26,6 +24,8 @@ export class DashboardTradeDeskComponent implements OnChanges {
   @Input() cashBalance = 0;
   @Input() selectedMode: TradeMode = 'buy';
   @Input() selectedInstrumentId: number | null = null;
+  @Input() selectedTicker: string | null = null;
+  @Input() selectedInstrumentName: string | null = null;
 
   @Output() tradeExecuted = new EventEmitter<placedOrderDTO>();
 
@@ -39,7 +39,7 @@ export class DashboardTradeDeskComponent implements OnChanges {
   quoteLoading = signal(false);
   quoteError = signal('');
   selectedStock = signal<StockOption | null>(null);
-  selectedQuote = signal<SelectedQuoteView | null>(null);
+  selectedQuote = signal<PricingQuoteDTO | null>(null);
 
 
   readonly stockOptions: StockOption[] = Array.from(tickerToName.entries()).map(([ticker, name], index) => ({
@@ -69,8 +69,12 @@ export class DashboardTradeDeskComponent implements OnChanges {
     if (changes['selectedMode']) {
       this.tradeMode.set(this.selectedMode);
     }
-    if (changes['selectedInstrumentId']) {
-      this.selectStockByInstrumentId(this.selectedInstrumentId);
+    if (changes['selectedInstrumentId'] || changes['selectedTicker'] || changes['selectedInstrumentName']) {
+      this.selectStockByInstrumentId(
+        this.selectedInstrumentId,
+        this.selectedTicker ?? undefined,
+        this.selectedInstrumentName ?? undefined
+      );
       this.tradeQuantity.set(null);
       this.tradeError.set('');
       this.tradeSuccess.set('');
@@ -97,7 +101,27 @@ export class DashboardTradeDeskComponent implements OnChanges {
     this.tradeError.set('');
     this.tradeSuccess.set('');
     this.quoteError.set('');
-    this.loadSelectedQuote(stock.ticker);
+    this.loadSelectedQuote(stock.ticker, stock);
+  }
+
+  lookupEnteredSymbol() {
+    const symbol = this.tradeSearchTerm().trim().toUpperCase();
+    if (!symbol) {
+      return;
+    }
+
+    const knownStock = this.stockOptions.find(stock => stock.ticker === symbol);
+    if (knownStock) {
+      this.selectStock(knownStock);
+      return;
+    }
+
+    this.tradeInstrumentId.set(null);
+    this.selectedStock.set(null);
+    this.tradeQuantity.set(null);
+    this.tradeError.set('');
+    this.tradeSuccess.set('');
+    this.loadSelectedQuote(symbol);
   }
 
   onSearchTermChange() {
@@ -125,7 +149,7 @@ export class DashboardTradeDeskComponent implements OnChanges {
   }
 
   canExecuteTrade(): boolean {
-    if (!this.selectedQuote() || !this.tradeQuantity() || !this.tradeQuantity() || this.tradeQuantity()! <= 0) {
+    if (!this.selectedQuote()?.instrumentId || !this.tradeQuantity() || this.tradeQuantity()! <= 0) {
       return false;
     }
     if (this.tradeMode() === 'buy') {
@@ -166,7 +190,7 @@ return true;
 
     const payload : OrderDTO  = {
       accountId: this.selectedAccountId,
-      instrumentId: stock.instrumentId,
+      instrumentId: quote.instrumentId,
       quantity: quantity,
       stockPrice: quote.price, // get from pricer, load into selected instrument
       orderType: this.tradeMode().toUpperCase() as 'BUY' | 'SELL'
@@ -188,7 +212,7 @@ return true;
     });
   }
 
-  private selectStockByInstrumentId(instrumentId: number | null) {
+  private selectStockByInstrumentId(instrumentId: number | null, ticker?: string, name?: string) {
     if (!instrumentId) {
       this.tradeInstrumentId.set(null);
       this.selectedStock.set(null);
@@ -198,7 +222,8 @@ return true;
       return;
     }
 
-    const stock = this.stockOptions.find(option => option.instrumentId === instrumentId) ?? null;
+    const stock = this.stockOptions.find(option => option.instrumentId === instrumentId)
+      ?? (ticker ? { instrumentId, ticker, name: name ?? ticker } : null);
 
     if (!stock) {
       this.tradeInstrumentId.set(null);
@@ -212,7 +237,7 @@ return true;
     this.selectStock(stock);
   }
 
-  private loadSelectedQuote(symbol: string) {
+  private loadSelectedQuote(symbol: string, knownStock?: StockOption) {
     this.quoteLoading.set(true);
     this.quoteError.set('');
     this.selectedQuote.set(null);
@@ -226,19 +251,21 @@ return true;
           return;
         }
 
-        console.log("Getting market data...");
-        console.log(quote);
-        this.selectedQuote.set({
-          symbol: quote.symbol,
-          price: quote.price,
-          change: quote.change,
-          bid: quote.bid,
-          ask: quote.ask,
-          changePercent: quote.changePercent,
-          prevClose: quote.prevClose,
-          asOf: quote.asOf,
-          source: quote.source,
-        });
+        if (!quote.instrumentId) {
+          this.quoteError.set('The quote did not include a tradeable instrument.');
+          return;
+        }
+
+        const stock: StockOption = knownStock ?? {
+          instrumentId: quote.instrumentId,
+          ticker: quote.symbol,
+          name: tickerToName.get(quote.symbol) ?? quote.symbol,
+        };
+
+        this.tradeInstrumentId.set(quote.instrumentId);
+        this.selectedStock.set(stock);
+        this.tradeSearchTerm.set(`${stock.ticker} — ${stock.name}`);
+        this.selectedQuote.set(quote);
         this.quoteLoading.set(false);
       },
       error: err => {

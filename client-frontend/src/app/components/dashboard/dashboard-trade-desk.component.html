@@ -19,6 +19,7 @@
             type="search"
             [ngModel]="tradeSearchTerm()"
             (ngModelChange)="tradeSearchTerm.set($event); onSearchTermChange()"
+            (keydown.enter)="lookupEnteredSymbol()"
             placeholder="Search ticker or company name"
             autocomplete="off">
 

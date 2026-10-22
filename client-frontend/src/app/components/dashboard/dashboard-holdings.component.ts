@@ -5,7 +5,8 @@ import { formatCurrency, formatPercent } from './dashboard.utils';
 import {AccountService, AccountHoldingDto} from '../../services/account.service';
 import {PricingService, GetHoldingsResponseDTO, PricingQuoteDTO} from '../../services/pricing.service';
 import { tickerToName } from './stock';
-import { map } from 'rxjs';
+import { forkJoin, map } from 'rxjs';
+import { OrderService } from '../../services/order.service';
 
 export interface HoldingDTO {
   holding_id: number;
@@ -27,7 +28,7 @@ export interface HoldingDTO {
   templateUrl: './dashboard-holdings.component.html'
 })
 export class DashboardHoldingsComponent implements OnInit {
-  @Output() quickTrade = new EventEmitter<{ instrumentId: number; mode: TradeMode }>();
+  @Output() quickTrade = new EventEmitter<{ instrumentId: number; mode: TradeMode; ticker: string; name: string }>();
   @Output() portfolioValue = new EventEmitter<number>();
    @Output() portfolioChange = new EventEmitter<number>();
 
@@ -45,10 +46,27 @@ export class DashboardHoldingsComponent implements OnInit {
     return this._selectedAccountId;
   }
 
+  @Input()
+  set refreshToken(value: number) {
+    if (value !== this._refreshToken && this._selectedAccountId != null) {
+      const accountId = this._selectedAccountId;
+      this.loadHoldings(accountId);
+      setTimeout(() => {
+        if (this._refreshToken === value && this._selectedAccountId === accountId) {
+          this.loadHoldings(accountId);
+        }
+      }, 4000);
+    }
+    this._refreshToken = value;
+  }
+
+  private _refreshToken = 0;
+
   readonly formatCurrency = formatCurrency;
   readonly formatPercent = formatPercent;
 
   private readonly accountService = inject(AccountService);
+  private readonly orderService = inject(OrderService);
   private readonly pricingService = inject(PricingService);
 
   stockTickers = Array.from(tickerToName.keys());
@@ -67,16 +85,37 @@ export class DashboardHoldingsComponent implements OnInit {
  loadHoldings(accountId: number) {
   // clear the array
   this.expandedHoldingsArray.set([]);
-   this.accountService.listHoldings(accountId).subscribe({
-        next: holdingsArray => {
+   forkJoin({
+     holdings: this.accountService.listHoldings(accountId),
+     orders: this.orderService.getOrders(accountId),
+   }).subscribe({
+        next: ({ holdings: holdingsArray, orders }) => {
           console.log(holdingsArray);
+          const filledOrders = orders.filter(order => order.status.toUpperCase() === 'FILLED');
+          const filledInstrumentIds = new Set(
+            filledOrders.map(order => order.instrument.instrumentId)
+          );
+          const instrumentsById = new Map(
+            filledOrders.map(order => [order.instrument.instrumentId, order.instrument])
+          );
 
          let totalInvested=0;
          let totalValue=0;
          let totalChangeVal = 0;
 
           holdingsArray.forEach(holding => {
-            const ticker = this.stockTickers[holding.instrumentId - 1];
+            if (!filledInstrumentIds.has(holding.instrumentId)) {
+              return;
+            }
+
+            const instrument = instrumentsById.get(holding.instrumentId);
+            const ticker = instrument?.ticker ?? this.stockTickers[holding.instrumentId - 1];
+            const name = instrument?.name ?? this.stockNames[holding.instrumentId - 1] ?? ticker;
+
+            if (!ticker) {
+              console.error(`No ticker found for instrument ${holding.instrumentId}.`);
+              return;
+            }
 
             this.getMarketData(ticker).subscribe({
               next: marketInfo => {
@@ -91,7 +130,7 @@ export class DashboardHoldingsComponent implements OnInit {
                   instrument_id: holding.instrumentId,
                   quantity: holding.quantity,
                   ticker: ticker,
-                  name: this.stockNames[holding.instrumentId - 1],
+                  name,
                   amount_invested: holding.amountInvested,
                   currentPrice: marketInfo.marketPrice,
                   totalValue: calculatedInfo.marketValue,

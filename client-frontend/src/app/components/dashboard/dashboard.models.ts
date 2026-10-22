@@ -116,6 +116,8 @@ export interface TradeExecution {
 export interface QuickTradeSelection {
   instrumentId: number;
   mode: TradeMode;
+  ticker?: string;
+  name?: string;
 }
 
 export interface DashboardMockData {

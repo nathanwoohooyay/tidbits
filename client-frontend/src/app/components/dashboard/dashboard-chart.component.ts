@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { ChartDataMap, ChartSeries, ChartTimeframe } from './dashboard.models';
+import { ChartPoint, ChartSeries, ChartTimeframe } from './dashboard.models';
 import { formatCurrency } from './dashboard.utils';
 
 @Component({
@@ -32,15 +32,89 @@ import { formatCurrency } from './dashboard.utils';
   `]
 })
 export class DashboardChartComponent {
-  @Input() dataByTimeframe!: ChartDataMap;
+  @Input() dataPoints: ChartPoint[] = [];
+  @Input() dates: string[] = [];
+  @Input() values: number[] = [];
   @Input() chartTimeframe: ChartTimeframe = '1M';
   @Output() chartTimeframeChange = new EventEmitter<ChartTimeframe>();
 
-  readonly timeframes: ChartTimeframe[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
+  readonly timeframes: ChartTimeframe[] = ['1W', '1M', '3M', '1Y', 'ALL'];
   readonly formatCurrency = formatCurrency;
 
+  private yBounds(values: number[]): { min: number; max: number } {
+    const finiteValues = values.filter(value => Number.isFinite(value));
+
+    if (finiteValues.length === 0) {
+      return { min: 0, max: 1 };
+    }
+
+    return {
+      min: Math.min(...finiteValues),
+      max: Math.max(...finiteValues),
+    };
+  }
+
   get currentData(): ChartSeries {
-    return this.dataByTimeframe?.[this.chartTimeframe] ?? { labels: [], values: [] };
+    const points = this.filteredPoints();
+    if (points.length === 0) {
+      return { labels: [], values: [] };
+    }
+    return {
+      labels: points.map(point => this.labelForDay(new Date(point.date))),
+      values: points.map(point => point.value),
+    };
+  }
+
+  private filteredPoints(): ChartPoint[] {
+    const parsed = this.inputPoints()
+      .map(point => ({
+        value: point.value,
+        date: new Date(point.date),
+      }))
+      .filter(point => Number.isFinite(point.value) && !Number.isNaN(point.date.getTime()))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    if (parsed.length === 0 || this.chartTimeframe === 'ALL') {
+      return parsed.map(point => ({ date: point.date.toISOString(), value: point.value }));
+    }
+
+    const end = parsed[parsed.length - 1].date;
+    const start = new Date(end);
+
+    switch (this.chartTimeframe) {
+      case '1W':
+        start.setDate(start.getDate() - 6);
+        break;
+      case '1M':
+        start.setMonth(start.getMonth() - 1);
+        break;
+      case '3M':
+        start.setMonth(start.getMonth() - 3);
+        break;
+      case '1Y':
+        start.setFullYear(start.getFullYear() - 1);
+        break;
+    }
+
+    return parsed
+      .filter(point => point.date >= start && point.date <= end)
+      .map(point => ({ date: point.date.toISOString(), value: point.value }));
+  }
+
+  private inputPoints(): ChartPoint[] {
+    if (this.dataPoints.length > 0) {
+      return this.dataPoints;
+    }
+
+    const pairCount = Math.min(this.dates.length, this.values.length);
+    return Array.from({ length: pairCount }, (_, index) => ({
+      date: this.dates[index],
+      value: this.values[index],
+    }));
+  }
+
+  private labelForDay(date: Date): string {
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   }
 
   get startValue(): number {
@@ -61,14 +135,14 @@ export class DashboardChartComponent {
       return '';
     }
 
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
+    const { min, max } = this.yBounds(values);
+    const center = (min + max) / 2;
+    const halfRange = Math.max((max - min) / 2, 1);
 
     return values
       .map((value, index) => {
         const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100;
-        const y = 36 - (((value - min) / range) * 28 + 4);
+        const y = 20 - ((value - center) / halfRange) * 14;
         return `${x},${y}`;
       })
       .join(' ');

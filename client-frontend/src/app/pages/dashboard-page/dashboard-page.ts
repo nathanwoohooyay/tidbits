@@ -5,8 +5,9 @@ import { forkJoin, interval } from 'rxjs';
 import { startWith } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SessionService } from '../../services/session.service';
-import { buildMockChartData, getMockDashboardData } from '../../components/dashboard/dashboard.mock-data';
+import { getMockDashboardData } from '../../components/dashboard/dashboard.mock-data';
 import {
+  ChartPoint,
   DashboardNotices,
   Instrument,
   Order,
@@ -26,7 +27,7 @@ import { DashboardTradeDeskComponent } from '../../components/dashboard/dashboar
 import { DashboardTradeHistoryComponent } from '../../components/dashboard/dashboard-trade-history.component';
 import { DashboardCashPanelComponent } from '../../components/dashboard/dashboard-cash-panel.component';
 import {UserDTO, UserService} from '../../services/user.service';
-import {AccountDto, AccountHoldingDto, AccountService} from '../../services/account.service';
+import {AccountDto, AccountHoldingDto, AccountService, PortfolioSnapshotDto} from '../../services/account.service';
 import { SessionAccount } from '../../services/session.service';
 import { OrderService, placedOrderDTO } from '../../services/order.service';
 
@@ -80,10 +81,11 @@ export class DashboardPageComponent implements OnInit {
   usingPlaceholderMarketData = signal(false);
   themeMode = signal<ThemeMode>('light');
   trendFilter = signal<TrendFilter>('trending');
-  chartTimeframe = signal<'1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'>('1M');
+  chartTimeframe = signal<'1W' | '1M' | '3M' | '1Y' | 'ALL'>('1M');
   quickTradeSelection = signal<QuickTradeSelection | null>(null);
   portfolioValue = signal(0);
   portfolioChange = signal(0);
+  portfolioSnapshotPoints = signal<ChartPoint[]>([]);
 
   selectedAccount = computed(() =>
     this.accounts().find(account => account.accountId === this.selectedAccountId()) ?? null
@@ -94,7 +96,7 @@ export class DashboardPageComponent implements OnInit {
 
   totalNetWorth = computed(() => this.portfolioValue() + this.cashBalance());
 
-  chartData = computed(() => buildMockChartData(this.totalNetWorth()));
+  chartDataPoints = computed(() => this.portfolioSnapshotPoints());
   instrumentLabels = computed(() =>
     Object.fromEntries(this.instruments().map(instrument => [instrument.instrument_id, instrument.ticker])) as Record<number, string>
   );
@@ -128,6 +130,7 @@ setPortfolioValue(value: number) {
         this.currentUser.set(user);
         this.session.setCurrentUser(user);
         this.loadAccounts(user.userId);
+        this.loadPortfolioSnapshotChart(user.userId);
         this.startPolling();
       },
       error: err => {
@@ -141,7 +144,7 @@ setPortfolioValue(value: number) {
     this.applyTheme(nextMode);
   }
 
-  setChartTimeframe(timeframe: '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL') {
+  setChartTimeframe(timeframe: '1W' | '1M' | '3M' | '1Y' | 'ALL') {
     this.chartTimeframe.set(timeframe);
   }
 
@@ -194,6 +197,10 @@ setPortfolioValue(value: number) {
   refreshData(accountId: number){
       console.log("\nRefreshing data for accountId:", accountId);
       this.refreshSelectedAccount(accountId);
+      const userId = this.currentUser()?.userId ?? this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
+      if (userId) {
+        this.loadPortfolioSnapshotChart(userId);
+      }
       const tradeHistory = this.tradeHistoryRef();
         if (!tradeHistory) {
             console.log("Trade history component not found.");
@@ -441,6 +448,49 @@ setPortfolioValue(value: number) {
       cash_balance: account.cashBalance,
       created_at: new Date().toISOString(),
     };
+  }
+
+  private loadPortfolioSnapshotChart(userId: number) {
+    this.accountApi.listPortfolioSnapshotsByUser(userId).subscribe({
+      next: snapshots => {
+        this.portfolioSnapshotPoints.set(this.aggregateSnapshotsByDay(snapshots));
+      },
+      error: err => {
+        this.portfolioSnapshotPoints.set([]);
+        this.cashError = err?.error?.message ?? err?.error?.error ?? 'Failed to load portfolio history.';
+      },
+    });
+  }
+
+  private aggregateSnapshotsByDay(snapshots: PortfolioSnapshotDto[]): ChartPoint[] {
+    const latestByAccountDay = new Map<string, PortfolioSnapshotDto>();
+    const totalsByDay = new Map<string, number>();
+
+    for (const snapshot of snapshots) {
+      const day = snapshot.createdAt?.slice(0, 10);
+      if (!day || !Number.isFinite(snapshot.totalValue)) {
+        continue;
+      }
+
+      const accountDayKey = `${snapshot.accountId}:${day}`;
+      const current = latestByAccountDay.get(accountDayKey);
+
+      if (!current || snapshot.createdAt > current.createdAt) {
+        latestByAccountDay.set(accountDayKey, snapshot);
+      }
+    }
+
+    for (const snapshot of latestByAccountDay.values()) {
+      const day = snapshot.createdAt.slice(0, 10);
+      totalsByDay.set(day, (totalsByDay.get(day) ?? 0) + snapshot.totalValue);
+    }
+
+    return Array.from(totalsByDay.entries())
+      .sort(([leftDay], [rightDay]) => leftDay.localeCompare(rightDay))
+      .map(([day, totalValue]) => ({
+        date: `${day}T00:00:00`,
+        value: Number(totalValue.toFixed(2)),
+      }));
   }
 
 }

@@ -1,7 +1,7 @@
 export type ThemeMode = 'light' | 'dark';
 export type TrendFilter = 'trending' | 'gainers' | 'losers' | 'volume';
 export type TradeMode = 'buy' | 'sell';
-export type ChartTimeframe = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL';
+export type ChartTimeframe = '1W' | '1M' | '3M' | '1Y' | 'ALL';
 
 export interface User {
   user_id: number;
@@ -100,6 +100,11 @@ export interface ChartSeries {
 }
 
 export type ChartDataMap = Record<ChartTimeframe, ChartSeries>;
+
+export interface ChartPoint {
+  date: string;
+  value: number;
+}
 
 export interface TradeExecution {
   instrumentId: number;

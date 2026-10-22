@@ -23,6 +23,13 @@ export interface AccountHoldingDto {
   amountInvested: number;
 }
 
+export interface PortfolioSnapshotDto {
+  snapshotId: number;
+  accountId: number;
+  totalValue: number;
+  createdAt: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -30,6 +37,7 @@ export class AccountService {
   private readonly http = inject(HttpClient);
   private readonly userApiBase = '/api/users';
   private readonly accountApiBase = '/api/accounts';
+  private readonly portfolioSnapshotApiBase = '/api/portfolio-snapshots';
   private readonly plainTextHeaders = new HttpHeaders({
     'Content-Type': 'text/plain'
   });
@@ -44,6 +52,10 @@ export class AccountService {
 
   listHoldings(accountId: number): Observable<AccountHoldingDto[]> {
     return this.http.get<AccountHoldingDto[]>(`${this.accountApiBase}/${accountId}/holdings`);
+  }
+
+  listPortfolioSnapshotsByUser(userId: number): Observable<PortfolioSnapshotDto[]> {
+    return this.http.get<PortfolioSnapshotDto[]>(`${this.portfolioSnapshotApiBase}/users/${userId}`);
   }
 
   createAccount(userId: number, nickname: string): Observable<AccountDto> {

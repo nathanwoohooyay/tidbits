@@ -1,7 +1,6 @@
 import {
   Account,
-  ChartDataMap,
-  ChartTimeframe,
+  ChartPoint,
   DashboardMockData,
   Holding,
   Instrument,
@@ -332,24 +331,25 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function buildSeries(baseValue: number, factorOffsets: number[], labels: string[]): { labels: string[]; values: number[] } {
-  return {
-    labels,
-    values: factorOffsets.map(offset => Number((baseValue * offset).toFixed(2))),
-  };
-}
-
-export function buildMockChartData(baseValue: number): ChartDataMap {
+export function buildMockChartPoints(baseValue: number): ChartPoint[] {
   const safeBase = Math.max(baseValue, 1);
+  const dayCount = 760;
+  const now = new Date();
 
-  return {
-    '1D': buildSeries(safeBase, [0.93, 0.95, 0.94, 0.97, 0.98, 1.0], ['09:30', '11:00', '12:30', '14:00', '15:00', '16:00']),
-    '1W': buildSeries(safeBase, [0.91, 0.92, 0.95, 0.94, 0.97, 0.99, 1.0], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']),
-    '1M': buildSeries(safeBase, [0.84, 0.86, 0.88, 0.9, 0.93, 0.95, 0.97, 1.0], ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Today']),
-    '3M': buildSeries(safeBase, [0.78, 0.82, 0.86, 0.89, 0.92, 0.95, 0.98, 1.0], ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Now']),
-    '1Y': buildSeries(safeBase, [0.61, 0.66, 0.7, 0.74, 0.8, 0.87, 0.93, 1.0], ['Nov', 'Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov', 'Today']),
-    'ALL': buildSeries(safeBase, [0.42, 0.5, 0.58, 0.65, 0.73, 0.81, 0.9, 1.0], ['2021', '2022', '2023', '2024', '2025', '2026', 'Q3', 'Now']),
-  } as Record<ChartTimeframe, { labels: string[]; values: number[] }>;
+  return Array.from({ length: dayCount }, (_, index) => {
+    const daysAgo = dayCount - index - 1;
+    const date = new Date(now);
+    date.setDate(now.getDate() - daysAgo);
+
+    const trend = 0.7 + (index / (dayCount - 1)) * 0.35;
+    const wave = Math.sin(index / 17) * 0.04 + Math.cos(index / 43) * 0.02;
+    const value = Number((safeBase * (trend + wave)).toFixed(2));
+
+    return {
+      date: date.toISOString(),
+      value,
+    };
+  });
 }
 
 export function getMockDashboardData(): DashboardMockData {

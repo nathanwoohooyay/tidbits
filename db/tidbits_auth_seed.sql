@@ -39,6 +39,7 @@ INSERT INTO public.users (user_id, password_hash, role_id, token_version) VALUES
 INSERT INTO public.users (user_id, password_hash, role_id, token_version) VALUES (2, '$2a$10$hloD3KqPYkk9WD9B9Y21nus5zyzB858vvIEVZDXk0dMz9JNTRacfq', 1, 1);
 INSERT INTO public.users (user_id, password_hash, role_id, token_version) VALUES (1, '$2a$10$X37vCEMXcilibm1.xfEpleDB3WRNKvDHep8CtJmTd4T8qc8B4VDbO', 1, 1);
 INSERT INTO public.users (user_id, password_hash, role_id, token_version) VALUES (4, '$2a$10$Ep0XVJF1ehUH0MhvouPjAOOT5Kei5ILIIH/mBVctYMoxlVnmr2ONq', 1, 1);
+INSERT INTO public.users (user_id, password_hash, role_id, token_version) VALUES (6, '$2a$10$AT4LPXsuAuU1MXXgSzSAwuGOia3sN4sa4hwJiVVN2jzQbeWrC2lMm', 1, 0);
 
 
 --

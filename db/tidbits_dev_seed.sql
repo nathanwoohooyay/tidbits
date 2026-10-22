@@ -28,6 +28,7 @@ INSERT INTO public.users (user_id, username, email, created_at, phone_number, la
 INSERT INTO public.users (user_id, username, email, created_at, phone_number, last_login, reward_points, date_of_birth) VALUES (5, 'u4_1792514168', 'u4_1792514168@example.com', '2026-10-20 16:36:09.497975', '4155550113', '2026-10-20 16:36:38.65538', 0, '1994-04-13');
 INSERT INTO public.users (user_id, username, email, created_at, phone_number, last_login, reward_points, date_of_birth) VALUES (4, 'u3_1792514168', 'u3_1792514168@example.com', '2026-10-20 16:36:09.36223', '4155550112', '2026-10-20 16:36:38.760293', 0, '1993-03-12');
 INSERT INTO public.users (user_id, username, email, created_at, phone_number, last_login, reward_points, date_of_birth) VALUES (2, 'u5_1792514168', 'u5_1792514168@example.com', '2026-10-20 16:36:09.02006', '4155550114', '2026-10-20 16:36:38.97073', 0, '1995-05-14');
+INSERT INTO public.users (user_id, username, email, created_at, phone_number, last_login, reward_points, date_of_birth) VALUES (6, 'test1', 't1@example.com', '2026-10-20 16:36:09.600000', '4155550115', '2026-10-20 16:36:39.000000', 0, '1996-06-15');
 
 
 --
@@ -46,6 +47,8 @@ INSERT INTO public.accounts (account_id, user_id, nickname, cash_balance, create
 INSERT INTO public.accounts (account_id, user_id, nickname, cash_balance, created_at) VALUES (9, 3, 'acct_0_1', 49295.67, '2026-10-20 16:36:11.239945');
 INSERT INTO public.accounts (account_id, user_id, nickname, cash_balance, created_at) VALUES (11, 3, 'acct_0_3', 29198.5, '2026-10-20 16:36:11.332735');
 INSERT INTO public.accounts (account_id, user_id, nickname, cash_balance, created_at) VALUES (4, 4, 'acct_2_1', 20914.7, '2026-10-20 16:36:11.036145');
+INSERT INTO public.accounts (account_id, user_id, nickname, cash_balance, created_at) VALUES (13, 6, 'acct_6_1', 31250.55, '2026-10-20 16:36:11.480000');
+INSERT INTO public.accounts (account_id, user_id, nickname, cash_balance, created_at) VALUES (14, 6, 'acct_6_2', 18475.20, '2026-10-20 16:36:11.620000');
 
 
 --
@@ -267,6 +270,8 @@ INSERT INTO public.orders (order_id, account_id, instrument_id, quantity, stock_
 INSERT INTO public.orders (order_id, account_id, instrument_id, quantity, stock_price, order_type, status) VALUES (73, 2, 7, 1, 690.81, 'buy', 'filled');
 INSERT INTO public.orders (order_id, account_id, instrument_id, quantity, stock_price, order_type, status) VALUES (74, 10, 12, 2, 335.9, 'buy', 'filled');
 INSERT INTO public.orders (order_id, account_id, instrument_id, quantity, stock_price, order_type, status) VALUES (75, 10, 3, 2, 217.1, 'buy', 'filled');
+INSERT INTO public.orders (order_id, account_id, instrument_id, quantity, stock_price, order_type, status) VALUES (76, 13, 1, 3, 340.79, 'buy', 'filled');
+INSERT INTO public.orders (order_id, account_id, instrument_id, quantity, stock_price, order_type, status) VALUES (77, 13, 1, 1, 341.1, 'sell', 'filled');
 
 
 --
@@ -386,6 +391,10 @@ INSERT INTO public.account_transactions (transaction_id, account_id, order_id, a
 INSERT INTO public.account_transactions (transaction_id, account_id, order_id, amount, transaction_type, created_at) VALUES (111, 2, 73, 690.81, 'buy', '2026-10-20 16:36:35.739211');
 INSERT INTO public.account_transactions (transaction_id, account_id, order_id, amount, transaction_type, created_at) VALUES (112, 10, 74, 671.8, 'buy', '2026-10-20 16:36:35.956379');
 INSERT INTO public.account_transactions (transaction_id, account_id, order_id, amount, transaction_type, created_at) VALUES (113, 10, 75, 434.2, 'buy', '2026-10-20 16:36:36.156734');
+INSERT INTO public.account_transactions (transaction_id, account_id, order_id, amount, transaction_type, created_at) VALUES (114, 13, NULL, 32000, 'deposit', '2026-10-20 16:40:11.156734');
+INSERT INTO public.account_transactions (transaction_id, account_id, order_id, amount, transaction_type, created_at) VALUES (115, 13, 76, 1022.37, 'buy', '2026-10-20 16:41:10.156734');
+INSERT INTO public.account_transactions (transaction_id, account_id, order_id, amount, transaction_type, created_at) VALUES (116, 13, 77, 341.10, 'sell', '2026-10-20 16:42:40.156734');
+INSERT INTO public.account_transactions (transaction_id, account_id, order_id, amount, transaction_type, created_at) VALUES (117, 13, NULL, 850, 'withdraw', '2026-10-20 16:43:25.156734');
 
 
 --
@@ -611,12 +620,256 @@ INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_s
 INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_status) VALUES (73, '2026-10-20 16:36:35.363643', NULL, 'placed');
 INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_status) VALUES (74, '2026-10-20 16:36:35.686894', NULL, 'placed');
 INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_status) VALUES (75, '2026-10-20 16:36:35.898889', NULL, 'placed');
+INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_status) VALUES (76, '2026-10-20 16:41:01.200000', NULL, 'placed');
+INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_status) VALUES (76, '2026-10-20 16:41:08.200000', 'placed', 'accepted');
+INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_status) VALUES (76, '2026-10-20 16:41:10.200000', 'accepted', 'filled');
+INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_status) VALUES (77, '2026-10-20 16:42:30.200000', NULL, 'placed');
+INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_status) VALUES (77, '2026-10-20 16:42:37.200000', 'placed', 'accepted');
+INSERT INTO public.order_status_history (order_id, changed_at, old_status, new_status) VALUES (77, '2026-10-20 16:42:40.200000', 'accepted', 'filled');
 
 
 --
 -- Data for Name: portfolio_snapshots; Type: TABLE DATA; Schema: public; Owner: -
 --
 
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (1, 13, 134400.00, '2026-08-27 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (2, 14, 89600.00, '2026-08-27 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (3, 13, 98322.91, '2026-08-28 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (4, 14, 61871.63, '2026-08-28 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (5, 13, 109748.93, '2026-08-29 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (6, 14, 64638.18, '2026-08-29 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (7, 13, 118860.38, '2026-08-30 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (8, 14, 66094.29, '2026-08-30 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (9, 13, 125088.09, '2026-08-31 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (10, 14, 66564.11, '2026-08-31 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (11, 13, 119687.62, '2026-09-01 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (12, 14, 66465.11, '2026-09-01 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (13, 13, 119775.92, '2026-09-02 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (14, 14, 59062.60, '2026-09-02 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (15, 13, 117323.70, '2026-09-03 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (16, 14, 59219.57, '2026-09-03 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (17, 13, 113104.21, '2026-09-04 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (18, 14, 40947.05, '2026-09-04 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (19, 13, 73904.41, '2026-09-05 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (20, 14, 42960.28, '2026-09-05 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (21, 13, 60709.64, '2026-09-06 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (22, 14, 46245.18, '2026-09-06 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (23, 13, 57375.85, '2026-09-07 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (24, 14, 50838.57, '2026-09-07 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (25, 13, 56305.13, '2026-09-08 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (26, 14, 49424.25, '2026-09-08 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (27, 13, 58140.07, '2026-09-09 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (28, 14, 56145.40, '2026-09-09 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (29, 13, 63189.78, '2026-09-10 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (30, 14, 63431.80, '2026-09-10 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (31, 13, 62896.78, '2026-09-11 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (32, 14, 70839.36, '2026-09-11 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (33, 13, 73848.62, '2026-09-12 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (34, 14, 58697.54, '2026-09-12 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (35, 13, 121832.65, '2026-09-13 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (36, 14, 64959.90, '2026-09-13 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (37, 13, 66726.93, '2026-09-14 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (38, 14, 62852.52, '2026-09-14 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (39, 13, 80915.67, '2026-09-15 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (40, 14, 88515.13, '2026-09-15 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (41, 13, 85714.80, '2026-09-16 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (42, 14, 68630.71, '2026-09-16 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (43, 13, 97291.87, '2026-09-17 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (44, 14, 69240.46, '2026-09-17 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (45, 13, 106565.27, '2026-09-18 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (46, 14, 68542.41, '2026-09-18 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (47, 13, 85270.54, '2026-09-19 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (48, 14, 66873.91, '2026-09-19 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (49, 13, 117485.62, '2026-09-20 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (50, 14, 38279.54, '2026-09-20 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (51, 13, 111112.18, '2026-09-21 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (52, 14, 36067.85, '2026-09-21 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (53, 13, 111815.81, '2026-09-22 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (54, 14, 34361.17, '2026-09-22 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (55, 13, 77732.76, '2026-09-23 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (56, 14, 15643.78, '2026-09-23 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (57, 13, 78155.60, '2026-09-24 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (58, 14, 34313.55, '2026-09-24 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (59, 13, 79712.37, '2026-09-25 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (60, 14, 36642.17, '2026-09-25 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (61, 13, 74554.94, '2026-09-26 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (62, 14, 33547.88, '2026-09-26 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (63, 13, 122070.82, '2026-09-27 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (64, 14, 39383.61, '2026-09-27 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (65, 13, 87829.80, '2026-09-28 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (66, 14, 27541.73, '2026-09-28 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (67, 13, 97572.47, '2026-09-29 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (68, 14, 64074.87, '2026-09-29 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (69, 13, 143741.89, '2026-09-30 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (70, 14, 45330.66, '2026-09-30 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (71, 13, 112054.77, '2026-10-01 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (72, 14, 54797.00, '2026-10-01 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (73, 13, 89402.87, '2026-10-02 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (74, 14, 56752.97, '2026-10-02 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (75, 13, 99771.91, '2026-10-03 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (76, 14, 65120.43, '2026-10-03 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (77, 13, 108162.78, '2026-10-04 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (78, 14, 94310.84, '2026-10-04 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (79, 13, 113999.39, '2026-10-05 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (80, 14, 78062.71, '2026-10-05 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (81, 13, 108509.53, '2026-10-06 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (82, 14, 63065.67, '2026-10-06 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (83, 13, 108768.02, '2026-10-07 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (84, 14, 65769.06, '2026-10-07 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (85, 13, 106696.39, '2026-10-08 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (86, 14, 59973.84, '2026-10-08 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (87, 13, 103018.95, '2026-10-09 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (88, 14, 60409.13, '2026-10-09 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (89, 13, 98680.20, '2026-10-10 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (90, 14, 60295.54, '2026-10-10 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (91, 13, 52033.84, '2026-10-11 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (92, 14, 60099.36, '2026-10-11 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (93, 13, 21516.99, '2026-10-12 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (94, 14, 60282.29, '2026-10-12 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (95, 13, 49325.22, '2026-10-13 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (96, 14, 61252.00, '2026-10-13 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (97, 13, 52104.04, '2026-10-14 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (98, 14, 36918.62, '2026-10-14 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (99, 13, 58170.16, '2026-10-15 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (100, 14, 40261.78, '2026-10-15 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (101, 13, 58972.61, '2026-10-16 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (102, 14, 44911.49, '2026-10-16 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (103, 13, 106098.31, '2026-10-17 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (104, 14, 50744.95, '2026-10-17 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (105, 13, 85321.71, '2026-10-18 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (106, 14, 57499.64, '2026-10-18 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (107, 13, 100692.10, '2026-10-19 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (108, 14, 64801.17, '2026-10-19 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (109, 13, 81947.79, '2026-10-20 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (110, 14, 47003.23, '2026-10-20 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (111, 13, 87943.11, '2026-10-21 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (112, 14, 72035.26, '2026-10-21 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (113, 13, 100572.25, '2026-10-22 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (114, 14, 59053.06, '2026-10-22 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (115, 13, 110674.82, '2026-10-23 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (116, 14, 86086.94, '2026-10-23 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (117, 13, 117909.99, '2026-10-24 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (118, 14, 67682.43, '2026-10-24 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (119, 13, 122290.30, '2026-10-25 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (120, 14, 69729.33, '2026-10-25 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (121, 13, 115671.26, '2026-10-26 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (122, 14, 63075.90, '2026-10-26 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (123, 13, 115698.19, '2026-10-27 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (124, 14, 62326.85, '2026-10-27 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (125, 13, 156717.64, '2026-10-28 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (126, 14, 60625.04, '2026-10-28 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (127, 13, 79464.50, '2026-10-29 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (128, 14, 58418.86, '2026-10-29 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (129, 13, 79239.62, '2026-10-30 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (130, 14, 37018.56, '2026-10-30 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (131, 13, 72093.19, '2026-10-31 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (132, 14, 35345.89, '2026-10-31 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (133, 13, 75529.09, '2026-11-01 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (134, 14, 55482.27, '2026-11-01 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (135, 13, 81242.01, '2026-11-02 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (136, 14, 28220.76, '2026-11-02 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (137, 13, 124095.38, '2026-11-03 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (138, 14, 30626.72, '2026-11-03 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (139, 13, 70642.85, '2026-11-04 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (140, 14, 34811.20, '2026-11-04 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (141, 13, 100690.31, '2026-11-05 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (142, 14, 40719.81, '2026-11-05 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (143, 13, 111390.55, '2026-11-06 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (144, 14, 48138.20, '2026-11-06 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (145, 13, 87158.20, '2026-11-07 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (146, 14, 30313.49, '2026-11-07 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (147, 13, 95590.23, '2026-11-08 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (148, 14, 39589.68, '2026-11-08 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (149, 13, 101876.54, '2026-11-09 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (150, 14, 49053.17, '2026-11-09 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (151, 13, 97186.06, '2026-11-10 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (152, 14, 58183.86, '2026-11-10 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (153, 13, 98517.47, '2026-11-11 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (154, 14, 88506.63, '2026-11-11 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (155, 13, 97707.60, '2026-11-12 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (156, 14, 73637.87, '2026-11-12 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (157, 13, 95396.13, '2026-11-13 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (158, 14, 72122.35, '2026-11-13 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (159, 13, 92450.91, '2026-11-14 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (160, 14, 76256.75, '2026-11-14 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (161, 13, 81362.94, '2026-11-15 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (162, 14, 59697.37, '2026-11-15 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (163, 13, 45924.15, '2026-11-16 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (164, 14, 43051.47, '2026-11-16 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (165, 13, 46903.35, '2026-11-17 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (166, 14, 61453.06, '2026-11-17 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (167, 13, 50735.89, '2026-11-18 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (168, 14, 61325.81, '2026-11-18 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (169, 13, 57740.95, '2026-11-19 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (170, 14, 53936.87, '2026-11-19 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (171, 13, 94377.13, '2026-11-20 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (172, 14, 54146.57, '2026-11-20 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (173, 13, 72241.97, '2026-11-21 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (174, 14, 55159.12, '2026-11-21 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (175, 13, 87115.73, '2026-11-22 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (176, 14, 57279.49, '2026-11-22 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (177, 13, 103044.21, '2026-11-23 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (178, 14, 41480.96, '2026-11-23 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (179, 13, 118950.38, '2026-11-24 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (180, 14, 46186.75, '2026-11-24 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (181, 13, 91061.15, '2026-11-25 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (182, 14, 44867.47, '2026-11-25 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (183, 13, 103833.61, '2026-11-26 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (184, 14, 51654.96, '2026-11-26 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (185, 13, 85865.09, '2026-11-27 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (186, 14, 58970.74, '2026-11-27 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (187, 13, 162773.61, '2026-11-28 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (188, 14, 66366.36, '2026-11-28 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (189, 13, 124538.83, '2026-11-29 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (190, 14, 73371.37, '2026-11-29 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (191, 13, 116998.58, '2026-11-30 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (192, 14, 101543.89, '2026-11-30 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (193, 13, 115801.61, '2026-12-01 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (194, 14, 58118.52, '2026-12-01 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (195, 13, 113322.91, '2026-12-02 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (196, 14, 61646.68, '2026-12-02 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (197, 13, 110552.06, '2026-12-03 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (198, 14, 63624.98, '2026-12-03 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (199, 13, 74269.05, '2026-12-04 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (200, 14, 92108.79, '2026-12-04 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (201, 13, 65223.05, '2026-12-05 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (202, 14, 63309.41, '2026-12-05 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (203, 13, 66829.36, '2026-12-06 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (204, 14, 61575.17, '2026-12-06 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (205, 13, 105897.41, '2026-12-07 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (206, 14, 52158.19, '2026-12-07 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (207, 13, 77398.72, '2026-12-08 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (208, 14, 49970.32, '2026-12-08 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (209, 13, 85978.48, '2026-12-09 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (210, 14, 29132.61, '2026-12-09 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (211, 13, 87509.09, '2026-12-10 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (212, 14, 28523.54, '2026-12-10 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (213, 13, 98178.52, '2026-12-11 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (214, 14, 29331.26, '2026-12-11 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (215, 13, 108602.02, '2026-12-12 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (216, 14, 31814.77, '2026-12-12 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (217, 13, 83742.62, '2026-12-13 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (218, 14, 10877.92, '2026-12-13 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (219, 13, 91325.10, '2026-12-14 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (220, 14, 34859.00, '2026-12-14 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (221, 13, 88228.44, '2026-12-15 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (222, 14, 42336.94, '2026-12-15 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (223, 13, 91345.05, '2026-12-16 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (224, 14, 50953.49, '2026-12-16 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (225, 13, 92398.94, '2026-12-17 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (226, 14, 41049.07, '2026-12-17 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (227, 13, 91920.37, '2026-12-18 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (228, 14, 50508.68, '2026-12-18 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (229, 13, 90680.12, '2026-12-19 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (230, 14, 74413.15, '2026-12-19 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (231, 13, 53091.61, '2026-12-20 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (232, 14, 60690.47, '2026-12-20 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (233, 13, 81093.20, '2026-12-21 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (234, 14, 67762.03, '2026-12-21 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (235, 13, 48825.70, '2026-12-22 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (236, 14, 73378.94, '2026-12-22 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (237, 13, 53320.56, '2026-12-23 23:59:59');
+INSERT INTO public.portfolio_snapshots (snapshot_id, account_id, total_value, created_at) VALUES (238, 14, 77444.88, '2026-12-23 23:59:59');
 
 
 --
@@ -886,6 +1139,11 @@ INSERT INTO public.transaction_logs (log_id, user_id, account_id, event, amount,
 INSERT INTO public.transaction_logs (log_id, user_id, account_id, event, amount, transaction_id, order_id, status, happened_at) VALUES (348, 3, 10, 'ORDER_FILLED', 671.8, 112, 74, 'success', '2026-10-20 16:36:36.001172');
 INSERT INTO public.transaction_logs (log_id, user_id, account_id, event, amount, transaction_id, order_id, status, happened_at) VALUES (349, 3, 10, 'ORDER_ACCEPTED', 434.2, 113, 75, 'success', '2026-10-20 16:36:36.159903');
 INSERT INTO public.transaction_logs (log_id, user_id, account_id, event, amount, transaction_id, order_id, status, happened_at) VALUES (350, 3, 10, 'ORDER_FILLED', 434.2, 113, 75, 'success', '2026-10-20 16:36:36.165297');
+INSERT INTO public.transaction_logs (log_id, user_id, account_id, event, amount, transaction_id, order_id, status, happened_at) VALUES (351, 6, 13, 'deposit', 32000, 114, NULL, 'success', '2026-10-20 16:40:11.200000');
+INSERT INTO public.transaction_logs (log_id, user_id, account_id, event, amount, transaction_id, order_id, status, happened_at) VALUES (352, 6, 13, 'ORDER_ACCEPTED', 1022.37, 115, 76, 'success', '2026-10-20 16:41:10.230000');
+INSERT INTO public.transaction_logs (log_id, user_id, account_id, event, amount, transaction_id, order_id, status, happened_at) VALUES (353, 6, 13, 'ORDER_FILLED', 1022.37, 115, 76, 'success', '2026-10-20 16:41:10.240000');
+INSERT INTO public.transaction_logs (log_id, user_id, account_id, event, amount, transaction_id, order_id, status, happened_at) VALUES (354, 6, 13, 'ORDER_FILLED', 341.10, 116, 77, 'success', '2026-10-20 16:42:40.260000');
+INSERT INTO public.transaction_logs (log_id, user_id, account_id, event, amount, transaction_id, order_id, status, happened_at) VALUES (355, 6, 13, 'withdraw', 850, 117, NULL, 'success', '2026-10-20 16:43:25.220000');
 
 
 --
@@ -928,14 +1186,14 @@ INSERT INTO public.user_logs (log_id, user_id, username, ip_address, event, stat
 -- Name: account_transactions_transaction_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.account_transactions_transaction_id_seq', 113, true);
+SELECT pg_catalog.setval('public.account_transactions_transaction_id_seq', 117, true);
 
 
 --
 -- Name: accounts_account_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.accounts_account_id_seq', 12, true);
+SELECT pg_catalog.setval('public.accounts_account_id_seq', 14, true);
 
 
 --
@@ -949,21 +1207,21 @@ SELECT pg_catalog.setval('public.instruments_instrument_id_seq', 99, true);
 -- Name: orders_order_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.orders_order_id_seq', 75, true);
+SELECT pg_catalog.setval('public.orders_order_id_seq', 77, true);
 
 
 --
 -- Name: portfolio_snapshots_snapshot_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.portfolio_snapshots_snapshot_id_seq', 1, false);
+SELECT pg_catalog.setval('public.portfolio_snapshots_snapshot_id_seq', 238, true);
 
 
 --
 -- Name: transaction_logs_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.transaction_logs_log_id_seq', 350, true);
+SELECT pg_catalog.setval('public.transaction_logs_log_id_seq', 355, true);
 
 
 --
@@ -977,7 +1235,7 @@ SELECT pg_catalog.setval('public.user_logs_log_id_seq', 30, true);
 -- Name: users_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.users_user_id_seq', 5, true);
+SELECT pg_catalog.setval('public.users_user_id_seq', 6, true);
 
 
 --

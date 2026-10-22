@@ -50,7 +50,7 @@
       </app-dashboard-insight-feed>
 
       <app-dashboard-chart
-        [dataByTimeframe]="chartData()"
+        [dataPoints]="chartDataPoints()"
         [chartTimeframe]="chartTimeframe()"
         (chartTimeframeChange)="setChartTimeframe($event)">
       </app-dashboard-chart>

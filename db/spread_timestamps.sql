@@ -30,19 +30,6 @@ FROM ranked r
 CROSS JOIN base b
 WHERE a.account_id = r.account_id;
 
--- portfolio_snapshots.created_at
-WITH ranked AS (
-    SELECT snapshot_id, row_number() OVER (ORDER BY snapshot_id) AS rn
-    FROM portfolio_snapshots
-), base AS (
-    SELECT now() - interval '30 days' AS start_ts
-)
-UPDATE portfolio_snapshots p
-SET created_at = b.start_ts + (r.rn * interval '2 hours') + (random() * interval '20 minutes')
-FROM ranked r
-CROSS JOIN base b
-WHERE p.snapshot_id = r.snapshot_id;
-
 -- instruments.last_updated
 WITH ranked AS (
     SELECT instrument_id, row_number() OVER (ORDER BY instrument_id) AS rn

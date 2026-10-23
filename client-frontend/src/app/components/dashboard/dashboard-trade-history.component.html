@@ -29,7 +29,7 @@
       </thead>
       <tbody>
       @for (order of sortedOrders(); track order.orderId) {
-      <tr>
+      <tr (click)="toggleOrderHistory(order.orderId)" style="cursor:pointer;">
         <td style="font-size:.8rem;color:var(--clr-sienna)">
           {{ order.statusHistory[0].changedAt ? (order.statusHistory[0].changedAt | date:'MMM d, y · h:mm a') : 'Timestamp pending' }}
         </td>
@@ -47,6 +47,17 @@
           <span class="status-badge" [ngClass]="statusClass(order.status)">{{ order.status }}</span>
         </td>
       </tr>
+      @if (isOrderExpanded(order.orderId)) {
+      @for (entry of order.statusHistory; track entry.historyId) {
+      <tr>
+        <td colspan="8" style="background:var(--clr-surface-soft);font-size:.78rem;color:var(--clr-sienna);padding:.5rem .75rem;">
+          {{ entry.changedAt | date:'MMM d, y · h:mm:ss a' }}
+          -
+          <span class="status-badge" [ngClass]="statusClass(entry.newStatus)">{{ entry.newStatus }}</span>
+        </td>
+      </tr>
+      }
+      }
       }
       </tbody>
     </table>

@@ -32,6 +32,7 @@ export class DashboardTradeHistoryComponent implements OnInit{
 
   ordersArray = signal<placedOrderDTO[]>([]);
   dateSortDirection = signal<'desc' | 'asc'>('desc');
+  expandedOrderId = signal<number | null>(null);
   orderHistoryLoading = signal(false);
   orderHistoryError = signal('');
   private readonly orderService = inject(OrderService);
@@ -47,6 +48,14 @@ export class DashboardTradeHistoryComponent implements OnInit{
     this.dateSortDirection.set(direction);
   }
 
+  toggleOrderHistory(orderId: number) {
+    this.expandedOrderId.update(current => (current === orderId ? null : orderId));
+  }
+
+  isOrderExpanded(orderId: number): boolean {
+    return this.expandedOrderId() === orderId;
+  }
+
   sortedOrders(): placedOrderDTO[] {
     const direction = this.dateSortDirection();
 
@@ -60,6 +69,7 @@ export class DashboardTradeHistoryComponent implements OnInit{
 loadHistory(accountId: number){
     this.orderHistoryLoading.set(true);
     this.ordersArray.set([]);
+    this.expandedOrderId.set(null);
       this.orderService.getOrders(accountId).subscribe({
         next: ordersArray => {
           console.log(ordersArray);

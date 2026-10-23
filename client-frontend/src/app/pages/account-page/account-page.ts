@@ -2,20 +2,26 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { forkJoin, firstValueFrom } from 'rxjs';
 import { SessionService } from '../../services/session.service';
 import { UserService } from '../../services/user.service';
+import { AccountService } from '../../services/account.service';
+import { OrderService, placedOrderDTO } from '../../services/order.service';
+import { AccountOrderStats, DashboardInsightFeedComponent } from '../../components/dashboard/dashboard-insight-feed.component';
+import { ReportOverview } from '../../components/dashboard/dashboard.models';
 
 @Component({
   selector: 'app-account-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DashboardInsightFeedComponent],
   templateUrl: './account-page.html',
   styleUrl: './account-page.css'
 })
 export class AccountPageComponent implements OnInit {
   private readonly session = inject(SessionService);
   private readonly userApi = inject(UserService);
+  private readonly accountApi = inject(AccountService);
+  private readonly orderApi = inject(OrderService);
   private readonly router = inject(Router);
 
   currentUsername = signal('');
@@ -36,6 +42,10 @@ export class AccountPageComponent implements OnInit {
   passwordLoading = signal(false);
   passwordError = signal('');
   passwordSuccess = signal('');
+  activePanel = signal<'account' | 'statistics'>('account');
+  reportingOverview = signal<ReportOverview | null>(null);
+  instrumentLabels = signal<Record<number, string>>({});
+  accountOrderStats = signal<AccountOrderStats[]>([]);
 
   ngOnInit() {
     const user = this.session.currentUser();
@@ -50,6 +60,70 @@ export class AccountPageComponent implements OnInit {
     this.currentPhoneNumber.set(user.phoneNumber ?? '');
     this.updateEmail.set(this.currentEmail());
     this.updatePhoneNumber.set(this.currentPhoneNumber());
+    this.loadStatistics(user.userId);
+  }
+
+  selectPanel(panel: 'account' | 'statistics') {
+    this.activePanel.set(panel);
+  }
+
+  private loadStatistics(userId: number) {
+    this.accountApi.listAccounts(userId).subscribe({
+      next: accounts => {
+        if (!accounts.length) {
+          this.setStatistics([], []);
+          return;
+        }
+
+        forkJoin(accounts.map(account => this.orderApi.getOrders(account.accountId))).subscribe({
+          next: orderLists => this.setStatistics(accounts, orderLists),
+          error: () => this.setStatistics(accounts, accounts.map(() => [])),
+        });
+      },
+      error: () => this.setStatistics([], []),
+    });
+  }
+
+  private setStatistics(accounts: { accountId: number; nickname: string }[], orderLists: placedOrderDTO[][]) {
+    const orders = orderLists.flat();
+    const volumeBySide = ['buy', 'sell'].map(side => {
+      const sideOrders = orders.filter(order => order.orderType.toLowerCase() === side);
+      return {
+        side,
+        total_value: sideOrders.reduce((total, order) => total + order.quantity * order.price, 0),
+        order_count: sideOrders.length,
+      };
+    }).filter(item => item.order_count > 0);
+
+    this.instrumentLabels.set(Object.fromEntries(
+      orders.map(order => [order.instrument.instrumentId, order.instrument.ticker])
+    ));
+    this.accountOrderStats.set(accounts.map((account, index) => {
+      const accountOrders = orderLists[index] ?? [];
+      return {
+        accountId: account.accountId,
+        nickname: account.nickname,
+        totalOrders: accountOrders.length,
+        filledOrders: accountOrders.filter(order => order.status.toLowerCase() === 'filled').length,
+        placedOrders: accountOrders.filter(order => order.status.toLowerCase() === 'placed').length,
+        totalNotional: accountOrders.reduce((total, order) => total + order.quantity * order.price, 0),
+      };
+    }));
+    this.reportingOverview.set({
+      generatedAt: new Date().toISOString(),
+      liveSummary: {
+        totalOrders: orders.length,
+        filledOrders: orders.filter(order => order.status.toLowerCase() === 'filled').length,
+        placedOrders: orders.filter(order => order.status.toLowerCase() === 'placed').length,
+        totalNotional: orders.reduce((total, order) => total + order.quantity * order.price, 0),
+      },
+      topInstrumentNotional: [],
+      offlineMetrics: {
+        available: true,
+        source: 'account-orders',
+        data: { trade_volume_by_side: volumeBySide },
+      },
+    });
   }
 
   async updateAccount() {

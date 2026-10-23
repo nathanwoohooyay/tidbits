@@ -19,7 +19,6 @@ import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-h
 import { DashboardGreetingComponent } from '../../components/dashboard/dashboard-greeting.component';
 import { DashboardNoticesComponent } from '../../components/dashboard/dashboard-notices.component';
 import { DashboardMetricsComponent } from '../../components/dashboard/dashboard-metrics.component';
-import { DashboardInsightFeedComponent } from '../../components/dashboard/dashboard-insight-feed.component';
 import { DashboardChartComponent } from '../../components/dashboard/dashboard-chart.component';
 import { DashboardMarketSnapshotComponent } from '../../components/dashboard/dashboard-market-snapshot.component';
 import { DashboardHoldingsComponent } from '../../components/dashboard/dashboard-holdings.component';
@@ -41,7 +40,6 @@ import { OrderService, placedOrderDTO } from '../../services/order.service';
     DashboardGreetingComponent,
     DashboardNoticesComponent,
     DashboardMetricsComponent,
-    DashboardInsightFeedComponent,
     DashboardChartComponent,
     DashboardMarketSnapshotComponent,
     DashboardHoldingsComponent,

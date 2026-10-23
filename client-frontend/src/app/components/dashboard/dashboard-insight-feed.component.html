@@ -1,26 +1,26 @@
-<section class="section-card" aria-label="Internal business insight">
-  <div class="section-header">
+<div class="insight-feed" aria-label="Internal business insight">
+  <div class="insight-header">
     <span class="section-title">Business Insight Feed</span>
     @if (reportingOverview) {
       <span class="insight-timestamp">Updated {{ reportingOverview.generatedAt | date:'MMM d, y · h:mm a' }}</span>
     }
   </div>
 
-  <div class="section-body">
+  <div class="insight-body" style="width: 100%;">
     @if (!reportingOverview) {
       <div class="empty-state">Insight feed is loading or unavailable.</div>
     } @else {
       <div class="insight-grid">
         <div class="insight-card">
-          <div style="font-weight: bold;"class="insight-label insight-subject">Total Orders</div>
+          <div class="insight-label insight-subject">Total Orders</div>
           <div class="insight-value">{{ reportingOverview.liveSummary.totalOrders }}</div>
         </div>
         <div class="insight-card">
-          <div style="font-weight: bold;"class="insight-label insight-subject">Filled Orders</div>
+          <div class="insight-label insight-subject">Filled Orders</div>
           <div class="insight-value">{{ reportingOverview.liveSummary.filledOrders }}</div>
         </div>
         <div class="insight-card">
-          <div style="font-weight: bold;"class="insight-label insight-subject">Orders Placed</div>
+          <div class="insight-label insight-subject">Orders Placed</div>
           <div class="insight-value">{{ reportingOverview.liveSummary.placedOrders }}</div>
         </div>
       </div>
@@ -38,7 +38,21 @@
           </div>
         </div>
       }
+
+      @if (accountOrderStats.length > 0) {
+        <div class="insight-subsection">
+          <h4>Orders by Account</h4>
+          <div class="insight-row-set">
+            @for (account of accountOrderStats; track account.accountId) {
+              <div class="insight-row account-stat-row">
+                <span style="font-weight: bold; font-size: 14px;" class="insight-subject">{{ account.nickname }} </span>
+                <span>{{ account.totalOrders }} orders · {{ account.filledOrders }} filled · {{ account.placedOrders }} placed</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
     }
   </div>
-</section>
+</div>
 

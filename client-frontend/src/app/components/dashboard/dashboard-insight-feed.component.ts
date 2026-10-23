@@ -3,6 +3,15 @@ import { Component, Input } from '@angular/core';
 import { ReportOverview } from './dashboard.models';
 import { formatCurrency } from './dashboard.utils';
 
+export interface AccountOrderStats {
+  accountId: number;
+  nickname: string;
+  totalOrders: number;
+  filledOrders: number;
+  placedOrders: number;
+  totalNotional: number;
+}
+
 @Component({
   selector: 'app-dashboard-insight-feed',
   standalone: true,
@@ -12,6 +21,7 @@ import { formatCurrency } from './dashboard.utils';
 export class DashboardInsightFeedComponent {
   @Input() reportingOverview: ReportOverview | null = null;
   @Input() instrumentLabels: Record<number, string> = {};
+  @Input() accountOrderStats: AccountOrderStats[] = [];
 
   readonly formatCurrency = formatCurrency;
 

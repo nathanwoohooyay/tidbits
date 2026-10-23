@@ -9,7 +9,7 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 2rem;
-  max-width: 1000px;
+  max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -42,13 +42,60 @@
   border-color: #7a4a2c;
 }
 
+.account-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 2rem;
+  max-width: 1400px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  align-items: start;
+}
+
+.account-sidebar {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #eadfce;
+  border: 1px solid #d8c8b6;
+  border-radius: 12px;
+  position: sticky;
+  top: 1.5rem;
+}
+
+.account-sidebar button {
+  padding: 0.85rem 1rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #6f6257;
+  text-align: left;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.account-sidebar button:hover,
+.account-sidebar button.active {
+  background: white;
+  color: #7a4a2c;
+}
+
 .account-content {
   display: grid;
   gap: 2rem;
-  grid-template-columns: 1fr;
-  max-width: 1000px;
-  margin-left: auto;
-  margin-right: auto;
+  min-width: 0;
+}
+
+.statistics-panel app-dashboard-insight-feed {
+  display: block;
+  margin-top: 1.25rem;
+  width: 100%;
+}
+
+.statistics-panel {
+  padding: 0.5rem 0;
 }
 
 .account-card {
@@ -261,6 +308,15 @@
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .account-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .account-sidebar {
+    position: static;
+    grid-template-columns: 1fr 1fr;
   }
 
   .delete-actions {

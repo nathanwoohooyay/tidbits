@@ -9,7 +9,7 @@ import { tickerToName } from '../../components/dashboard/stock';
 import { DashboardChartComponent } from '../../components/dashboard/dashboard-chart.component';
 import { ChartPoint, ChartTimeframe, ThemeMode } from '../../components/dashboard/dashboard.models';
 import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-header.component';
-
+import {UserDTO, UserService} from '../../services/user.service';
 interface AccountSummary {
   accountId: number;
   nickname: string;
@@ -30,6 +30,7 @@ export class Maindashboard implements OnInit {
   private readonly router = inject(Router);
   private readonly session = inject(SessionService);
   private readonly accountApi = inject(AccountService);
+  private readonly userService = inject(UserService);
   private readonly pricingApi = inject(PricingService);
   private readonly themeStorageKey = 'tidbits_theme_mode';
 
@@ -62,6 +63,19 @@ export class Maindashboard implements OnInit {
 
     this.loadAggregatePortfolio(userId);
     this.loadPortfolioSnapshotChart(userId);
+ const authenticatedUserId = this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
+    if (!authenticatedUserId) {
+      void this.router.navigateByUrl('/login');
+      return;
+    }
+    this.userService.getUser(authenticatedUserId).subscribe({
+          next: user => {
+            this.session.setCurrentUser(user);
+          },
+          error: err => {
+           console.log("Error fetching user data:", err);
+          },
+        });
   }
 
   toggleTheme() {

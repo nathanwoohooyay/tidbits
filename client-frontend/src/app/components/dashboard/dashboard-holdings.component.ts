@@ -92,9 +92,6 @@ export class DashboardHoldingsComponent implements OnInit {
         next: ({ holdings: holdingsArray, orders }) => {
           console.log(holdingsArray);
           const filledOrders = orders.filter(order => order.status.toUpperCase() === 'FILLED');
-          const filledInstrumentIds = new Set(
-            filledOrders.map(order => order.instrument.instrumentId)
-          );
           const instrumentsById = new Map(
             filledOrders.map(order => [order.instrument.instrumentId, order.instrument])
           );
@@ -103,11 +100,8 @@ export class DashboardHoldingsComponent implements OnInit {
          let totalValue=0;
          let totalChangeVal = 0;
 
+          // Retired rewards (stock packs, stock drops) created holdings without an order, so fall back to the ticker list.
           holdingsArray.forEach(holding => {
-            if (!filledInstrumentIds.has(holding.instrumentId)) {
-              return;
-            }
-
             const instrument = instrumentsById.get(holding.instrumentId);
             const ticker = instrument?.ticker ?? this.stockTickers[holding.instrumentId - 1];
             const name = instrument?.name ?? this.stockNames[holding.instrumentId - 1] ?? ticker;

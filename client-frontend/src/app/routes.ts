@@ -5,6 +5,7 @@ import { DashboardPageComponent } from './pages/dashboard-page/dashboard-page';
 import { Maindashboard } from './pages/maindashboard-page/maindashboard';
 import { AccountPageComponent } from './pages/account-page/account-page';
 import { AccountManagementPageComponent } from './pages/account-management-page/account-management-page';
+import { RewardsPageComponent } from './pages/rewards-page/rewards-page';
 import {authGuard} from './services/auth-guard';
 
 export const routes: Routes = [
@@ -23,6 +24,8 @@ export const routes: Routes = [
     component: AccountPageComponent },
   { path: 'account-management', canActivate:[authGuard],
     component: AccountManagementPageComponent },
+  { path: 'rewards', canActivate:[authGuard],
+    component: RewardsPageComponent },
   { path: '**',
     redirectTo: 'login' },
 ];

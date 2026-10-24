@@ -1,6 +1,7 @@
 package com.tidbits.repository;
 
 import com.tidbits.model.entity.Instrument;
+import com.tidbits.model.enums.InstrumentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +14,8 @@ import java.util.List;
 public interface InstrumentRepository extends JpaRepository<Instrument, Integer> {
     Optional<Instrument> findByTicker(String ticker);
     Optional<Instrument> findByTickerIgnoreCase(String ticker);
+
+    List<Instrument> findByType(InstrumentType type);
 
     @Query("SELECT i FROM Instrument i WHERE i.ticker IN :tickers")
     List<Instrument> findByTickerIn(@Param("tickers") List<String> tickers);

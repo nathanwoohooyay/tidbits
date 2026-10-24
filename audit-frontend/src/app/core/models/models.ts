@@ -79,6 +79,25 @@ export interface TransactionLog {
   happenedAt?: string;
 }
 
+export interface PointsLog {
+  logId: number;
+  userId: number;
+  username?: string;
+  accountId?: number;
+  pointsTransactionId?: number;
+  event: string;
+  pointsDelta: number;
+  balanceAfter?: number;
+  cashValue?: number;
+  instrumentId?: number;
+  ticker?: string;
+  quantity?: number;
+  referenceId?: number;
+  details?: string;
+  status: string;
+  timestamp: string;
+}
+
 // Metrics Models
 export interface TradeVolumeByType {
   instrument_type: string;

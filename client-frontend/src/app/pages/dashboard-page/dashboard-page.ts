@@ -219,6 +219,18 @@ setPortfolioValue(value: number) {
 
   }
 
+  goToAccount() {
+    void this.router.navigateByUrl('/account');
+  }
+
+  goToAccountManagement() {
+    void this.router.navigateByUrl('/account-management');
+  }
+
+  goToRewards() {
+    void this.router.navigateByUrl('/rewards');
+  }
+
   signOut() {
     this.session.clearSession();
     void this.router.navigateByUrl('/login');

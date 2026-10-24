@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { UserLog, TransactionLog } from '../models/models';
+import { UserLog, TransactionLog, PointsLog } from '../models/models';
 
 @Injectable({
   providedIn: 'root'
@@ -22,6 +22,45 @@ export class AuditLogService {
     return this.http.get<any[]>(`${this.baseUrl}/transactions`).pipe(
       map((logs: any[]) => this.normalizeTransactionLogs(logs))
     );
+  }
+
+  getPointsLogs(): Observable<PointsLog[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/points`).pipe(
+      map((logs: any[]) => this.normalizePointsLogs(logs))
+    );
+  }
+
+  private normalizePointsLogs(logs: any[]): PointsLog[] {
+    if (!Array.isArray(logs)) {
+      return [];
+    }
+
+    const optionalNumber = (value: any) => (value == null ? undefined : Number(value));
+
+    return logs
+      .map((log) => ({
+        logId: Number(log.logId ?? 0),
+        userId: Number(log.userId ?? 0),
+        username: log.username || undefined,
+        accountId: optionalNumber(log.accountId),
+        pointsTransactionId: optionalNumber(log.pointsTransactionId),
+        event: String(log.event ?? '').toUpperCase(),
+        pointsDelta: Number(log.pointsDelta ?? 0),
+        balanceAfter: optionalNumber(log.balanceAfter),
+        cashValue: optionalNumber(log.cashValue),
+        instrumentId: optionalNumber(log.instrumentId),
+        ticker: log.ticker || undefined,
+        quantity: optionalNumber(log.quantity),
+        referenceId: optionalNumber(log.referenceId),
+        details: log.details || undefined,
+        status: String(log.status ?? 'UNKNOWN').toUpperCase(),
+        timestamp: log.timestamp || log.happenedAt || ''
+      }))
+      .sort((a, b) => {
+        const left = Date.parse(a.timestamp || '');
+        const right = Date.parse(b.timestamp || '');
+        return (Number.isNaN(right) ? 0 : right) - (Number.isNaN(left) ? 0 : left);
+      });
   }
 
   private normalizeUserLogs(logs: any[]): UserLog[] {

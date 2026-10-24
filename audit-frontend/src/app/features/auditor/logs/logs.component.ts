@@ -3,15 +3,25 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuditLogService } from '../../../core/services/audit-log.service';
 import { ReportService } from '../../../core/services/report.service';
-import { UserLog, TransactionLog } from '../../../core/models/models';
+import { UserLog, TransactionLog, PointsLog } from '../../../core/models/models';
 
-type LogsTab = 'USER' | 'TXN' | 'ORDERS';
+type LogsTab = 'USER' | 'TXN' | 'ORDERS' | 'POINTS';
 type StatusFilter = 'ALL' | 'SUCCESS' | 'FAILURE';
 
 const ACCOUNT_TRANSACTION_EVENTS = new Set(['DEPOSIT', 'WITHDRAW']);
 const ORDER_LIFECYCLE_EVENTS = new Set(['ORDER_PLACED', 'ORDER_ACCEPTED', 'ORDER_FILLED', 'ORDER_REJECTED']);
 const ACCOUNT_ORDER_EVENTS = new Set(['ORDER_ACCEPTED', 'ORDER_FILLED']);
 const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
+const POINTS_EVENT_LABELS: Record<string, string> = {
+  EARN_TRADE: 'Trade reward',
+  CASH_OUT: 'Cash out',
+  STOCK_DROP: 'Stock drop',
+  STOCK_PACK: 'Stock pack',
+  LOTTERY_TICKET: 'Lottery tickets',
+  LOTTERY_WIN: 'Lottery win',
+  SCRATCH_CARD: 'Scratch card',
+  SCRATCH_WIN: 'Scratch win'
+};
 
 export interface AggregatedOrder {
   orderId: number;
@@ -92,6 +102,15 @@ export interface AggregatedOrder {
             <span>Orders</span>
             <span class="tab-badge">{{ filteredOrders().length }}</span>
           </button>
+          <button
+            id="tab-points-logs"
+            class="tab-btn"
+            [class.active]="activeTab() === 'POINTS'"
+            (click)="activeTab.set('POINTS')"
+          >
+            <span>Reward Points</span>
+            <span class="tab-badge">{{ filteredPointsLogs().length }}</span>
+          </button>
         </div>
 
         <!-- Flexbox Filter Controls -->
@@ -129,8 +148,39 @@ export interface AggregatedOrder {
             </label>
           </div>
 
+          <!-- Specific Filters for Reward Points -->
+          <div *ngIf="activeTab() === 'POINTS'" class="filter-group">
+            <label class="filter-field">
+              <span>Activity</span>
+              <select class="input-control select-fixed" [ngModel]="selectedPointsEvent()" (ngModelChange)="selectedPointsEvent.set($event || 'ALL')">
+                <option value="ALL">All activity</option>
+                <option *ngFor="let event of availablePointsEvents()" [value]="event">{{ formatPointsEvent(event) }}</option>
+              </select>
+            </label>
+            <label class="filter-field">
+              <span>Direction</span>
+              <select class="input-control select-sm" [ngModel]="selectedPointsDirection()" (ngModelChange)="selectedPointsDirection.set($event || 'ALL')">
+                <option value="ALL">Earned &amp; spent</option>
+                <option value="EARNED">Earned</option>
+                <option value="SPENT">Spent</option>
+              </select>
+            </label>
+            <label class="filter-field">
+              <span>Search</span>
+              <div class="search-select-wrap">
+                <input
+                  type="text"
+                  class="input-control search-input"
+                  placeholder="Client, ticker, details..."
+                  [ngModel]="pointsSearchQuery()"
+                  (ngModelChange)="pointsSearchQuery.set($event)"
+                />
+              </div>
+            </label>
+          </div>
+
           <!-- Specific Filters for Transactions & Orders -->
-          <div *ngIf="activeTab() !== 'USER'" class="filter-group">
+          <div *ngIf="activeTab() === 'TXN' || activeTab() === 'ORDERS'" class="filter-group">
             <!-- Filter by Buy or Sell -->
             <label class="filter-field">
               <span>Side</span>
@@ -381,6 +431,75 @@ export interface AggregatedOrder {
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Reward Points Table -->
+      <div *ngIf="activeTab() === 'POINTS'" class="points-panel animate-fade-in">
+        <div class="points-summary">
+          <div class="glass-panel points-stat">
+            <span class="points-stat-label">Points issued</span>
+            <span class="points-stat-value text-success">+{{ pointsTotals().issued | number }}</span>
+          </div>
+          <div class="glass-panel points-stat">
+            <span class="points-stat-label">Points redeemed</span>
+            <span class="points-stat-value">{{ pointsTotals().redeemed | number }}</span>
+          </div>
+          <div class="glass-panel points-stat">
+            <span class="points-stat-label">Cash value paid out</span>
+            <span class="points-stat-value">{{ pointsTotals().cashOut | currency }}</span>
+          </div>
+          <div class="glass-panel points-stat">
+            <span class="points-stat-label">Rejected attempts</span>
+            <span class="points-stat-value" [class.text-danger]="pointsTotals().failures > 0">{{ pointsTotals().failures | number }}</span>
+          </div>
+        </div>
+
+        <div class="glass-panel table-panel">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Log ID</th>
+                  <th>Timestamp</th>
+                  <th>Client</th>
+                  <th>Account</th>
+                  <th>Activity</th>
+                  <th>Details</th>
+                  <th class="text-right">Points</th>
+                  <th class="text-right">Balance After</th>
+                  <th class="text-right">Cash Value</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let log of filteredPointsLogs()">
+                  <td class="mono-font">#{{ log.logId }}</td>
+                  <td class="mono-font text-muted">{{ log.timestamp | date:'short' }}</td>
+                  <td>{{ log.username || ('Client #' + log.userId) }}</td>
+                  <td class="mono-font">{{ log.accountId ? ('Acc #' + log.accountId) : '-' }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="getPointsEventBadgeClass(log)">{{ formatPointsEvent(log.event) }}</span>
+                  </td>
+                  <td class="points-details">
+                    <span *ngIf="log.ticker" class="ticker-pill">{{ log.ticker }}</span>
+                    {{ log.details || '-' }}
+                  </td>
+                  <td class="mono-font font-bold text-right" [class.text-success]="log.pointsDelta > 0 && log.status !== 'FAILURE'" [class.text-danger]="log.pointsDelta < 0 && log.status !== 'FAILURE'">
+                    {{ log.pointsDelta > 0 ? '+' : '' }}{{ log.pointsDelta | number }}
+                  </td>
+                  <td class="mono-font text-right">{{ log.balanceAfter != null ? (log.balanceAfter | number) : '-' }}</td>
+                  <td class="mono-font text-right">{{ log.cashValue != null ? ('$' + (log.cashValue | number:'1.2-2')) : '-' }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="getStatusBadgeClass(log.status)">{{ log.status }}</span>
+                  </td>
+                </tr>
+                <tr *ngIf="filteredPointsLogs().length === 0">
+                  <td colspan="10" class="empty-cell">No matching reward point activity found.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -651,6 +770,55 @@ export interface AggregatedOrder {
     .tab-btn.active {
       background: #331b0e;
       color: #f7f2e8;
+    }
+
+    .points-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .points-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .points-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding: 1rem 1.25rem;
+    }
+
+    .points-stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .points-stat-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .points-details {
+      max-width: 360px;
+      white-space: normal;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .text-success {
+      color: var(--accent-sage);
+    }
+
+    .text-danger {
+      color: var(--accent-terracotta);
     }
 
     .tab-badge {
@@ -1201,6 +1369,65 @@ export class LogsComponent implements OnInit {
 
   userLogs = signal<UserLog[]>([]);
   txnLogs = signal<TransactionLog[]>([]);
+  pointsLogs = signal<PointsLog[]>([]);
+
+  selectedPointsEvent = signal('ALL');
+  selectedPointsDirection = signal<'ALL' | 'EARNED' | 'SPENT'>('ALL');
+  pointsSearchQuery = signal('');
+
+  filteredPointsLogs = computed(() => {
+    const status = this.statusFilter();
+    const event = this.selectedPointsEvent();
+    const direction = this.selectedPointsDirection();
+    const query = this.pointsSearchQuery().trim().toLowerCase();
+
+    return this.pointsLogs().filter((log) => {
+      if (!this.matchesDateRange(log.timestamp)) return false;
+      if (status !== 'ALL' && log.status !== status) return false;
+      if (event !== 'ALL' && log.event !== event) return false;
+      if (direction === 'EARNED' && log.pointsDelta <= 0) return false;
+      if (direction === 'SPENT' && log.pointsDelta >= 0) return false;
+      if (query) {
+        const haystack = [
+          log.username,
+          `client #${log.userId}`,
+          log.accountId ? `acc #${log.accountId}` : '',
+          log.ticker,
+          log.details,
+          String(log.logId),
+          String(log.pointsTransactionId ?? '')
+        ].join(' ').toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      return true;
+    });
+  });
+
+  pointsTotals = computed(() => {
+    let issued = 0;
+    let redeemed = 0;
+    let cashOut = 0;
+    let failures = 0;
+    for (const log of this.filteredPointsLogs()) {
+      if (log.status === 'FAILURE') {
+        failures++;
+        continue;
+      }
+      if (log.pointsDelta > 0) {
+        issued += log.pointsDelta;
+      } else {
+        redeemed += -log.pointsDelta;
+        if (log.event === 'CASH_OUT' || log.event === 'STOCK_DROP' || log.event === 'STOCK_PACK') {
+          cashOut += log.cashValue ?? 0;
+        }
+      }
+    }
+    return { issued, redeemed, cashOut, failures };
+  });
+
+  availablePointsEvents = computed(() =>
+    [...new Set(this.pointsLogs().map((log) => log.event).filter(Boolean))].sort()
+  );
 
   filteredUserLogs = computed(() => {
     let logs = [...this.userLogs()];
@@ -1449,6 +1676,7 @@ export class LogsComponent implements OnInit {
   loadLogs() {
     this.auditLogService.getUserLogs().subscribe((logs: UserLog[]) => this.userLogs.set(logs));
     this.auditLogService.getTransactionLogs().subscribe((txns: TransactionLog[]) => this.txnLogs.set(txns));
+    this.auditLogService.getPointsLogs().subscribe((logs: PointsLog[]) => this.pointsLogs.set(logs));
   }
 
   exportLogsCsv() {
@@ -1456,6 +1684,8 @@ export class LogsComponent implements OnInit {
       this.reportService.exportToCsv('tidbits_user_audit_logs', this.filteredUserLogs());
     } else if (this.activeTab() === 'TXN') {
       this.reportService.exportToCsv('tidbits_account_transaction_logs', this.filteredAccountTxnLogs());
+    } else if (this.activeTab() === 'POINTS') {
+      this.reportService.exportToCsv('tidbits_reward_points_logs', this.filteredPointsLogs());
     } else {
       this.reportService.exportToCsv('tidbits_orders_summary', this.filteredOrders());
     }
@@ -1568,6 +1798,23 @@ export class LogsComponent implements OnInit {
     }
 
     return 'badge-danger';
+  }
+
+  formatPointsEvent(event: string): string {
+    return POINTS_EVENT_LABELS[event] ?? event;
+  }
+
+  getPointsEventBadgeClass(log: PointsLog): string {
+    if (log.status === 'FAILURE') {
+      return 'badge-danger';
+    }
+    if (log.event === 'LOTTERY_WIN' || log.event === 'SCRATCH_WIN' || log.event === 'EARN_TRADE') {
+      return 'badge-success';
+    }
+    if (log.event === 'CASH_OUT' || log.event === 'STOCK_DROP' || log.event === 'STOCK_PACK') {
+      return 'badge-auditor';
+    }
+    return 'badge-warning';
   }
 
   getStatusBadgeClass(status?: string): string {

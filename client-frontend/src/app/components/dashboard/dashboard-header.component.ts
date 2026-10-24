@@ -16,12 +16,16 @@ export class DashboardHeaderComponent {
   @Input() selectedAccountId = 0;
   @Input() themeMode: ThemeMode = 'light';
   @Input() showAccountSelector = true;
+  @Input() rewardPoints = 0;
 
   @Output() accountChange = new EventEmitter<number>();
   @Output() toggleTheme = new EventEmitter<void>();
   @Output() signOut = new EventEmitter<void>();
 
   readonly formatCurrency = formatCurrency;
+  @Output() goToAccount = new EventEmitter<void>();
+  @Output() goToAccountManagement = new EventEmitter<void>();
+  @Output() goToRewards = new EventEmitter<void>();
 
   onAccountSelect(event: Event) {
     const value = Number((event.target as HTMLSelectElement).value);

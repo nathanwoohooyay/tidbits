@@ -5,12 +5,14 @@ import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.dto.OrderEventDTO;
 import com.tidbits.model.dto.PricingQuoteDTO;
 import com.tidbits.model.entity.Account;
+import com.tidbits.model.entity.AccountTransaction;
 import com.tidbits.model.entity.AccountHolding;
 import com.tidbits.model.entity.Instrument;
 import com.tidbits.model.entity.Order;
 import com.tidbits.model.enums.InstrumentType;
 import com.tidbits.model.enums.OrderStatus;
 import com.tidbits.model.enums.OrderType;
+import com.tidbits.model.enums.PointsEventType;
 import com.tidbits.repository.AccountHoldingRepository;
 import com.tidbits.repository.AccountRepository;
 import com.tidbits.repository.AccountTransactionRepository;
@@ -80,6 +82,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderEventPublisher orderEventPublisher;
+
+    @Mock
+    private PointsLedgerService pointsLedgerService;
 
     @InjectMocks
     private OrderService orderService;
@@ -200,14 +205,41 @@ class OrderServiceTest {
         when(orderStatusHistoryService.getHistoryByOrderId(3)).thenReturn(List.of());
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        when(accountTransactionRepository.save(any(AccountTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
         Order updated = orderService.fillOrder(orderEvent);
 
         assertEquals(OrderStatus.FILLED, updated.getStatus());
         assertEquals(900.0, account.getCashBalance());
+        verify(pointsLedgerService).record(eq(1), eq(PointsEventType.EARN_TRADE), eq(100), any());
         verify(orderStatusHistoryService).switchStatus(updated, OrderStatus.PLACED, OrderStatus.ACCEPTED);
         verify(orderStatusHistoryService).switchStatus(updated, OrderStatus.ACCEPTED, OrderStatus.FILLED);
-        verify(orderEventPublisher).publish(eq("ORDER_ACCEPTED"), eq(updated), any());
-        verify(orderEventPublisher).publish(eq("ORDER_FILLED"), eq(updated), any());
+        verify(orderEventPublisher).publish(eq("ORDER_ACCEPTED"), eq(updated), any(), any());
+        verify(orderEventPublisher).publish(eq("ORDER_FILLED"), eq(updated), any(), any());
+    }
+
+    @Test
+    void fillOrder_awardsOnlyWholeDollarsAndAccumulatesPoints() {
+        Order order = order(1, 2, 3.0, 10.0, OrderType.BUY, OrderStatus.PLACED);
+        order.setOrderId(30);
+        Account account = account(1, 1000.0);
+        OrderEventDTO orderEvent = new OrderEventDTO(
+                "ORDER_PLACED", LocalDateTime.now(), 30, 1, null, 2, 3.0, null,
+                null, "BUY", "PLACED", null, null);
+
+        when(accountService.getAccountById(1)).thenReturn(Optional.of(account));
+        when(orderRepository.findById(30)).thenReturn(Optional.of(order));
+        when(instrumentRepository.findById(2)).thenReturn(Optional.of(instrument(2)));
+        when(pricingService.getRequestedQuotes(anyList(), anyMap())).thenReturn(List.of(
+                new PricingQuoteDTO(2, "AAPL", 100.0, null, 100.1666667, 100.1666667, null, null, "USD", null, false, "test", null, null)
+        ));
+        when(orderStatusHistoryService.getHistoryByOrderId(30)).thenReturn(List.of());
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(accountTransactionRepository.save(any(AccountTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.fillOrder(orderEvent);
+
+        verify(pointsLedgerService).record(eq(1), eq(PointsEventType.EARN_TRADE), eq(300), any());
     }
 
     @Test
@@ -241,6 +273,8 @@ class OrderServiceTest {
         when(orderStatusHistoryService.getHistoryByOrderId(4)).thenReturn(List.of());
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.empty());
+
+        when(accountTransactionRepository.save(any(AccountTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Order updated = orderService.fillOrder(orderEvent);
 
@@ -285,6 +319,8 @@ class OrderServiceTest {
         when(orderStatusHistoryService.getHistoryByOrderId(5)).thenReturn(List.of());
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(accountHoldingRepository.findByAccountIdAndInstrumentId(1, 2)).thenReturn(Optional.of(holding));
+
+        when(accountTransactionRepository.save(any(AccountTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Order updated = orderService.fillOrder(orderEvent);
 

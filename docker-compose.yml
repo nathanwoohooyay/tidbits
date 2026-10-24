@@ -72,6 +72,13 @@ services:
         --topic "user-audit-events" \
         --partitions "3" \
         --replication-factor "1";
+      echo "Creating topic points-events if needed...";
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server "kafka:9092" \
+        --create \
+        --if-not-exists \
+        --topic "points-events" \
+        --partitions "3" \
+        --replication-factor "1";
       echo "Kafka topic initialization complete.";
       '
     restart: "no"
@@ -123,6 +130,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_ORDER_TOPIC: ${KAFKA_ORDER_TOPIC:-orders}
       KAFKA_USER_AUDIT_TOPIC: ${KAFKA_USER_AUDIT_TOPIC:-user-audit-events}
+      KAFKA_POINTS_TOPIC: ${KAFKA_POINTS_TOPIC:-points-events}
     depends_on:
       postgres:
         condition: service_healthy
@@ -148,6 +156,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_ORDER_TOPIC: ${KAFKA_ORDER_TOPIC:-orders}
       KAFKA_USER_AUDIT_TOPIC: ${KAFKA_USER_AUDIT_TOPIC:-user-audit-events}
+      KAFKA_POINTS_TOPIC: ${KAFKA_POINTS_TOPIC:-points-events}
     depends_on:
       postgres:
         condition: service_healthy

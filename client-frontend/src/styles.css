@@ -456,6 +456,36 @@ body {
   display: block
 }
 
+.rewards-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  height: 2.4rem;
+  padding: 0 .9rem;
+  border-radius: var(--radius-pill);
+  background: var(--clr-header-control-bg);
+  border: 1px solid var(--clr-header-control-border);
+  color: var(--clr-header-text);
+  font-family: var(--font-body);
+  font-size: .85rem;
+  cursor: pointer;
+  transition: all var(--transition)
+}
+
+.rewards-toggle:hover {
+  background: color-mix(in oklab, var(--clr-header-control-bg) 70%, var(--clr-header-text) 30%)
+}
+
+.rewards-toggle-points {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums
+}
+
+.rewards-toggle-label {
+  opacity: .7;
+  font-size: .75rem
+}
+
 .login-theme-toggle {
   position: absolute;
   top: 1rem;

@@ -9,6 +9,7 @@ export interface UserDTO {
   phoneNumber: string;
   role_id: number;
   reward_points: number;
+  rewardPoints?: number;
 }
 
 export interface ChangePasswordDTO {

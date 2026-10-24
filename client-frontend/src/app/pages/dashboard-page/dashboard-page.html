@@ -3,8 +3,12 @@
     [accounts]="accounts()"
     [selectedAccountId]="selectedAccountId()"
     [themeMode]="themeMode()"
+    [rewardPoints]="currentUser()?.rewardPoints ?? currentUser()?.reward_points ?? 0"
     (accountChange)="onAccountChange($event)"
     (toggleTheme)="toggleTheme()"
+    (goToAccount)="goToAccount()"
+    (goToAccountManagement)="goToAccountManagement()"
+    (goToRewards)="goToRewards()"
     (signOut)="signOut()">
   </app-dashboard-header>
 

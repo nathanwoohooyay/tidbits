@@ -101,3 +101,66 @@ CREATE TABLE transaction_logs(
     status log_status_type,
     happened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
+-- Reward points ledger: every earn/spend of users.reward_points, written by client-service.
+CREATE TABLE points_transactions (
+    points_transaction_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(user_id),
+    account_id INT REFERENCES accounts(account_id),
+    event_type TEXT NOT NULL,
+    points_delta INT NOT NULL CHECK (points_delta <> 0 OR event_type = 'LOTTERY_WIN'),
+    balance_after INT NOT NULL CHECK (balance_after >= 0),
+    cash_value NUMERIC(15, 2),
+    instrument_id INT REFERENCES instruments(instrument_id),
+    quantity NUMERIC(17, 4),
+    reference_id INT,
+    details TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX idx_points_transactions_user ON points_transactions (user_id, created_at DESC);
+
+CREATE TABLE lottery_draws (
+    draw_id SERIAL PRIMARY KEY,
+    ticket_price INT NOT NULL CHECK (ticket_price > 0),
+    seed_pot INT NOT NULL CHECK (seed_pot >= 0),
+    tickets_sold INT DEFAULT 0 NOT NULL,
+    status TEXT NOT NULL,
+    opens_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    closes_at TIMESTAMP NOT NULL,
+    winning_ticket_id INT,
+    winner_user_id INT REFERENCES users(user_id),
+    prize_points INT,
+    prize_code TEXT,
+    prize_name TEXT,
+    prize_description VARCHAR(1000),
+    fulfillment_status TEXT,
+    drawn_at TIMESTAMP
+);
+-- One open draw per prize; legacy points draws have no prize_code.
+CREATE UNIQUE INDEX idx_lottery_draws_open_per_prize ON lottery_draws (prize_code) WHERE status = 'OPEN';
+
+CREATE TABLE lottery_tickets (
+    ticket_id SERIAL PRIMARY KEY,
+    draw_id INT NOT NULL REFERENCES lottery_draws(draw_id),
+    user_id INT NOT NULL REFERENCES users(user_id),
+    purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX idx_lottery_tickets_draw ON lottery_tickets (draw_id, user_id);
+
+-- Audit copy of points activity, written by audit-service from the points-events topic.
+CREATE TABLE points_logs (
+    log_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    account_id INT REFERENCES accounts(account_id),
+    points_transaction_id INT REFERENCES points_transactions(points_transaction_id),
+    event TEXT NOT NULL,
+    points_delta INT,
+    balance_after INT,
+    cash_value NUMERIC(15, 2),
+    instrument_id INT REFERENCES instruments(instrument_id),
+    quantity NUMERIC(17, 4),
+    reference_id INT,
+    details TEXT,
+    status TEXT,
+    happened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);

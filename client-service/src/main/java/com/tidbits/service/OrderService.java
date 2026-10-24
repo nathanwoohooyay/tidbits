@@ -15,6 +15,7 @@ import com.tidbits.model.entity.Order;
 import com.tidbits.model.entity.OrderStatusHistory;
 import com.tidbits.model.enums.OrderStatus;
 import com.tidbits.model.enums.OrderType;
+import com.tidbits.model.enums.PointsEventType;
 import com.tidbits.model.enums.TransactionType;
 import com.tidbits.repository.AccountHoldingRepository;
 import com.tidbits.repository.AccountRepository;
@@ -69,6 +70,9 @@ public class OrderService {
 
     @Autowired
     private OrderEventPublisher orderEventPublisher;
+
+    @Autowired
+    private PointsLedgerService pointsLedgerService;
 
     private static final Set<OrderStatus> FINAL_STATUSES = Set.of(
             OrderStatus.FILLED,
@@ -131,11 +135,26 @@ public class OrderService {
         transaction.setCreatedAt(LocalDateTime.now());
         AccountTransaction at = accountTransactionRepository.save(transaction);
 
+        awardRewardPoints(account, currOrder, totalAmount);
+
         orderStatusEvent(currOrder, OrderStatus.PLACED, OrderStatus.ACCEPTED, at.getTransactionId());
 
         orderStatusEvent(currOrder, OrderStatus.ACCEPTED, OrderStatus.FILLED, at.getTransactionId());
 
         return currOrder;
+    }
+
+    private void awardRewardPoints(Account account, Order order, double tradedVolume) {
+        int points = BigDecimal.valueOf(tradedVolume)
+                .setScale(0, RoundingMode.FLOOR)
+                .intValueExact();
+        if (points <= 0) {
+            return;
+        }
+
+        pointsLedgerService.record(account.getUserId(), PointsEventType.EARN_TRADE, points,
+                new PointsLedgerService.Details(account.getAccountId(), tradedVolume, order.getInstrumentId(),
+                        order.getQuantity(), order.getOrderId(), "Earned on order #" + order.getOrderId()));
     }
 
     private void orderStatusEvent(Order order, OrderStatus oldStatus, OrderStatus newStatus, Integer transactionId) {

@@ -21,6 +21,14 @@
       </span>
     }
 
+    <button class="rewards-toggle" type="button" (click)="goToRewards.emit()"
+            [attr.aria-label]="'Rewards: ' + rewardPoints + ' points'"
+            title="Spend your reward points">
+      <span aria-hidden="true">★</span>
+      <span class="rewards-toggle-points">{{ rewardPoints | number }}</span>
+      <span class="rewards-toggle-label">pts</span>
+    </button>
+
     <button class="theme-toggle" type="button" (click)="toggleTheme.emit()"
             [attr.aria-label]="themeMode === 'dark' ? 'Dark mode enabled' : 'Light mode enabled'"
             [attr.title]="themeMode === 'dark' ? 'Dark mode enabled' : 'Light mode enabled'">

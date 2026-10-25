@@ -1,0 +1,68 @@
+<dialog #dialog class="modal" aria-labelledby="cash-modal-title" (cancel)="onCancel($event)" (click)="onDialogClick($event)">
+  @if (rendered()) {
+    <div class="modal-body">
+      <header class="modal-head">
+        <div>
+          <h2 id="cash-modal-title" class="modal-title">Transfer</h2>
+          <p class="modal-sub">{{ accountName() }} · {{ formatCurrency(cashBalance()) }} available</p>
+        </div>
+        <button type="button" class="modal-close" (click)="closed.emit()" aria-label="Close transfer window">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+
+      <form (ngSubmit)="submit()">
+        <div class="transfer-toggle" role="radiogroup" aria-label="Transfer direction">
+          <button type="button" role="radio" [class.active]="direction() === 'deposit'" [attr.aria-checked]="direction() === 'deposit'" (click)="setDirection('deposit')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            Deposit
+          </button>
+          <button type="button" role="radio" [class.active]="direction() === 'withdraw'" [attr.aria-checked]="direction() === 'withdraw'" (click)="setDirection('withdraw')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            Withdraw
+          </button>
+        </div>
+
+        <label class="field-label" for="dashboard-cash-amount">Amount</label>
+        <div class="cash-input-wrap">
+          <span class="cash-input-prefix" aria-hidden="true">$</span>
+          <input
+            id="dashboard-cash-amount"
+            type="number"
+            name="cashAmount"
+            min="0.01"
+            step="0.01"
+            placeholder="0.00"
+            [ngModel]="cashAmount()"
+            (ngModelChange)="cashAmountChange.emit($event)"
+          />
+        </div>
+        @if (direction() === 'withdraw') {
+          <button type="button" class="btn-link transfer-max" (click)="cashAmountChange.emit(cashBalance())">
+            Withdraw all · {{ formatCurrency(cashBalance()) }}
+          </button>
+        }
+
+        @if (cashError()) {
+          <div class="error-message" role="alert">{{ cashError() }}</div>
+        }
+        @if (cashSuccess()) {
+          <p class="sr-only" role="status">{{ cashSuccess() }}</p>
+        }
+
+        <button type="submit" class="btn-primary transfer-submit" [class.is-loading]="cashLoading()" [class.is-done]="!!cashSuccess()"
+                [disabled]="cashLoading() || !!cashSuccess()" [attr.aria-busy]="cashLoading()">
+          @if (cashSuccess()) {
+            <svg class="btn-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            Done
+          } @else if (cashLoading()) {
+            <span class="btn-spinner" aria-hidden="true"></span>
+            Processing…
+          } @else {
+            {{ direction() === 'deposit' ? 'Deposit' : 'Withdraw' }}{{ (cashAmount() ?? 0) > 0 ? ' ' + formatCurrency(cashAmount()!) : ' funds' }}
+          }
+        </button>
+      </form>
+    </div>
+  }
+</dialog>

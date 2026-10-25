@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { formatCurrency, formatPercent } from './dashboard.utils';
+import { RollingNumberComponent } from '../rolling-number.component';
 
 @Component({
   selector: 'app-dashboard-metrics',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RollingNumberComponent],
   templateUrl: './dashboard-metrics.component.html'
 })
 export class DashboardMetricsComponent {
@@ -13,6 +14,12 @@ export class DashboardMetricsComponent {
   @Input() cashBalance = 0;
   @Input() portfolioValue = 0;
   @Input() portfolioGainLoss = 0;
+  @Input() loading = false;
+  @Input() dayChange = 0;
+  @Input() dayChangePercent = 0;
+  // Holdings couldn't be priced, so anything that includes them would be wrong; cash is still shown.
+  @Input() unavailable = false;
+  @Output() moveCash = new EventEmitter<void>();
 
   readonly Math = Math;
   readonly formatCurrency = formatCurrency;

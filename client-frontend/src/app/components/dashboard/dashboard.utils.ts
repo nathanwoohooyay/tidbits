@@ -31,3 +31,12 @@ export function formatCompactNumber(value: number): string {
   return value.toFixed(0);
 }
 
+
+// 'Sep 3 – Oct 12' for two YYYY-MM-DD days; years are added when the days fall in different years.
+export function formatDayRange(from: string, to: string): string {
+  const a = new Date(`${from}T12:00:00`);
+  const b = new Date(`${to}T12:00:00`);
+  const withYear = a.getFullYear() !== b.getFullYear();
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(withYear ? { year: 'numeric' } : {}) });
+  return `${fmt(a)} – ${fmt(b)}`;
+}

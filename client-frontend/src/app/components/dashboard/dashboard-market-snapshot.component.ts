@@ -1,21 +1,29 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, OnInit, inject, Input, Output, signal } from '@angular/core';
-import { Instrument, TrendFilter, TradeMode } from './dashboard.models';
+import { Component, EventEmitter, Input, Output, computed, inject } from '@angular/core';
+import { injectQuery } from '@tanstack/angular-query-experimental';
+import { Instrument, TradeTarget, TrendFilter } from './dashboard.models';
 import { formatCurrency, formatPercent } from './dashboard.utils';
 import { tickerToName } from './stock';
-import { PricingQuoteDTO, PricingService } from '../../services/pricing.service';
+import { PricingQuoteDTO } from '../../services/pricing.service';
+import { PortfolioQueries, REFRESH_INTERVAL_MS } from '../../services/portfolio-queries';
+import { SparklineComponent } from './sparkline.component';
+import { TickerLogoComponent } from './ticker-logo.component';
+import { SkeletonRowsComponent } from '../skeleton-rows.component';
+import { ErrorStateComponent } from '../error-state.component';
+
+const MARKET_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'WMT', 'AMZN', 'META', 'TSLA'];
 
 @Component({
   selector: 'app-dashboard-market-snapshot',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SparklineComponent, TickerLogoComponent, SkeletonRowsComponent, ErrorStateComponent],
   templateUrl: './dashboard-market-snapshot.component.html'
 })
-export class DashboardMarketSnapshotComponent implements OnInit {
+export class DashboardMarketSnapshotComponent {
   @Input() trendFilter: TrendFilter = 'trending';
 
   @Output() trendFilterChange = new EventEmitter<TrendFilter>();
-  @Output() quickTrade = new EventEmitter<{ instrumentId: number; mode: TradeMode }>();
+  @Output() trade = new EventEmitter<TradeTarget>();
 
   readonly filters: Array<[TrendFilter, string]> = [
     ['gainers', 'Top Gainers'],
@@ -25,33 +33,24 @@ export class DashboardMarketSnapshotComponent implements OnInit {
   readonly formatCurrency = formatCurrency;
   readonly formatPercent = formatPercent;
 
-  private readonly pricingService = inject(PricingService);
-  private readonly symbols = ['AAPL', 'MSFT', 'GOOGL', 'WMT', 'AMZN', 'META', 'TSLA'];
-  readonly instruments = signal<Instrument[]>([]);
-  readonly loading = signal(false);
-  readonly error = signal('');
+  private readonly queries = inject(PortfolioQueries);
+  private readonly quotesQuery = injectQuery(() => ({
+    ...this.queries.quotes(MARKET_SYMBOLS),
+    refetchInterval: REFRESH_INTERVAL_MS,
+  }));
 
-  ngOnInit() {
-    this.loadMarketSnapshot();
-  }
+  readonly instruments = computed(() => (this.quotesQuery.data() ?? [])
+    .filter(quote => quote.price != null && quote.symbol != null)
+    .map(quote => this.toDashboardInstrument(quote)));
+  // Only the first load shows a loading state; background refetches keep the current rows.
+  readonly loading = computed(() => this.quotesQuery.isPending());
+  readonly error = computed(() => {
+    const err = this.quotesQuery.error() as { error?: { message?: string; error?: string } } | null;
+    return err && !this.quotesQuery.data() ? err.error?.message ?? err.error?.error ?? 'Failed to load market data.' : '';
+  });
 
-  private loadMarketSnapshot() {
-    this.loading.set(true);
-    this.error.set('');
-
-    this.pricingService.getQuotes(this.symbols.join(',')).subscribe({
-      next: response => {
-        this.instruments.set(response.quotes
-          .filter(quote => quote.price != null && quote.symbol != null)
-          .map(quote => this.toDashboardInstrument(quote)));
-        this.loading.set(false);
-      },
-      error: err => {
-        this.instruments.set([]);
-        this.error.set(err?.error?.message ?? err?.error?.error ?? 'Failed to load market data.');
-        this.loading.set(false);
-      },
-    });
+  retry() {
+    void this.quotesQuery.refetch();
   }
 
   private toDashboardInstrument(quote: PricingQuoteDTO): Instrument {

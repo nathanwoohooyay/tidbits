@@ -11,8 +11,7 @@ export class DashboardGreetingComponent {
   @Input() username = '';
   @Input() accountNickname = '';
   @Input() today: Date = new Date();
-  @Input() usingPlaceholderMarketData = false;
-  @Input() accountCount = 0;
+  @Input() loading = false;
 }
 
 

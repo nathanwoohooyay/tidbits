@@ -9,69 +9,20 @@ import { AuthService } from '../../core/services/auth.service';
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="shell-layout">
-      <!-- Top Navigation Header -->
-      <header class="shell-header glass-panel">
-        <div class="header-left">
-          <div class="brand">
-            <div class="brand-logo">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                <polyline points="2 17 12 22 22 17"></polyline>
-                <polyline points="2 12 12 17 22 12"></polyline>
-              </svg>
-            </div>
-            <div class="brand-text">
-              <div class="brand-name">TIDBITS <span class="highlight">AUDIT</span></div>
-            </div>
+      <!-- Sidebar: brand, navigation, signed-in user -->
+      <aside class="shell-sidebar" aria-label="Primary">
+        <div class="brand">
+          <img class="brand-logo" src="logos/logo-dark-mode.png" width="30" height="30" alt="" draggable="false" />
+          <div class="brand-text">
+            <div class="brand-name">BitTrader</div>
+            <div class="brand-sub">Audit &amp; Compliance</div>
           </div>
         </div>
 
-
-
-        <div class="header-right">
-          <!-- User Profile Chip -->
-          <div class="user-chip">
-            <div class="user-avatar">
-              {{ ('' + (authService.currentUser()?.username || 'U')).charAt(0).toUpperCase() }}
-            </div>
-            <div class="user-details">
-              <div class="user-name">{{ authService.currentUser()?.username || 'Examiner' }}</div>
-              <div
-                class="badge"
-                [ngClass]="authService.roleBadgeClass()"
-              >
-                {{ authService.userRole() || 'AUDITOR' }}
-              </div>
-            </div>
-          </div>
-
-          <button
-            id="btn-logout"
-            class="btn btn-secondary btn-sm logout-btn"
-            (click)="logout()"
-            title="Terminate secure session"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-            <span>Exit</span>
-          </button>
-        </div>
-      </header>
-
-      <div class="shell-body">
-        <!-- Sidebar Navigation -->
-        <aside class="shell-sidebar glass-panel">
-          <div class="nav-section-label">AUDIT INTELLIGENCE</div>
-          <nav class="nav-links">
-            <a
-              id="nav-analytics"
-              routerLink="/auditor/analytics"
-              routerLinkActive="active"
-              class="nav-item"
-            >
+        <div class="nav-scroll">
+          <div class="nav-section-label">Audit intelligence</div>
+          <nav class="nav-links" aria-label="Audit">
+            <a id="nav-analytics" routerLink="/auditor/analytics" routerLinkActive="active" class="nav-item">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="20" x2="18" y2="10"></line>
                 <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -80,24 +31,14 @@ import { AuthService } from '../../core/services/auth.service';
               <span>Trading Analytics</span>
             </a>
 
-            <a
-              id="nav-reports"
-              routerLink="/auditor/compliance"
-              routerLinkActive="active"
-              class="nav-item"
-            >
+            <a id="nav-reports" routerLink="/auditor/compliance" routerLinkActive="active" class="nav-item">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
               <span>Compliance</span>
             </a>
 
-            <a
-              id="nav-logs"
-              routerLink="/auditor/logs"
-              routerLinkActive="active"
-              class="nav-item"
-            >
+            <a id="nav-logs" routerLink="/auditor/logs" routerLinkActive="active" class="nav-item">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <line x1="12" y1="18" x2="12" y2="12"></line>
@@ -108,15 +49,10 @@ import { AuthService } from '../../core/services/auth.service';
           </nav>
 
           <!-- Admin Section (Only visible to Admin) -->
-          <div *ngIf="authService.isAdmin()" class="admin-nav-group animate-fade-in">
-            <div class="nav-section-label admin-label">ADMINISTRATION</div>
-            <nav class="nav-links">
-              <a
-                id="nav-admin-dashboard"
-                routerLink="/admin/dashboard"
-                routerLinkActive="active"
-                class="nav-item"
-              >
+          <div *ngIf="authService.isAdmin()" class="admin-nav-group">
+            <div class="nav-section-label">Administration</div>
+            <nav class="nav-links" aria-label="Administration">
+              <a id="nav-admin-dashboard" routerLink="/admin/dashboard" routerLinkActive="active" class="nav-item">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="3" width="7" height="7"></rect>
                   <rect x="14" y="3" width="7" height="7"></rect>
@@ -126,12 +62,7 @@ import { AuthService } from '../../core/services/auth.service';
                 <span>Admin Dashboard</span>
               </a>
 
-              <a
-                id="nav-admin-users"
-                routerLink="/admin/users"
-                routerLinkActive="active"
-                class="nav-item"
-              >
+              <a id="nav-admin-users" routerLink="/admin/users" routerLinkActive="active" class="nav-item">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                   <circle cx="9" cy="7" r="4"></circle>
@@ -142,119 +73,179 @@ import { AuthService } from '../../core/services/auth.service';
               </a>
             </nav>
           </div>
+        </div>
 
-        </aside>
+        <div class="sidebar-footer">
+          <div class="user-chip">
+            <div class="user-avatar" aria-hidden="true">
+              {{ ('' + (authService.currentUser()?.username || 'U')).charAt(0).toUpperCase() }}
+            </div>
+            <div class="user-details">
+              <div class="user-name">{{ authService.currentUser()?.username || 'Examiner' }}</div>
+              <div class="badge" [ngClass]="authService.roleBadgeClass()">
+                {{ authService.userRole() || 'AUDITOR' }}
+              </div>
+            </div>
+          </div>
 
-        <!-- Main Content View -->
-        <main class="shell-main">
-          <router-outlet></router-outlet>
-        </main>
-      </div>
+          <button id="btn-logout" class="logout-btn" (click)="logout()" title="Terminate secure session">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span>Exit</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Content View -->
+      <main class="shell-main">
+        <router-outlet></router-outlet>
+      </main>
     </div>
   `,
   styles: [`
     .shell-layout {
       min-height: 100vh;
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+    }
+
+    .shell-sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      position: relative;
+      gap: 1.5rem;
+      padding: 1.5rem 1rem 1.1rem;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      z-index: 40;
     }
 
-    .shell-header {
-      height: 68px;
-      margin: 12px 16px 0;
-      padding: 0 20px;
+    .brand {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      z-index: 50;
-      border-radius: var(--radius-lg);
-    }
-
-    .header-left .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      gap: 0.7rem;
+      padding: 0 0.5rem;
     }
 
     .brand-logo {
-      width: 38px;
-      height: 38px;
-      background: linear-gradient(135deg, #331b0e 0%, #542d17 100%);
-      border: 1px solid #6b3a1d;
-      border-radius: var(--radius-md);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fcefdc;
-      box-shadow: 0 4px 12px rgba(51, 27, 14, 0.25);
+      flex: none;
     }
 
     .brand-name {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      color: var(--text-primary);
-    }
-
-    .brand-name .highlight {
-      color: var(--accent-cognac);
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      line-height: 1.15;
     }
 
     .brand-sub {
-      font-size: 11px;
-      color: var(--text-muted);
+      font-size: 0.66rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(241, 236, 230, 0.72);
     }
 
-    .system-status-chip {
+    .nav-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+
+    .nav-section-label {
+      font-size: 0.66rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(241, 236, 230, 0.72);
+      padding: 0 0.75rem 0.45rem;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .nav-item {
+      position: relative;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      background: rgba(42, 97, 66, 0.09);
-      border: 1px solid rgba(42, 97, 66, 0.22);
-      border-radius: 9999px;
-      font-size: 11px;
-      color: #2a6142;
-      letter-spacing: 0.5px;
+      gap: 0.8rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 10px;
+      color: rgba(241, 236, 230, 0.8);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+
+    .nav-item svg {
+      flex: none;
+    }
+
+    .nav-item:hover {
+      background: var(--sidebar-control-bg);
+      color: var(--sidebar-text);
+    }
+
+    .nav-item.active {
+      background: var(--sidebar-control-bg);
+      color: var(--sidebar-text);
       font-weight: 600;
     }
 
-    .header-right {
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: -1rem;
+      top: 22%;
+      bottom: 22%;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: #E8E1DA;
+    }
+
+    .nav-item:focus-visible,
+    .logout-btn:focus-visible {
+      outline-color: #E8E1DA;
+    }
+
+    .sidebar-footer {
       display: flex;
-      align-items: center;
-      gap: 14px;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--sidebar-control-border);
     }
 
     .user-chip {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 6px 12px 6px 8px;
-      background: #fbf7ef;
-      border: 1px solid var(--border-subtle);
-      border-radius: 9999px;
-      min-height: 40px;
+      gap: 0.7rem;
+      padding: 0 0.5rem;
+      min-width: 0;
     }
 
     .user-avatar {
-      width: 28px;
-      height: 28px;
-      background: linear-gradient(135deg, #331b0e, #5d361c);
-      color: #f7f2e8;
-      font-weight: 700;
-      font-size: 12px;
+      flex: none;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .user-name {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--text-primary);
-      line-height: 1.1;
+      display: grid;
+      place-items: center;
+      background: var(--sidebar-control-bg);
+      border: 1px solid var(--sidebar-control-border);
+      font-weight: 700;
+      font-size: 0.8rem;
     }
 
     .user-details {
@@ -262,86 +253,110 @@ import { AuthService } from '../../core/services/auth.service';
       flex-direction: column;
       align-items: flex-start;
       gap: 3px;
-      min-width: 90px;
+      min-width: 0;
     }
 
-    .user-details .badge {
-      line-height: 1;
-      padding-top: 3px;
-      padding-bottom: 3px;
+    .user-name {
+      font-size: 0.86rem;
+      font-weight: 600;
+      line-height: 1.1;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .logout-btn {
-      padding: 7px 12px;
-    }
-
-    .shell-body {
-      display: flex;
-      flex: 1;
-      padding: 14px 16px 20px;
-      gap: 16px;
-    }
-
-    .shell-sidebar {
-      width: 240px;
-      padding: 20px 14px;
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-      height: calc(100vh - 108px);
-      position: sticky;
-      top: 94px;
-    }
-
-    .nav-section-label {
-      font-size: 10.5px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      padding: 0 10px 10px;
-    }
-
-    .admin-label {
-      color: var(--accent-cognac);
-      margin-top: 24px;
-    }
-
-    .nav-links {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .nav-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      border-radius: var(--radius-md);
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 600;
-      transition: all 0.2s ease;
-      border: 1px solid transparent;
+      gap: 0.8rem;
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: rgba(241, 236, 230, 0.8);
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease;
     }
 
-    .nav-item:hover {
-      background: #f5eedf;
-      color: var(--text-primary);
-    }
-
-    .nav-item.active {
-      background: linear-gradient(90deg, rgba(138, 78, 35, 0.12) 0%, rgba(51, 27, 14, 0.05) 100%);
-      color: var(--accent-brown);
-      border-color: rgba(138, 78, 35, 0.3);
-      font-weight: 700;
-      box-shadow: 0 2px 8px rgba(51, 27, 14, 0.06);
+    .logout-btn:hover {
+      background: var(--sidebar-control-bg);
+      color: #E07A92;
     }
 
     .shell-main {
-      flex: 1;
       min-width: 0;
+      padding: 2rem clamp(1rem, 2.5vw, 2.5rem) 3rem;
+    }
+
+    /* Narrow screens: the sidebar becomes a scrolling top bar, like the client app. */
+    @media (max-width: 900px) {
+      .shell-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .shell-sidebar {
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.55rem 0.75rem;
+        overflow-x: auto;
+      }
+
+      .brand-text,
+      .nav-section-label,
+      .nav-item span,
+      .user-details,
+      .logout-btn span {
+        display: none;
+      }
+
+      .nav-scroll {
+        flex-direction: row;
+        overflow: visible;
+        gap: 0.25rem;
+      }
+
+      .nav-links {
+        flex-direction: row;
+      }
+
+      .nav-item,
+      .logout-btn {
+        padding: 0.55rem;
+      }
+
+      .nav-item.active::before {
+        left: 22%;
+        right: 22%;
+        top: auto;
+        bottom: -0.55rem;
+        width: auto;
+        height: 3px;
+        border-radius: 3px 3px 0 0;
+      }
+
+      .sidebar-footer {
+        flex-direction: row;
+        align-items: center;
+        margin-left: auto;
+        padding: 0 0 0 0.5rem;
+        border-top: none;
+        border-left: 1px solid var(--sidebar-control-border);
+      }
+
+      .user-chip {
+        padding: 0;
+      }
+
+      .shell-main {
+        padding: 1.25rem 1rem 2.5rem;
+      }
     }
   `]
 })

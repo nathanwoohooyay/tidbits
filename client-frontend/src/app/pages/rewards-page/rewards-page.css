@@ -1,8 +1,4 @@
 .rewards-content {
-  max-width: 1180px;
-  margin: 0 auto;
-  width: 100%;
-  display: grid;
   gap: 3rem;
 }
 
@@ -19,22 +15,23 @@
 /* ---------- Balance ---------- */
 .rewards-summary {
   display: grid;
-  gap: .35rem;
-  padding-top: 1rem;
+  gap: .25rem;
 }
 
 .balance {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(2.6rem, 6vw, 4rem);
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: -.035em;
   line-height: 1;
   color: var(--clr-espresso);
   font-variant-numeric: tabular-nums;
 }
 
 .balance-unit {
-  font-family: var(--font-body);
   font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
   color: var(--clr-sienna);
 }
 
@@ -52,7 +49,7 @@
 .section-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
   gap: .5rem 1rem;
   padding-bottom: .75rem;
@@ -62,30 +59,30 @@
 
 .section-row h2 {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 1.6rem;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -.01em;
   color: var(--clr-espresso);
 }
 
 /* ---------- Prize grid ---------- */
 .prize-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
   gap: 2.5rem 1.75rem;
 }
 
 .prize {
   display: flex;
   flex-direction: column;
-  gap: .4rem;
+  gap: .5rem;
   min-width: 0;
 }
 
 .prize-thumb {
   position: relative;
   aspect-ratio: 4 / 3;
-  margin-bottom: .6rem;
+  margin-bottom: .5rem;
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--clr-surface-soft);
@@ -105,9 +102,8 @@
 
 .prize-name {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 1.25rem;
+  font-weight: 600;
+  font-size: 1.02rem;
   color: var(--clr-espresso);
 }
 
@@ -141,7 +137,7 @@
 .stepper {
   display: flex;
   align-items: center;
-  gap: .6rem;
+  gap: .5rem;
   color: var(--clr-espresso);
   font-weight: 600;
 }
@@ -162,7 +158,7 @@
 
 .enter-btn {
   flex: 1;
-  padding: .55rem .9rem;
+  padding: .5rem 1rem;
   border: none;
   border-radius: var(--radius-pill);
   background: var(--clr-espresso);
@@ -182,7 +178,7 @@
 .enter-btn:focus-visible,
 .text-tabs button:focus-visible,
 .link-btn:focus-visible {
-  outline: 2px solid var(--clr-caramel);
+  outline: 2px solid var(--clr-accent-ink);
   outline-offset: 2px;
 }
 
@@ -215,26 +211,6 @@
 }
 
 /* ---------- Activity ---------- */
-.text-tabs {
-  display: flex;
-  gap: 1.1rem;
-}
-
-.text-tabs button {
-  padding: 0 0 .15rem;
-  border: none;
-  border-bottom: 1px solid transparent;
-  background: none;
-  color: var(--clr-sienna);
-  font: inherit;
-  cursor: pointer;
-}
-
-.text-tabs button.active {
-  color: var(--clr-espresso);
-  border-bottom-color: currentColor;
-}
-
 .activity-scroll { overflow-x: auto; }
 
 .rewards-section .history-table th {

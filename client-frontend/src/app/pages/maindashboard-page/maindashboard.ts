@@ -1,15 +1,26 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { AccountHoldingDto, AccountService, AccountDto, PortfolioSnapshotDto } from '../../services/account.service';
-import { GetHoldingsResponseDTO, PricingService } from '../../services/pricing.service';
+import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
 import { SessionService } from '../../services/session.service';
-import { tickerToName } from '../../components/dashboard/stock';
+import { AccountService, PortfolioSnapshotDto } from '../../services/account.service';
 import { DashboardChartComponent } from '../../components/dashboard/dashboard-chart.component';
-import { ChartPoint, ChartTimeframe, ThemeMode } from '../../components/dashboard/dashboard.models';
+import { ChartTimeframe } from '../../components/dashboard/dashboard.models';
 import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-header.component';
-import {UserDTO, UserService} from '../../services/user.service';
+import { DashboardCashModalComponent, TRANSFER_DONE_MS, transferToast } from '../../components/dashboard/dashboard-cash-modal.component';
+import { ToastService } from '../../services/toast.service';
+import { AllocationBarComponent } from '../../components/dashboard/allocation-bar.component';
+import { TickerLogoComponent } from '../../components/dashboard/ticker-logo.component';
+import { TrendLineComponent } from '../../components/dashboard/trend-line.component';
+import { formatCurrency, formatPercent } from '../../components/dashboard/dashboard.utils';
+import { RollingNumberComponent } from '../../components/rolling-number.component';
+import { SkeletonRowsComponent } from '../../components/skeleton-rows.component';
+import { ChartSkeletonComponent } from '../../components/dashboard/chart-skeleton.component';
+import { ErrorStateComponent } from '../../components/error-state.component';
+import {
+  HoldingDTO, PortfolioQueries, REFRESH_INTERVAL_MS, aggregateSnapshotsByDay, snapshotSeriesByAccount
+} from '../../services/portfolio-queries';
+
 interface AccountSummary {
   accountId: number;
   nickname: string;
@@ -17,11 +28,28 @@ interface AccountSummary {
   portfolioValue: number;
   portfolioChangePct: number;
   netWorth: number;
+  dayChange: number;
+  dayChangePct: number;
+  // Largest positions, for the row's logo stack.
+  topTickers: string[];
+  positionCount: number;
+  trend: number[];
 }
+
+type HttpError = { error?: { message?: string; error?: string } } | null;
+
+// Today's move as a share of yesterday's value.
+const dayPercent = (change: number, current: number) => {
+  const previous = current - change;
+  return previous > 0 ? (change / previous) * 100 : 0;
+};
 
 @Component({
   standalone: true,
-  imports: [CommonModule, DashboardChartComponent, DashboardHeaderComponent, RouterLink],
+  imports: [
+    CommonModule, RollingNumberComponent, SkeletonRowsComponent, ChartSkeletonComponent, ErrorStateComponent, DashboardChartComponent, DashboardHeaderComponent, DashboardCashModalComponent,
+    AllocationBarComponent, TickerLogoComponent, TrendLineComponent, RouterLink,
+  ],
   selector: 'app-maindashboard',
   styleUrl: './maindashboard.css',
   templateUrl: './maindashboard.html',
@@ -29,262 +57,199 @@ interface AccountSummary {
 export class Maindashboard implements OnInit {
   private readonly router = inject(Router);
   private readonly session = inject(SessionService);
+  private readonly queries = inject(PortfolioQueries);
+  private readonly queryClient = inject(QueryClient);
   private readonly accountApi = inject(AccountService);
-  private readonly userService = inject(UserService);
-  private readonly pricingApi = inject(PricingService);
-  private readonly themeStorageKey = 'tidbits_theme_mode';
 
-  readonly loading = signal(false);
-  readonly error = signal('');
-  readonly accounts = signal<AccountDto[]>([]);
-  readonly selectedAccountId = signal(0);
-  readonly themeMode = signal<ThemeMode>('light');
+  private readonly userId = this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId() ?? 0;
 
-  readonly totalCashBalance = signal(0);
-  readonly totalPortfolioValue = signal(0);
-  readonly totalPortfolioChangePct = signal(0);
-  readonly accountSummaries = signal<AccountSummary[]>([]);
-  readonly portfolioSnapshotPoints = signal<ChartPoint[]>([]);
+  readonly formatCurrency = formatCurrency;
+  readonly formatPercent = formatPercent;
+  readonly Math = Math;
   readonly chartTimeframe = signal<ChartTimeframe>('1M');
 
-  readonly totalNetWorth = computed(() => this.totalCashBalance() + this.totalPortfolioValue());
+  private readonly userQuery = injectQuery(() => ({
+    ...this.queries.user(this.userId),
+    enabled: this.userId > 0,
+  }));
+  private readonly accountsQuery = injectQuery(() => ({
+    ...this.queries.accounts(this.userId),
+    enabled: this.userId > 0,
+    refetchInterval: REFRESH_INTERVAL_MS,
+  }));
+  // Every account's priced holdings, read through the same per-account cache entries the dashboard uses.
+  private readonly holdingsQuery = injectQuery(() => {
+    const accounts = this.accountsQuery.data() ?? [];
+    return {
+      queryKey: ['overview', this.userId, accounts.map(a => a.accountId).join(',')],
+      queryFn: () => Promise.all(accounts.map(a => this.queryClient.fetchQuery(this.queries.holdings(a.accountId)))),
+      enabled: this.accountsQuery.isSuccess(),
+      refetchInterval: REFRESH_INTERVAL_MS,
+    };
+  });
+  // One snapshot request feeds both the combined chart and each account's 30-day trend line.
+  private readonly chartQuery = injectQuery(() => ({
+    ...this.queries.userSnapshotsRaw(this.userId),
+    enabled: this.userId > 0,
+    refetchInterval: REFRESH_INTERVAL_MS,
+    select: (snapshots: PortfolioSnapshotDto[]) => aggregateSnapshotsByDay(snapshots),
+  }));
+  private readonly trendQuery = injectQuery(() => ({
+    ...this.queries.userSnapshotsRaw(this.userId),
+    enabled: this.userId > 0,
+    refetchInterval: REFRESH_INTERVAL_MS,
+    select: (snapshots: PortfolioSnapshotDto[]) => snapshotSeriesByAccount(snapshots, 30),
+  }));
 
-  private readonly tickerByInstrumentId: Record<number, string> = Object.fromEntries(
-    Array.from(tickerToName.keys()).map((ticker, index) => [index + 1, ticker])
-  );
+  // Only the very first load shows a loading state; later refreshes swap data in place.
+  readonly loading = computed(() => this.accountsQuery.isPending() || (this.holdingsQuery.isPending() && !!this.accountsQuery.data()?.length));
+  readonly error = computed(() => {
+    const err = (this.accountsQuery.error() ?? this.holdingsQuery.error()) as HttpError;
+    return err ? err.error?.message ?? err.error?.error ?? 'Failed to load your portfolio.' : '';
+  });
+
+  readonly accountSummaries = computed<AccountSummary[]>(() => {
+    const accounts = this.accountsQuery.data() ?? [];
+    const holdingsByAccount = this.holdingsQuery.data() ?? [];
+    const trends = this.trendQuery.data() ?? new Map<number, number[]>();
+    return accounts.map((account, index) => {
+      const holdings = holdingsByAccount[index] ?? [];
+      const value = holdings.reduce((sum, h) => sum + h.totalValue, 0);
+      const invested = holdings.reduce((sum, h) => sum + h.amount_invested, 0);
+      const dayChange = holdings.reduce((sum, h) => sum + h.dayChange, 0);
+      const netWorth = account.cashBalance + value;
+      return {
+        accountId: account.accountId,
+        nickname: account.nickname,
+        cashBalance: account.cashBalance,
+        portfolioValue: value,
+        portfolioChangePct: invested > 0 ? ((value - invested) / invested) * 100 : 0,
+        netWorth,
+        dayChange,
+        dayChangePct: dayPercent(dayChange, netWorth),
+        topTickers: [...holdings].sort((a, b) => b.totalValue - a.totalValue).slice(0, 3).map(h => h.ticker),
+        positionCount: holdings.length,
+        trend: trends.get(account.accountId) ?? [],
+      };
+    });
+  });
+
+  readonly totalCashBalance = computed(() => this.accountSummaries().reduce((sum, a) => sum + a.cashBalance, 0));
+  readonly totalPortfolioValue = computed(() => this.accountSummaries().reduce((sum, a) => sum + a.portfolioValue, 0));
+  readonly totalPortfolioChangePct = computed(() => {
+    const holdings = (this.holdingsQuery.data() ?? []).flat();
+    const invested = holdings.reduce((sum, h) => sum + h.amount_invested, 0);
+    return invested > 0 ? ((this.totalPortfolioValue() - invested) / invested) * 100 : 0;
+  });
+  readonly totalNetWorth = computed(() => this.totalCashBalance() + this.totalPortfolioValue());
+  readonly totalDayChange = computed(() => this.accountSummaries().reduce((sum, a) => sum + a.dayChange, 0));
+  readonly totalDayChangePct = computed(() => dayPercent(this.totalDayChange(), this.totalNetWorth()));
+
+  // The same stock held in several accounts counts as one position in the combined allocation.
+  readonly combinedHoldings = computed<HoldingDTO[]>(() => {
+    const byTicker = new Map<string, HoldingDTO>();
+    for (const h of (this.holdingsQuery.data() ?? []).flat()) {
+      const existing = byTicker.get(h.ticker);
+      byTicker.set(h.ticker, existing
+        ? { ...existing, quantity: existing.quantity + h.quantity, totalValue: existing.totalValue + h.totalValue, amount_invested: existing.amount_invested + h.amount_invested, changeValue: existing.changeValue + h.changeValue, dayChange: existing.dayChange + h.dayChange }
+        : { ...h });
+    }
+    return [...byTicker.values()];
+  });
+
+  readonly portfolioSnapshotPoints = computed(() => this.chartQuery.data() ?? []);
+  readonly chartLoading = computed(() => this.chartQuery.isPending() && this.userId > 0);
+
+  // Transfer pop-up, opened for one account at a time.
+  readonly transferAccount = signal<AccountSummary | null>(null);
+  readonly cashAmount = signal<number | null>(null);
+  readonly cashLoading = signal(false);
+  readonly cashError = signal('');
+  readonly cashSuccess = signal('');
+  private readonly toasts = inject(ToastService);
+
+  constructor() {
+    effect(() => {
+      const user = this.userQuery.data();
+      if (user) {
+        this.session.setCurrentUser(user);
+      }
+    });
+  }
 
   ngOnInit() {
-    this.restoreThemePreference();
-    const userId = this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
-    if (!userId) {
+    if (!this.userId) {
       void this.router.navigateByUrl('/login');
-      return;
     }
-
-    this.loadAggregatePortfolio(userId);
-    this.loadPortfolioSnapshotChart(userId);
- const authenticatedUserId = this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
-    if (!authenticatedUserId) {
-      void this.router.navigateByUrl('/login');
-      return;
-    }
-    this.userService.getUser(authenticatedUserId).subscribe({
-          next: user => {
-            this.session.setCurrentUser(user);
-          },
-          error: err => {
-           console.log("Error fetching user data:", err);
-          },
-        });
   }
-
-  toggleTheme() {
-    const nextMode = this.themeMode() === 'dark' ? 'light' : 'dark';
-    this.applyTheme(nextMode);
-  }
-
-  signOut() {
-    this.session.clearSession();
-    void this.router.navigateByUrl('/login');
-  }
-
-  onAccountChange(accountId: number) {
-    this.selectedAccountId.set(accountId);
-    this.session.setSelectedAccountId(accountId);
-  }
-
 
   openAccountDashboard(accountId: number) {
     this.session.setSelectedAccountId(accountId);
-    console.log('Opening dashboard for accountId:', accountId);
     void this.router.navigateByUrl('/dashboard');
+  }
+
+  retry() {
+    void this.accountsQuery.refetch();
+    void this.holdingsQuery.refetch();
   }
 
   setChartTimeframe(timeframe: ChartTimeframe) {
     this.chartTimeframe.set(timeframe);
   }
 
-  private loadAggregatePortfolio(userId: number) {
-    this.loading.set(true);
-    this.error.set('');
+  openTransfer(account: AccountSummary) {
+    this.cashAmount.set(null);
+    this.cashError.set('');
+    this.cashSuccess.set('');
+    this.transferAccount.set(account);
+  }
 
-    this.accountApi.listAccounts(userId).subscribe({
-      next: accounts => {
-        this.accounts.set(accounts);
-        const preferredAccountId = this.session.selectedAccountId();
-        const nextAccountId = accounts.some(account => account.accountId === preferredAccountId)
-          ? preferredAccountId
-          : accounts[0]?.accountId ?? 0;
-        this.selectedAccountId.set(nextAccountId);
-        this.session.setSelectedAccountId(nextAccountId);
+  closeTransfer() {
+    this.transferAccount.set(null);
+  }
 
+  // Keeps the pop-up's balance current after the account refreshes.
+  readonly transferBalance = computed(() => {
+    const id = this.transferAccount()?.accountId;
+    return this.accountSummaries().find(a => a.accountId === id)?.cashBalance ?? 0;
+  });
 
-        this.totalCashBalance.set(accounts.reduce((sum, account) => sum + account.cashBalance, 0));
+  submitTransfer(direction: 'deposit' | 'withdraw') {
+    const account = this.transferAccount();
+    const amount = Number(this.cashAmount());
+    if (!account) {
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      this.cashError.set('Enter a valid amount greater than zero.');
+      this.cashSuccess.set('');
+      return;
+    }
 
-        if (!accounts.length) {
-          this.totalPortfolioValue.set(0);
-          this.totalPortfolioChangePct.set(0);
-          this.accountSummaries.set([]);
-          this.loading.set(false);
-          return;
-        }
+    this.cashLoading.set(true);
+    this.cashError.set('');
+    this.cashSuccess.set('');
+    const request$ = direction === 'deposit'
+      ? this.accountApi.depositCash(account.accountId, amount)
+      : this.accountApi.withdrawCash(account.accountId, amount);
 
-        forkJoin(accounts.map(account => this.accountApi.listHoldings(account.accountId))).subscribe({
-          next: holdingLists => {
-            const holdingsByAccount = new Map<number, AccountHoldingDto[]>(
-              accounts.map((account, index) => [account.accountId, holdingLists[index] ?? []])
-            );
-            this.loadPortfolioFromHoldings(accounts, holdingsByAccount);
-          },
-          error: err => {
-            this.loading.set(false);
-            this.error.set(err?.error?.message ?? 'Failed to load holdings across accounts.');
+    request$.subscribe({
+      next: () => {
+        this.cashLoading.set(false);
+        this.cashAmount.set(null);
+        this.cashSuccess.set(direction === 'deposit' ? 'Deposit completed successfully.' : 'Withdrawal completed successfully.');
+        this.queries.invalidateAccount(this.userId, account.accountId);
+        setTimeout(() => {
+          this.toasts.show(transferToast(direction, amount, account.nickname));
+          if (this.transferAccount()?.accountId === account.accountId) {
+            this.closeTransfer();
           }
-        });
+        }, TRANSFER_DONE_MS);
       },
       error: err => {
-        this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'Failed to load accounts.');
-      }
-    });
-  }
-
-  private restoreThemePreference() {
-    const saved = localStorage.getItem(this.themeStorageKey);
-    const mode = saved === 'dark' ? 'dark' : 'light';
-    this.applyTheme(mode);
-  }
-
-  private applyTheme(mode: ThemeMode) {
-    this.themeMode.set(mode);
-    localStorage.setItem(this.themeStorageKey, mode);
-    document.body.classList.toggle('dark-mode', mode === 'dark');
-  }
-
-  private loadPortfolioFromHoldings(accounts: AccountDto[], holdingsByAccount: Map<number, AccountHoldingDto[]>) {
-    const holdings = Array.from(holdingsByAccount.values()).flat();
-    if (!holdings.length) {
-      this.totalPortfolioValue.set(0);
-      this.totalPortfolioChangePct.set(0);
-      this.accountSummaries.set(accounts.map(account => ({
-        accountId: account.accountId,
-        nickname: account.nickname,
-        cashBalance: account.cashBalance,
-        portfolioValue: 0,
-        portfolioChangePct: 0,
-        netWorth: account.cashBalance,
-      })));
-      this.loading.set(false);
-      return;
-    }
-
-    const accountIdByHolding = new Map<AccountHoldingDto, number>();
-    for (const [accountId, accountHoldings] of holdingsByAccount.entries()) {
-      for (const holding of accountHoldings) {
-        accountIdByHolding.set(holding, accountId);
-      }
-    }
-
-    const enrichedHoldings = holdings.map(holding => ({
-      accountId: accountIdByHolding.get(holding) ?? 0,
-      quantity: holding.quantity,
-      amountInvested: holding.amountInvested,
-      ticker: this.tickerByInstrumentId[holding.instrumentId] ?? ''
-    }));
-
-    const tickers = Array.from(new Set(enrichedHoldings.map(item => item.ticker).filter(Boolean)));
-    if (!tickers.length) {
-      this.totalPortfolioValue.set(0);
-      this.totalPortfolioChangePct.set(0);
-      this.loading.set(false);
-      return;
-    }
-
-    this.pricingApi.getQuotes(tickers.join(',')).subscribe({
-      next: (resp: GetHoldingsResponseDTO) => {
-        const pricesByTicker = new Map(resp.quotes.map(quote => [quote.symbol, quote.price]));
-
-        const calculateSummary = (items: Array<{ quantity: number; amountInvested: number; ticker: string }>) => {
-          const totalInvested = items.reduce((sum, item) => sum + item.amountInvested, 0);
-          const totalValue = items.reduce((sum, item) => {
-            const marketPrice = pricesByTicker.get(item.ticker) ?? 0;
-            return sum + (item.quantity * marketPrice);
-          }, 0);
-
-          return {
-            totalInvested,
-            totalValue,
-            changePct: totalInvested > 0 ? ((totalValue - totalInvested) / totalInvested) * 100 : 0,
-          };
-        };
-
-        const overall = calculateSummary(enrichedHoldings);
-
-        const summaries = accounts.map(account => {
-          const accountHoldings = enrichedHoldings.filter(item => item.accountId === account.accountId);
-          const summary = calculateSummary(accountHoldings);
-          return {
-            accountId: account.accountId,
-            nickname: account.nickname,
-            cashBalance: account.cashBalance,
-            portfolioValue: summary.totalValue,
-            portfolioChangePct: summary.changePct,
-            netWorth: account.cashBalance + summary.totalValue,
-          };
-        });
-
-        this.totalPortfolioValue.set(overall.totalValue);
-        this.totalPortfolioChangePct.set(overall.changePct);
-        this.accountSummaries.set(summaries);
-        this.loading.set(false);
-      },
-      error: err => {
-        this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'Failed to load pricing data.');
-      }
-    });
-  }
-
-  private loadPortfolioSnapshotChart(userId: number) {
-    this.accountApi.listPortfolioSnapshotsByUser(userId).subscribe({
-      next: snapshots => {
-        this.portfolioSnapshotPoints.set(this.aggregateSnapshotsByDay(snapshots));
-      },
-      error: err => {
-        this.portfolioSnapshotPoints.set([]);
-        this.error.set(err?.error?.message ?? err?.error?.error ?? 'Failed to load portfolio history.');
+        this.cashLoading.set(false);
+        this.cashError.set(err?.error?.error ?? err?.error?.message ?? `Failed to ${direction} funds.`);
       },
     });
-  }
-
-  private aggregateSnapshotsByDay(snapshots: PortfolioSnapshotDto[]): ChartPoint[] {
-    const latestByAccountDay = new Map<string, PortfolioSnapshotDto>();
-    const totalsByDay = new Map<string, number>();
-
-    for (const snapshot of snapshots) {
-      const day = snapshot.createdAt?.slice(0, 10);
-      if (!day || !Number.isFinite(snapshot.totalValue)) {
-        continue;
-      }
-
-      const accountDayKey = `${snapshot.accountId}:${day}`;
-      const current = latestByAccountDay.get(accountDayKey);
-
-      if (!current || snapshot.createdAt > current.createdAt) {
-        latestByAccountDay.set(accountDayKey, snapshot);
-      }
-    }
-
-    for (const snapshot of latestByAccountDay.values()) {
-      const day = snapshot.createdAt.slice(0, 10);
-      totalsByDay.set(day, (totalsByDay.get(day) ?? 0) + snapshot.totalValue);
-    }
-
-    return Array.from(totalsByDay.entries())
-      .sort(([leftDay], [rightDay]) => leftDay.localeCompare(rightDay))
-      .map(([day, totalValue]) => ({
-        date: `${day}T00:00:00`,
-        value: Number(totalValue.toFixed(2)),
-      }));
   }
 }

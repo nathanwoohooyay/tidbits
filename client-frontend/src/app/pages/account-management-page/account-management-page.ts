@@ -6,11 +6,12 @@ import { signal } from '@angular/core';
 import { AccountDto, AccountService } from '../../services/account.service';
 import { SessionService } from '../../services/session.service';
 import { UserService } from '../../services/user.service';
+import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-header.component';
 
 @Component({
   selector: 'app-account-management-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DashboardHeaderComponent],
   templateUrl: './account-management-page.html',
   styleUrl: './account-management-page.css'
 })

@@ -1,18 +1,21 @@
-<div class="account-page">
-  <header class="account-header">
-    <div>
-      <h1>Account Settings</h1>
-      <p class="subtitle">Manage your account, password, and preferences</p>
-    </div>
-    <button type="button" class="btn-back" (click)="goBack()">← Back to Dashboard</button>
-  </header>
+<div class="app-shell">
+  <app-dashboard-header [showAccountSelector]="false"></app-dashboard-header>
 
-  <main class="account-layout">
-    <nav class="account-sidebar" aria-label="Account settings sections">
-      <button type="button" [class.active]="activePanel() === 'account'" (click)="selectPanel('account')">
-        Account Information
+  <main class="app-content" role="main">
+  <div class="page">
+    <header class="page-head">
+      <div>
+        <h1 class="page-title">Account settings</h1>
+        <p class="page-sub">Manage your profile, password, and activity.</p>
+      </div>
+      <button type="button" class="btn-link" (click)="goBack()">← Back to Dashboard</button>
+    </header>
+
+    <nav class="text-tabs settings-tabs" aria-label="Account settings sections">
+      <button type="button" [class.active]="activePanel() === 'account'" [attr.aria-current]="activePanel() === 'account' ? 'page' : null" (click)="selectPanel('account')">
+        Account information
       </button>
-      <button type="button" [class.active]="activePanel() === 'statistics'" (click)="selectPanel('statistics')">
+      <button type="button" [class.active]="activePanel() === 'statistics'" [attr.aria-current]="activePanel() === 'statistics' ? 'page' : null" (click)="selectPanel('statistics')">
         Statistics
       </button>
     </nav>
@@ -20,8 +23,9 @@
     <div class="account-content">
     @if (activePanel() === 'account') {
     <!-- Update Account Section -->
-    <section class="account-card">
-      <h2>Update Account Information</h2>
+    <section class="settings-section">
+      <h2 class="settings-heading">Profile</h2>
+      <p class="section-subtitle">Contact details for {{ currentUsername() }}.</p>
 
       @if (updateError()) {
         <div class="error-message" role="alert">{{ updateError() }}</div>
@@ -66,8 +70,9 @@
     </section>
 
     <!-- Change Password Section -->
-    <section class="account-card">
-      <h2>Change Password</h2>
+    <section class="settings-section">
+      <h2 class="settings-heading">Password</h2>
+      <p class="section-subtitle">Use at least 8 characters.</p>
       @if (passwordError()) {
         <div class="error-message" role="alert">{{ passwordError() }}</div>
       }
@@ -126,8 +131,6 @@
     </section>
     } @else {
       <section class="statistics-panel">
-        <h2>Statistics</h2>
-        <p class="section-subtitle">A summary of activity across your accounts.</p>
         <app-dashboard-insight-feed
           [reportingOverview]="reportingOverview()"
           [instrumentLabels]="instrumentLabels()"
@@ -137,5 +140,11 @@
     }
     </div>
 
+    <!-- Required by the Lightweight Charts licence (Apache-2.0 NOTICE): attribution and a link to TradingView. -->
+    <p class="third-party-notice">
+      Charts powered by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a>.
+      Copyright © 2025 TradingView, Inc.
+    </p>
+  </div>
   </main>
 </div>

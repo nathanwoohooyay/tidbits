@@ -1,50 +1,55 @@
 <section class="section-card" aria-label="Market snapshot">
   <div class="section-header">
-    <span class="section-title">Market Snapshot</span>
+    <span class="section-title">Market snapshot</span>
     <div class="filter-tabs" role="group" aria-label="Stock filter">
       @for (filter of filters; track filter[0]) {
-        <button class="filter-tab" [class.active]="trendFilter === filter[0]" (click)="trendFilterChange.emit(filter[0])">
+        <button type="button" class="filter-tab" [class.active]="trendFilter === filter[0]" [attr.aria-pressed]="trendFilter === filter[0]" (click)="trendFilterChange.emit(filter[0])">
           {{ filter[1] }}
         </button>
       }
     </div>
   </div>
 
-  <div class="section-body" style="padding:0 1.5rem 1.5rem">
+  <div class="section-body flush table-scroll">
     @if (loading()) {
-      <p>Loading market data...</p>
+      <app-skeleton-rows variant="market"></app-skeleton-rows>
     } @else if (error()) {
-      <p role="alert">{{ error() }}</p>
+      <app-error-state title="Market prices didn't load" [message]="error()" (retry)="retry()"></app-error-state>
     } @else if (trendingStocks.length === 0) {
-      <p>No market data is available.</p>
+      <p class="status-line">No market data is available.</p>
     } @else {
     <table class="stock-table" aria-label="Stock market data">
       <thead>
         <tr>
-          <th>#</th>
           <th>Symbol</th>
-          <th>Company</th>
+          <th class="right spark-col">1M</th>
           <th class="right">Price</th>
           <th class="right">Change</th>
-          <th class="right">Action</th>
+          <th class="right"><span class="sr-only">Action</span></th>
         </tr>
       </thead>
       <tbody>
-        @for (stock of trendingStocks; track stock.instrument_id; let i = $index) {
+        @for (stock of trendingStocks; track stock.instrument_id) {
           <tr>
-            <td style="color:var(--clr-sienna);font-weight:600">{{ i + 1 }}</td>
-            <td><span class="ticker-badge">{{ stock.ticker }}</span></td>
-            <td><div class="stock-name">{{ stock.name }}</div></td>
+            <td>
+              <div class="instrument-with-logo">
+                <app-ticker-logo [ticker]="stock.ticker"></app-ticker-logo>
+                <div class="instrument-cell">
+                  <span class="ticker-badge">{{ stock.ticker }}</span>
+                  <span class="stock-name">{{ stock.name }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="right spark-col"><app-sparkline [ticker]="stock.ticker"></app-sparkline></td>
             <td class="right"><span class="price-value">{{ formatCurrency(stock.price) }}</span></td>
             <td class="right">
               <span class="change-badge" [class.positive]="stock.changePercent >= 0" [class.negative]="stock.changePercent < 0">
-                {{ stock.changePercent >= 0 ? '▲' : '▼' }} {{ formatPercent(stock.changePercent) }}
+                {{ formatPercent(stock.changePercent) }}
               </span>
             </td>
-          
             <td class="right">
-              <button class="btn-quick-trade btn-quick-buy" (click)="quickTrade.emit({ instrumentId: stock.instrument_id, mode: 'buy' })">Buy</button>
-              <button class="btn-quick-trade btn-quick-sell" (click)="quickTrade.emit({ instrumentId: stock.instrument_id, mode: 'sell' })">Sell</button>
+              <button type="button" class="btn-trade" (click)="trade.emit({ instrumentId: stock.instrument_id, ticker: stock.ticker, name: stock.name })"
+                      [attr.aria-label]="'Trade ' + stock.ticker">Trade</button>
             </td>
           </tr>
         }
@@ -53,4 +58,3 @@
     }
   </div>
 </section>
-

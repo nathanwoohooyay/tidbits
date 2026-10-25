@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, HostListener, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
@@ -303,15 +303,15 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     }
 
     .toast-banner.success {
-      background: rgba(42, 97, 66, 0.12);
-      border: 1px solid rgba(42, 97, 66, 0.35);
-      color: #2a6142;
+      background: rgba(0, 127, 75, 0.12);
+      border: 1px solid rgba(0, 127, 75, 0.35);
+      color: #007F4B;
     }
 
     .toast-banner.danger {
-      background: rgba(163, 50, 36, 0.12);
-      border: 1px solid rgba(163, 50, 36, 0.35);
-      color: #a33224;
+      background: rgba(186, 11, 47, 0.12);
+      border: 1px solid rgba(186, 11, 47, 0.35);
+      color: #BA0B2F;
     }
 
     .toast-close {
@@ -336,7 +336,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       display: flex;
       align-items: center;
       gap: 10px;
-      background: #ffffff;
+      background: #F8F3EE;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
       padding: 2px 12px;
@@ -385,7 +385,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     }
 
     .text-secondary { color: var(--text-secondary); }
-    .text-emerald { color: #2a6142; }
+    .text-emerald { color: #007F4B; }
     .text-muted { color: var(--text-muted); }
 
     .row-actions {
@@ -401,7 +401,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(40, 22, 13, 0.65);
+      background: rgba(34, 28, 24, 0.65);
       backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
@@ -413,8 +413,8 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     .modal-card {
       width: 100%;
       max-width: 600px;
-      background: #fffdf9;
-      border: 1px solid rgba(62, 36, 21, 0.2);
+      background: #F8F3EE;
+      border: 1px solid rgba(76, 47, 36, 0.2);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-lg);
       padding: 26px;
@@ -482,7 +482,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     }
 
     .account-item {
-      background: #faf6ee;
+      background: #F8F3EE;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
       padding: 14px;
@@ -514,7 +514,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       justify-content: space-between;
       margin-top: 4px;
       padding-top: 6px;
-      border-top: 1px dashed rgba(62, 36, 21, 0.12);
+      border-top: 1px dashed rgba(76, 47, 36, 0.12);
     }
 
     .bal-label {
@@ -531,7 +531,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       font-size: 12px;
       color: var(--text-secondary);
       line-height: 1.4;
-      background: #faf6ee;
+      background: #F8F3EE;
       border: 1px solid var(--border-subtle);
       padding: 10px;
       border-radius: var(--radius-sm);
@@ -548,7 +548,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       color: var(--text-secondary);
       line-height: 1.5;
       padding: 10px 12px;
-      background: #faf6ee;
+      background: #F8F3EE;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }
@@ -654,6 +654,18 @@ export class AdminUsersComponent implements OnInit {
       this.userAccounts.set(accounts);
       this.loadingAccounts.set(false);
     });
+  }
+
+  // Esc closes whichever dialog is open.
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    if (this.selectedUserForRevoke()) {
+      this.closeRevokeModal();
+    } else if (this.selectedUserForRole()) {
+      this.closeRoleModal();
+    } else if (this.selectedUserForAccounts()) {
+      this.closeAccountsModal();
+    }
   }
 
   closeAccountsModal() {

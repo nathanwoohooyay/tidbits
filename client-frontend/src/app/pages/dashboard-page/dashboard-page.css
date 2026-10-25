@@ -1,0 +1,38 @@
+.dashboard-grid > * {
+  min-width: 0;
+}
+
+.dashboard-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.75rem;
+}
+
+.dashboard-main {
+  display: grid;
+  gap: 2.75rem;
+  min-width: 0;
+}
+
+/* Grid items default to their content's width; let charts and tables shrink to the screen instead. */
+.dashboard-main > *,
+.dashboard-rail > * {
+  display: block;
+  min-width: 0;
+}
+
+/* Holdings sit in a right-hand rail beside the chart, market list and history on wide screens;
+   below that they move above the chart so they stay near the top. */
+@media (min-width: 1200px) {
+  .dashboard-body {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    gap: 3rem;
+    align-items: start;
+  }
+}
+
+@media (max-width: 1199px) {
+  .dashboard-rail {
+    order: -1;
+  }
+}

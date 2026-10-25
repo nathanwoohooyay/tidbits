@@ -1,25 +1,36 @@
 <section class="section-card" aria-label="Trade history">
   <div class="section-header">
-    <span class="section-title">Trade History</span>
-    <span style="font-size:.82rem;color:var(--clr-sienna)">{{ ordersArray().length }} order{{ ordersArray().length !== 1 ? 's' : '' }}</span>
+    <span class="section-title">
+      Trade history
+      @if (!loading) {
+        <span class="section-meta">{{ ordersArray().length }} order{{ ordersArray().length !== 1 ? 's' : '' }}</span>
+      }
+    </span>
+    <div class="history-controls">
+      <div class="text-tabs" role="group" aria-label="Filter by side">
+        @for (f of sideFilters; track f[0]) {
+          <button type="button" [class.active]="sideFilter() === f[0]" [attr.aria-pressed]="sideFilter() === f[0]" (click)="setSideFilter(f[0])">{{ f[1] }}</button>
+        }
+      </div>
+      <span class="controls-divider" aria-hidden="true"></span>
+      <div class="text-tabs" role="group" aria-label="Sort by date">
+        <button type="button" [class.active]="dateSortDirection() === 'desc'" [attr.aria-pressed]="dateSortDirection() === 'desc'" (click)="setDateSort('desc')">Newest</button>
+        <button type="button" [class.active]="dateSortDirection() === 'asc'" [attr.aria-pressed]="dateSortDirection() === 'asc'" (click)="setDateSort('asc')">Oldest</button>
+      </div>
+    </div>
   </div>
 
-  <div class="section-body" style="padding:0 1.5rem 1.5rem">
-    <div style="display:flex;gap:.5rem;align-items:center;margin:.5rem 0 1rem;">
-      <span style="font-size:.82rem;color:var(--clr-sienna)">Sort by date:</span>
-      <button type="button" class="btn-quick-trade" [class.btn-quick-buy]="dateSortDirection() === 'desc'" (click)="setDateSort('desc')">Newest</button>
-      <button type="button" class="btn-quick-trade" [class.btn-quick-buy]="dateSortDirection() === 'asc'" (click)="setDateSort('asc')">Oldest</button>
-    </div>
-
-    @if (ordersArray().length === 0) {
-    <div class="empty-state">No trade history yet.</div>
+  <div class="section-body flush table-scroll">
+    @if (loading) {
+      <app-skeleton-rows variant="history"></app-skeleton-rows>
+    } @else if (filteredOrders().length === 0) {
+      <div class="empty-state">{{ ordersArray().length ? 'No ' + (sideFilter() === 'BUY' ? 'buy' : 'sell') + ' orders yet.' : 'No trade history yet.' }}</div>
     } @else {
     <table class="history-table" aria-label="Trade history">
       <thead>
       <tr>
-        <th>Date / Time</th>
+        <th>Date / time</th>
         <th>Symbol</th>
-        <th>Company</th>
         <th>Type</th>
         <th class="right">Price</th>
         <th class="right">Qty</th>
@@ -28,31 +39,38 @@
       </tr>
       </thead>
       <tbody>
-      @for (order of sortedOrders(); track order.orderId) {
-      <tr (click)="toggleOrderHistory(order.orderId)" style="cursor:pointer;">
-        <td style="font-size:.8rem;color:var(--clr-sienna)">
-          {{ order.statusHistory[0].changedAt ? (order.statusHistory[0].changedAt | date:'MMM d, y · h:mm a') : 'Timestamp pending' }}
+      @for (order of pageOrders(); track order.orderId) {
+      <tr class="is-expandable" (click)="toggleOrderHistory(order.orderId)" [attr.aria-expanded]="isOrderExpanded(order.orderId)">
+        <td class="muted-cell">
+          {{ order.statusHistory[0]?.changedAt ? (order.statusHistory[0].changedAt | date:'MMM d, y · h:mm a') : 'Timestamp pending' }}
         </td>
-        <td><span class="ticker-badge">{{ order.instrument.ticker }}</span></td>
-        <td><span class="stock-name">{{ order.instrument.name }}</span></td>
         <td>
-                <span class="order-type-badge" [class.buy]="order.orderType === 'BUY'" [class.sell]="order.orderType === 'SELL'">
-                  {{ order.orderType }}
-                </span>
+          <div class="instrument-with-logo">
+            <app-ticker-logo [ticker]="order.instrument.ticker" style="--logo-size: 1.6rem"></app-ticker-logo>
+            <div class="instrument-cell">
+              <span class="ticker-badge">{{ order.instrument.ticker }}</span>
+              <span class="stock-name">{{ order.instrument.name }}</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="order-type-badge" [class.buy]="order.orderType === 'BUY'" [class.sell]="order.orderType === 'SELL'">
+            {{ order.orderType }}
+          </span>
         </td>
         <td class="right">{{ formatCurrency(order.price) }}</td>
         <td class="right">{{ order.quantity | number:'1.0-4' }}</td>
-        <td class="right" style="font-weight:700">{{ formatCurrency(order.price * order.quantity) }}</td>
+        <td class="right price-value">{{ formatCurrency(order.price * order.quantity) }}</td>
         <td>
           <span class="status-badge" [ngClass]="statusClass(order.status)">{{ order.status }}</span>
         </td>
       </tr>
       @if (isOrderExpanded(order.orderId)) {
-      @for (entry of order.statusHistory; track entry.historyId) {
-      <tr>
-        <td colspan="8" style="background:var(--clr-surface-soft);font-size:.78rem;color:var(--clr-sienna);padding:.5rem .75rem;">
+      @for (entry of order.statusHistory; track entry.historyId + entry.changedAt) {
+      <tr class="history-detail-row">
+        <td colspan="7">
           {{ entry.changedAt | date:'MMM d, y · h:mm:ss a' }}
-          -
+          —
           <span class="status-badge" [ngClass]="statusClass(entry.newStatus)">{{ entry.newStatus }}</span>
         </td>
       </tr>
@@ -63,4 +81,15 @@
     </table>
     }
   </div>
+
+  @if (!loading && pageCount() > 1) {
+    <nav class="pager" aria-label="Trade history pages">
+      <span class="pager-range">{{ rangeLabel() }}</span>
+      <div class="pager-buttons">
+        <button type="button" class="btn-trade" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 0" aria-label="Previous page">← Prev</button>
+        <span class="pager-page">Page {{ currentPage() + 1 }} of {{ pageCount() }}</span>
+        <button type="button" class="btn-trade" (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() >= pageCount() - 1" aria-label="Next page">Next →</button>
+      </div>
+    </nav>
+  }
 </section>

@@ -9,17 +9,15 @@ import { AuthService } from '../../core/services/auth.service';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="login-wrapper">
-      <div class="glow-orb orb-1"></div>
-      <div class="glow-orb orb-2"></div>
-
       <div class="login-card glass-panel">
         <div class="card-header">
+          <img class="brand-logo" src="logos/logo-light-mode.png" width="44" height="44" alt="" draggable="false" />
           <div class="brand-badge">
             <span class="pulse-dot"></span>
-            <span>SECURE AUDIT PORTAL</span>
+            <span>Secure audit portal</span>
           </div>
-          <h1 class="portal-title">Tidbits Intelligence</h1>
-          <p class="portal-sub">Institutional Auditing, Trading Analytics & Access Management</p>
+          <h1 class="portal-title">BitTrader Audit</h1>
+          <p class="portal-sub">Trading analytics, compliance and access management</p>
         </div>
 
         <form (ngSubmit)="onSubmit()" class="login-form">
@@ -74,7 +72,7 @@ import { AuthService } from '../../core/services/auth.service';
         </form>
 
         <div class="card-footer">
-          <span>Tidbits Trading Platform • Regulatory Audit Engine v2.4</span>
+          <span>BitTrader • Audit &amp; Compliance</span>
         </div>
       </div>
     </div>
@@ -87,31 +85,11 @@ import { AuthService } from '../../core/services/auth.service';
       justify-content: center;
       padding: 24px;
       position: relative;
-      background: radial-gradient(circle at 50% 25%, #ede2ce 0%, #f4eee2 65%);
+      background: var(--bg-main);
     }
 
-    .glow-orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(100px);
-      pointer-events: none;
-    }
 
-    .orb-1 {
-      width: 450px;
-      height: 450px;
-      top: 10%;
-      left: 15%;
-      background: rgba(138, 78, 35, 0.12);
-    }
 
-    .orb-2 {
-      width: 500px;
-      height: 500px;
-      bottom: 10%;
-      right: 15%;
-      background: rgba(51, 27, 14, 0.1);
-    }
 
     .login-card {
       width: 100%;
@@ -119,9 +97,14 @@ import { AuthService } from '../../core/services/auth.service';
       padding: 40px;
       position: relative;
       z-index: 10;
-      background: rgba(255, 252, 246, 0.94);
-      border: 1px solid rgba(62, 36, 21, 0.2);
-      box-shadow: 0 25px 60px -15px rgba(51, 27, 14, 0.16), 0 0 25px rgba(138, 78, 35, 0.08);
+      background: rgba(246, 240, 234, 0.94);
+      border: 1px solid rgba(76, 47, 36, 0.2);
+      box-shadow: 0 25px 60px -15px rgba(76, 47, 36, 0.16), 0 0 25px rgba(122, 70, 56, 0.08);
+    }
+
+    .brand-logo {
+      display: block;
+      margin: 0 auto 14px;
     }
 
     .card-header {
@@ -133,8 +116,8 @@ import { AuthService } from '../../core/services/auth.service';
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(138, 78, 35, 0.1);
-      border: 1px solid rgba(138, 78, 35, 0.28);
+      background: rgba(122, 70, 56, 0.1);
+      border: 1px solid rgba(122, 70, 56, 0.28);
       color: var(--accent-cognac);
       font-size: 11px;
       font-weight: 700;
@@ -189,9 +172,9 @@ import { AuthService } from '../../core/services/auth.service';
       display: flex;
       align-items: center;
       gap: 10px;
-      background: rgba(163, 50, 36, 0.1);
-      border: 1px solid rgba(163, 50, 36, 0.3);
-      color: #a33224;
+      background: rgba(186, 11, 47, 0.1);
+      border: 1px solid rgba(186, 11, 47, 0.3);
+      color: #BA0B2F;
       padding: 10px 14px;
       border-radius: var(--radius-md);
       font-size: 13px;

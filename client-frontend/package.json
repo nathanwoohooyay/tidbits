@@ -18,7 +18,9 @@
     "@angular/platform-browser": "^22.0.0",
     "@angular/router": "^22.0.0",
     "@auth0/angular-jwt": "^5.2.0",
+    "@tanstack/angular-query-experimental": "^5.104.5",
     "chart.js": "^4.5.1",
+    "lightweight-charts": "^5.2.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

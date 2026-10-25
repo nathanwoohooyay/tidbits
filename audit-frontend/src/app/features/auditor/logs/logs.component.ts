@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, ElementRef, ViewChild } from '@angular/core';
+import { Component, HostListener, OnInit, signal, computed, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuditLogService } from '../../../core/services/audit-log.service';
@@ -768,8 +768,8 @@ export interface AggregatedOrder {
     }
 
     .tab-btn.active {
-      background: #331b0e;
-      color: #f7f2e8;
+      background: #4C2F24;
+      color: #F1ECE6;
     }
 
     .points-panel {
@@ -859,7 +859,7 @@ export interface AggregatedOrder {
     .input-control {
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
-      background: #ffffff;
+      background: #F8F3EE;
       padding: 6px 10px;
       font-size: 12.5px;
       color: var(--text-primary);
@@ -917,8 +917,8 @@ export interface AggregatedOrder {
       left: 0;
       min-width: 210px;
       z-index: 1400;
-      background: #fffdf9;
-      border: 1px solid rgba(62, 36, 21, 0.2);
+      background: #F8F3EE;
+      border: 1px solid rgba(76, 47, 36, 0.2);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-md);
       padding: 8px;
@@ -932,7 +932,7 @@ export interface AggregatedOrder {
       align-items: center;
       gap: 8px;
       padding: 4px 8px;
-      background: #faf6ee;
+      background: #F8F3EE;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }
@@ -970,13 +970,13 @@ export interface AggregatedOrder {
     }
 
     .dropdown-item:hover {
-      background: #f5eedf;
+      background: #EEE7DF;
       color: var(--accent-cognac);
     }
 
     .dropdown-item.selected {
-      background: #331b0e;
-      color: #f7f2e8;
+      background: #4C2F24;
+      color: #F1ECE6;
     }
 
     .dropdown-empty {
@@ -1017,21 +1017,21 @@ export interface AggregatedOrder {
     }
 
     .status-pill.active {
-      background: #331b0e;
-      color: #f7f2e8;
-      border-color: #331b0e;
+      background: #4C2F24;
+      color: #F1ECE6;
+      border-color: #4C2F24;
     }
 
     .status-pill.success.active {
-      background: rgba(42, 97, 66, 0.15);
-      color: #2a6142;
-      border-color: #2a6142;
+      background: rgba(0, 127, 75, 0.15);
+      color: #007F4B;
+      border-color: #007F4B;
     }
 
     .status-pill.failure.active {
-      background: rgba(163, 50, 36, 0.15);
-      color: #a33224;
-      border-color: #a33224;
+      background: rgba(186, 11, 47, 0.15);
+      color: #BA0B2F;
+      border-color: #BA0B2F;
     }
 
     .table-panel {
@@ -1065,9 +1065,9 @@ export interface AggregatedOrder {
     }
 
     .ticker-pill {
-      background: #f7ede0;
-      color: #6b3a1d;
-      border: 1px solid rgba(138, 78, 35, 0.2);
+      background: #EEE7DF;
+      color: #765043;
+      border: 1px solid rgba(122, 70, 56, 0.2);
       padding: 2px 8px;
       border-radius: var(--radius-sm);
       font-weight: 700;
@@ -1099,7 +1099,7 @@ export interface AggregatedOrder {
 
     .text-muted { color: var(--text-muted); }
     .font-bold { font-weight: 700; color: var(--text-primary); }
-    .text-emerald { color: #2a6142; }
+    .text-emerald { color: #007F4B; }
     .text-warning { color: #9c600b; }
 
     .empty-cell {
@@ -1112,7 +1112,7 @@ export interface AggregatedOrder {
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(40, 22, 13, 0.6);
+      background: rgba(34, 28, 24, 0.6);
       backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
@@ -1124,8 +1124,8 @@ export interface AggregatedOrder {
     .modal-card {
       width: 100%;
       max-width: 1060px;
-      background: #fffdf9;
-      border: 1px solid rgba(62, 36, 21, 0.2);
+      background: #F8F3EE;
+      border: 1px solid rgba(76, 47, 36, 0.2);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-lg);
       padding: 24px;
@@ -1205,7 +1205,7 @@ export interface AggregatedOrder {
       justify-content: flex-start;
       gap: 12px;
       padding: 16px 14px;
-      background: #faf6ee;
+      background: #F8F3EE;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }
@@ -1226,38 +1226,38 @@ export interface AggregatedOrder {
       top: 14px;
       bottom: -12px;
       width: 2px;
-      background: #d8cebe;
+      background: #D2C9C0;
       border-radius: 2px;
     }
 
     .timeline-step-chain.next-active::after {
-      background: #2a6142;
+      background: #007F4B;
     }
 
     .timeline-step.rejected.timeline-step-chain.next-active::after {
-      background: #a33224;
+      background: #BA0B2F;
     }
 
     .step-dot {
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background: #d8cebe;
+      background: #D2C9C0;
       border: 2px solid #b5a48e;
       flex-shrink: 0;
       margin-top: 2px;
     }
 
     .timeline-step.completed .step-dot {
-      background: #2a6142;
+      background: #007F4B;
       border-color: #1e4730;
-      box-shadow: 0 0 6px rgba(42, 97, 66, 0.4);
+      box-shadow: 0 0 6px rgba(0, 127, 75, 0.4);
     }
 
     .timeline-step.rejected .step-dot {
-      background: #a33224;
+      background: #BA0B2F;
       border-color: #7a1c11;
-      box-shadow: 0 0 6px rgba(163, 50, 36, 0.4);
+      box-shadow: 0 0 6px rgba(186, 11, 47, 0.4);
     }
 
     .step-content {
@@ -1759,6 +1759,16 @@ export class LogsComponent implements OnInit {
 
   openOrderDetail(order: AggregatedOrder) {
     this.selectedOrder.set(order);
+  }
+
+  // Esc closes the order detail dialog, or any open filter dropdown.
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    if (this.selectedOrder()) {
+      this.closeOrderDetail();
+    } else {
+      this.closeDropdowns();
+    }
   }
 
   closeOrderDetail() {

@@ -9,11 +9,12 @@ import { AccountService } from '../../services/account.service';
 import { OrderService, placedOrderDTO } from '../../services/order.service';
 import { AccountOrderStats, DashboardInsightFeedComponent } from '../../components/dashboard/dashboard-insight-feed.component';
 import { ReportOverview } from '../../components/dashboard/dashboard.models';
+import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-header.component';
 
 @Component({
   selector: 'app-account-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, DashboardInsightFeedComponent],
+  imports: [CommonModule, FormsModule, DashboardInsightFeedComponent, DashboardHeaderComponent],
   templateUrl: './account-page.html',
   styleUrl: './account-page.css'
 })

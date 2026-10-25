@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { BrandLogoComponent } from '../../components/brand-logo.component';
 import { Title } from '@angular/platform-browser';
 import { AuthService, type SignupField, type SignupFieldErrors } from '../../services/auth.service';
 
@@ -13,19 +14,21 @@ const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 @Component({
   selector: 'app-signup-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BrandLogoComponent],
   templateUrl: './signup-page.html',
   styleUrl: './signup-page.css'
 })
 export class SignupPageComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  // The app is zoneless: state changed after an HTTP response or a timer has to ask for a re-render.
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly title = inject(Title);
 
   readonly maxDateOfBirth = this.formatDateForInput(new Date());
 
   constructor() {
-    this.title.setTitle('Traders, Tickers, and Triumph');
+    this.title.setTitle('BitTrader');
   }
 
   signupUsername = '';
@@ -37,6 +40,10 @@ export class SignupPageComponent {
   signupError = '';
   signupLoading = false;
   signupSuccess = '';
+  // Account created: the button shows a check for a moment before moving on to sign-in.
+  signupDone = false;
+  // Briefly true after a failed attempt, to shake the button.
+  shake = false;
   signupFieldErrors: Record<SignupField | 'confirmPassword', string> = {
     username: '',
     email: '',
@@ -76,6 +83,7 @@ export class SignupPageComponent {
     const firstFieldError = Object.values(this.signupFieldErrors).find(Boolean);
     if (firstFieldError) {
       this.signupError = firstFieldError;
+      this.triggerShake();
       return;
     }
 
@@ -92,8 +100,12 @@ export class SignupPageComponent {
     }).subscribe({
       next: async () => {
         this.signupLoading = false;
-        this.signupSuccess = 'Registration successful. You can now sign in.';
-        await this.router.navigateByUrl('/login');
+        this.signupDone = true;
+        this.signupSuccess = 'Account created.';
+        this.cdr.markForCheck();
+        await new Promise(resolve => setTimeout(resolve, 900));
+        // Sign-in opens with the new username filled in and an "Account created" note.
+        await this.router.navigateByUrl('/login', { state: { createdUsername: username } });
       },
       error: err => {
         this.signupLoading = false;
@@ -103,7 +115,22 @@ export class SignupPageComponent {
           ...backendFieldErrors,
         };
         this.signupError = this.authService.getSignupErrorMessage(err);
+        this.triggerShake();
       }
+    });
+  }
+
+  // Restart the shake on every failure: clear it, then set it again on the next tick so the animation replays.
+  private triggerShake() {
+    this.shake = false;
+    this.cdr.markForCheck();
+    setTimeout(() => {
+      this.shake = true;
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.shake = false;
+        this.cdr.markForCheck();
+      }, 500);
     });
   }
 

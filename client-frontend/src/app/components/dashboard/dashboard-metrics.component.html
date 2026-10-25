@@ -1,32 +1,53 @@
-<section class="hero-metrics" aria-label="Portfolio overview">
+<section class="hero-metrics" aria-label="Portfolio overview" [attr.aria-busy]="loading">
   <div class="metric-card hero">
-    <div class="metric-label">Total Net Worth</div>
-    <div class="metric-value">{{ formatCurrency(totalNetWorth) }}</div>
-    @if (portfolioGainLoss !== 0) {
-      <div class="metric-change" [class.positive]="portfolioGainLoss >= 0" [class.negative]="portfolioGainLoss < 0">
-        {{ portfolioGainLoss >= 0 ? '▲' : '▼' }}
-        {{ formatCurrency(Math.abs(portfolioGainLoss)) }} unrealized
+    <div class="metric-label">Total net worth</div>
+    @if (loading) {
+      <span class="skeleton skeleton-figure"></span>
+    } @else if (unavailable) {
+      <div class="metric-value metric-unavailable">—</div>
+      <div class="metric-change">Prices unavailable</div>
+    } @else {
+      <div class="metric-value-row">
+        <app-rolling-number class="metric-value" [value]="totalNetWorth"></app-rolling-number>
+        <span class="day-change" [class.positive]="dayChange >= 0.005" [class.negative]="dayChange <= -0.005"
+              [attr.aria-label]="Math.abs(dayChange) < 0.005 ? 'Unchanged today' : 'Today ' + (dayChange > 0 ? 'up ' : 'down ') + formatCurrency(Math.abs(dayChange)) + ', ' + formatPercent(dayChangePercent)">
+          {{ Math.abs(dayChange) < 0.005 ? '–' : dayChange > 0 ? '▲' : '▼' }} {{ formatCurrency(Math.abs(dayChange)) }} ({{ formatPercent(dayChangePercent) }})
+          <span class="day-change-label">today</span>
+        </span>
       </div>
+      @if (portfolioGainLoss !== 0) {
+        <div class="metric-change" [class.positive]="portfolioGainLoss >= 0" [class.negative]="portfolioGainLoss < 0">
+          {{ portfolioGainLoss >= 0 ? '▲' : '▼' }}
+          {{ formatCurrency(Math.abs(portfolioGainLoss)) }} unrealized
+        </div>
+      }
     }
   </div>
 
   <div class="metric-card">
-    <div class="metric-label">Cash Balance</div>
-    <div class="metric-value">{{ formatCurrency(cashBalance) }}</div>
-    <div class="metric-change positive" style="background:transparent;padding:0;margin-top:.25rem;font-size:.78rem;color:var(--clr-sienna)">
-      Available to invest
-    </div>
+    <div class="metric-label">Cash balance</div>
+    @if (loading) {
+      <span class="skeleton skeleton-figure"></span>
+    } @else {
+      <app-rolling-number class="metric-value" [value]="cashBalance"></app-rolling-number>
+      <button type="button" class="btn-trade metric-action" (click)="moveCash.emit()">Transfer</button>
+    }
   </div>
 
   <div class="metric-card">
-    <div class="metric-label">Portfolio Value</div>
-    <div class="metric-value">{{ formatCurrency(portfolioValue) }}</div>
-    @if (portfolioGainLoss !== 0) {
-      <div class="metric-change" [class.positive]="portfolioGainLoss >= 0" [class.negative]="portfolioGainLoss < 0">
-        {{ portfolioGainLoss >= 0 ? '▲' : '▼' }}
-        {{ formatPercent(portfolioGainPercent()) }}
-      </div>
+    <div class="metric-label">Portfolio value</div>
+    @if (loading) {
+      <span class="skeleton skeleton-figure"></span>
+    } @else if (unavailable) {
+      <div class="metric-value metric-unavailable">—</div>
+    } @else {
+      <app-rolling-number class="metric-value" [value]="portfolioValue"></app-rolling-number>
+      @if (portfolioGainLoss !== 0) {
+        <div class="metric-change" [class.positive]="portfolioGainLoss >= 0" [class.negative]="portfolioGainLoss < 0">
+          {{ portfolioGainLoss >= 0 ? '▲' : '▼' }}
+          {{ formatPercent(portfolioGainPercent()) }}
+        </div>
+      }
     }
   </div>
 </section>
-

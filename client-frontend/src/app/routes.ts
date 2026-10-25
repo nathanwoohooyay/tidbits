@@ -1,31 +1,31 @@
 import { Routes } from '@angular/router';
 import { LoginPageComponent } from './pages/login-page/login-page';
 import { SignupPageComponent } from './pages/signup-page/signup-page';
-import { DashboardPageComponent } from './pages/dashboard-page/dashboard-page';
-import { Maindashboard } from './pages/maindashboard-page/maindashboard';
-import { AccountPageComponent } from './pages/account-page/account-page';
-import { AccountManagementPageComponent } from './pages/account-management-page/account-management-page';
-import { RewardsPageComponent } from './pages/rewards-page/rewards-page';
+import { AuthShellComponent } from './pages/auth-shell/auth-shell';
 import {authGuard} from './services/auth-guard';
 
+// Sign-in and sign-up load with the app; everything behind sign-in (and its charting library) loads on first visit.
 export const routes: Routes = [
   { path: '',
     pathMatch: 'full',
     redirectTo: 'login' },
-  { path: 'login',
-    component: LoginPageComponent },
-  { path: 'signup',
-    component: SignupPageComponent },
+  // Sign-in and sign-up share one frame, so switching between them only swaps the form.
+  { path: '',
+    component: AuthShellComponent,
+    children: [
+      { path: 'login', component: LoginPageComponent },
+      { path: 'signup', component: SignupPageComponent },
+    ] },
   { path: 'dashboard', canActivate:[authGuard],
-    component: DashboardPageComponent },
+    loadComponent: () => import('./pages/dashboard-page/dashboard-page').then(m => m.DashboardPageComponent) },
   { path: 'maindashboard', canActivate:[authGuard],
-      component: Maindashboard },
+    loadComponent: () => import('./pages/maindashboard-page/maindashboard').then(m => m.Maindashboard) },
   { path: 'account', canActivate:[authGuard],
-    component: AccountPageComponent },
+    loadComponent: () => import('./pages/account-page/account-page').then(m => m.AccountPageComponent) },
   { path: 'account-management', canActivate:[authGuard],
-    component: AccountManagementPageComponent },
+    loadComponent: () => import('./pages/account-management-page/account-management-page').then(m => m.AccountManagementPageComponent) },
   { path: 'rewards', canActivate:[authGuard],
-    component: RewardsPageComponent },
+    loadComponent: () => import('./pages/rewards-page/rewards-page').then(m => m.RewardsPageComponent) },
   { path: '**',
-    redirectTo: 'login' },
+    loadComponent: () => import('./pages/not-found-page/not-found-page').then(m => m.NotFoundPageComponent) },
 ];

@@ -1,15 +1,15 @@
 <div class="app-shell">
-  <header class="app-header" role="banner">
-    <div class="header-brand">
-      <span class="brand-kicker">Private Client Desk</span>
-      <div class="brand-title"><span>Tidbits Rewards</span></div>
-    </div>
-    <div class="header-right">
-      <button class="btn-signout" type="button" (click)="goBack()">← Dashboard</button>
-    </div>
-  </header>
+  <app-dashboard-header [showAccountSelector]="false" [rewardPoints]="summary() ? balance() : null"></app-dashboard-header>
 
-  <main class="app-content rewards-content" role="main">
+  <main class="app-content" role="main">
+   <div class="page rewards-content">
+    <header class="page-head">
+      <div>
+        <h1 class="page-title">Rewards</h1>
+        <p class="page-sub">Earn 1 point for every $1 you trade, then spend points on prize draws.</p>
+      </div>
+    </header>
+
     @if (loadError()) {
       <div class="trade-error" role="alert">
         {{ loadError() }}
@@ -31,7 +31,6 @@
       <p class="muted summary-meta">
         <span class="gain-text">+{{ (summary()?.lifetimeEarned ?? 0) | number }}</span> earned
         · {{ (summary()?.lifetimeSpent ?? 0) | number }} spent
-        · 1 point for every $1 you trade
       </p>
     </section>
 
@@ -146,5 +145,6 @@
         </table>
       </div>
     </section>
+   </div>
   </main>
 </div>

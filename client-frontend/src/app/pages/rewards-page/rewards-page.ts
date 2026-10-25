@@ -3,6 +3,7 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SessionService } from '../../services/session.service';
+import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-header.component';
 import {
   LotteryDrawDto,
   PointsEventType,
@@ -44,7 +45,7 @@ const EVENT_LABELS: Record<PointsEventType, string> = {
 @Component({
   selector: 'app-rewards-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DashboardHeaderComponent],
   templateUrl: './rewards-page.html',
   styleUrls: ['./rewards-page.css']
 })
@@ -84,7 +85,6 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
-    this.restoreTheme();
     const userId = this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId();
     if (!userId) {
       void this.router.navigateByUrl('/login');
@@ -224,10 +224,6 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
     return `${draw.winnerLabel} won ${draw.potPoints.toLocaleString()} points`;
   }
 
-  goBack() {
-    void this.router.navigateByUrl('/dashboard');
-  }
-
   private async refresh() {
     const userId = this.userId();
     if (!userId) return;
@@ -249,13 +245,5 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
 
   private errorMessage(err: any, fallback: string): string {
     return err?.error?.message ?? err?.error?.error ?? fallback;
-  }
-
-  private restoreTheme() {
-    try {
-      document.body.classList.toggle('dark-mode', localStorage.getItem('tidbits_theme_mode') === 'dark');
-    } catch {
-      // Storage unavailable; keep the default theme.
-    }
   }
 }

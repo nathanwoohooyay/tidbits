@@ -1,7 +1,7 @@
 export type ThemeMode = 'light' | 'dark';
 export type TrendFilter = 'trending' | 'gainers' | 'losers' | 'volume';
 export type TradeMode = 'buy' | 'sell';
-export type ChartTimeframe = '1W' | '1M' | '3M' | '1Y' | 'ALL';
+export type ChartTimeframe = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL';
 
 export interface User {
   user_id: number;
@@ -113,11 +113,12 @@ export interface TradeExecution {
   stockPrice: number;
 }
 
-export interface QuickTradeSelection {
-  instrumentId: number;
-  mode: TradeMode;
-  ticker?: string;
-  name?: string;
+// The stock a trade window is opened for. instrumentId is null when it came from a typed ticker;
+// the quote supplies it before an order can be placed.
+export interface TradeTarget {
+  instrumentId: number | null;
+  ticker: string;
+  name: string;
 }
 
 export interface DashboardMockData {

@@ -1,4 +1,4 @@
-import { Component, OnInit, ElementRef, ViewChild, AfterViewInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, HostListener, OnInit, ElementRef, ViewChild, AfterViewInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Chart, registerables } from 'chart.js';
@@ -334,27 +334,27 @@ Chart.register(...registerables);
     }
 
     .stat-icon-wrap.cyan {
-      background: rgba(138, 78, 35, 0.08);
-      color: #8a4e23;
-      border: 1px solid rgba(138, 78, 35, 0.2);
+      background: rgba(122, 70, 56, 0.08);
+      color: #7A4638;
+      border: 1px solid rgba(122, 70, 56, 0.2);
     }
 
     .stat-icon-wrap.blue {
-      background: rgba(51, 27, 14, 0.08);
-      color: #331b0e;
-      border: 1px solid rgba(51, 27, 14, 0.2);
+      background: rgba(76, 47, 36, 0.08);
+      color: #4C2F24;
+      border: 1px solid rgba(76, 47, 36, 0.2);
     }
 
     .stat-icon-wrap.cognac {
-      background: rgba(184, 117, 20, 0.08);
-      color: #b87514;
-      border: 1px solid rgba(184, 117, 20, 0.2);
+      background: rgba(160, 104, 32, 0.08);
+      color: #A06820;
+      border: 1px solid rgba(160, 104, 32, 0.2);
     }
 
     .stat-icon-wrap.emerald {
-      background: rgba(42, 97, 66, 0.08);
-      color: #2a6142;
-      border: 1px solid rgba(42, 97, 66, 0.2);
+      background: rgba(0, 127, 75, 0.08);
+      color: #007F4B;
+      border: 1px solid rgba(0, 127, 75, 0.2);
     }
 
     .stat-label {
@@ -380,14 +380,14 @@ Chart.register(...registerables);
     }
 
     .stat-sub.positive {
-      color: #2a6142;
+      color: #007F4B;
     }
 
     .trend-pill {
       font-weight: 700;
     }
 
-    .text-emerald { color: #2a6142; }
+    .text-emerald { color: #007F4B; }
 
     @media (max-width: 1024px) {
       .stats-panel {
@@ -455,7 +455,7 @@ Chart.register(...registerables);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
       padding: 8px 10px;
-      background: #ffffff;
+      background: #F8F3EE;
       color: var(--text-primary);
       font-size: 13px;
       font-weight: 600;
@@ -495,8 +495,8 @@ Chart.register(...registerables);
       left: 0;
       min-width: 220px;
       z-index: 100;
-      background: #fffdf9;
-      border: 1px solid rgba(62, 36, 21, 0.2);
+      background: #F8F3EE;
+      border: 1px solid rgba(76, 47, 36, 0.2);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-md);
       padding: 8px;
@@ -510,7 +510,7 @@ Chart.register(...registerables);
       align-items: center;
       gap: 8px;
       padding: 4px 8px;
-      background: #faf6ee;
+      background: #F8F3EE;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }
@@ -548,13 +548,13 @@ Chart.register(...registerables);
     }
 
     .dropdown-item:hover {
-      background: #f5eedf;
+      background: #EEE7DF;
       color: var(--accent-cognac);
     }
 
     .dropdown-item.selected {
-      background: #331b0e;
-      color: #f7f2e8;
+      background: #4C2F24;
+      color: #F1ECE6;
     }
 
     .dropdown-empty {
@@ -583,7 +583,7 @@ Chart.register(...registerables);
     }
 
     .summary-pill {
-      background: #faf6ee;
+      background: #F8F3EE;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
       padding: 8px 14px;
@@ -894,6 +894,12 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.onInstrumentChange(inst);
   }
 
+  // Esc closes any open filter dropdown.
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    this.closeDropdowns();
+  }
+
   closeDropdowns() {
     this.clientDropdownOpen.set(false);
     this.instrumentDropdownOpen.set(false);
@@ -966,8 +972,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     const values = data.map(d => d.total_value);
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 250);
-    gradient.addColorStop(0, 'rgba(138, 78, 35, 0.22)');
-    gradient.addColorStop(1, 'rgba(138, 78, 35, 0.0)');
+    gradient.addColorStop(0, 'rgba(122, 70, 56, 0.22)');
+    gradient.addColorStop(1, 'rgba(122, 70, 56, 0.0)');
 
     const chart = new Chart(ctx, {
       type: 'line',
@@ -976,12 +982,12 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         datasets: [{
           label: 'Daily Traded Volume ($)',
           data: values,
-          borderColor: '#331b0e',
+          borderColor: '#4C2F24',
           backgroundColor: gradient,
           fill: true,
           tension: 0.35,
-          pointBackgroundColor: '#8a4e23',
-          pointBorderColor: '#ffffff',
+          pointBackgroundColor: '#7A4638',
+          pointBorderColor: '#F8F3EE',
           pointRadius: 4,
           pointHoverRadius: 6
         }]
@@ -992,23 +998,23 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#331b0e',
-            titleColor: '#f7f2e8',
+            backgroundColor: '#4C2F24',
+            titleColor: '#F1ECE6',
             bodyColor: '#e0a973',
-            borderColor: 'rgba(62, 36, 21, 0.2)',
+            borderColor: 'rgba(76, 47, 36, 0.2)',
             borderWidth: 1,
             padding: 10
           }
         },
         scales: {
           x: {
-            grid: { color: 'rgba(62, 36, 21, 0.06)' },
-            ticks: { color: '#6b5344', font: { size: 11 } }
+            grid: { color: 'rgba(76, 47, 36, 0.06)' },
+            ticks: { color: '#5E463C', font: { size: 11 } }
           },
           y: {
-            grid: { color: 'rgba(62, 36, 21, 0.06)' },
+            grid: { color: 'rgba(76, 47, 36, 0.06)' },
             ticks: {
-              color: '#6b5344',
+              color: '#5E463C',
               font: { size: 11 },
               callback: (val) => '$' + Number(val).toLocaleString()
             }
@@ -1037,8 +1043,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         labels,
         datasets: [{
           data: values,
-          backgroundColor: ['#331b0e', '#8a4e23', '#c27d38', '#2a6142'],
-          borderColor: '#ffffff',
+          backgroundColor: ['#4C2F24', '#7A4638', '#c27d38', '#007F4B'],
+          borderColor: '#F8F3EE',
           borderWidth: 2
         }]
       },

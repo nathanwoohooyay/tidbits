@@ -1,12 +1,12 @@
 <div class="insight-feed" aria-label="Internal business insight">
   <div class="insight-header">
-    <span class="section-title">Business Insight Feed</span>
+    <span class="section-title">Business insight feed</span>
     @if (reportingOverview) {
       <span class="insight-timestamp">Updated {{ reportingOverview.generatedAt | date:'MMM d, y · h:mm a' }}</span>
     }
   </div>
 
-  <div class="insight-body" style="width: 100%;">
+  <div class="insight-body">
     @if (!reportingOverview) {
       <div class="empty-state">Insight feed is loading or unavailable.</div>
     } @else {
@@ -31,7 +31,7 @@
           <div class="insight-row-set">
             @for (item of tradeVolumeBySide(); track item.side) {
               <div class="insight-row">
-                <span style="font-weight: bold;" class="insight-subject">{{ item.side | titlecase }}: </span>
+                <span class="insight-subject">{{ item.side | titlecase }}</span>
                 <span>{{ formatCurrency(item.total_value) }} · {{ item.order_count }} orders</span>
               </div>
             }
@@ -45,7 +45,7 @@
           <div class="insight-row-set">
             @for (account of accountOrderStats; track account.accountId) {
               <div class="insight-row account-stat-row">
-                <span style="font-weight: bold; font-size: 14px;" class="insight-subject">{{ account.nickname }} </span>
+                <span class="insight-subject">{{ account.nickname }}</span>
                 <span>{{ account.totalOrders }} orders · {{ account.filledOrders }} filled · {{ account.placedOrders }} placed</span>
               </div>
             }

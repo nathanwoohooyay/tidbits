@@ -1,121 +1,133 @@
-<div class="signup-screen">
-  <div class="signup-card">
-    <div class="signup-brand">
-      <h1>BitTrader</h1>
-      <p>Create Account</p>
-    </div>
-    <p class="subtitle">Register a new user account.</p>
-
-    @if (signupError) {
-      <div class="error" role="alert">{{ signupError }}</div>
-    }
-
-    @if (signupSuccess) {
-      <div class="success" role="status">{{ signupSuccess }}</div>
-    }
-
-    <div class="form-group">
-      <label for="signup-username">Username</label>
-      <input
-        id="signup-username"
-        type="text"
-        [(ngModel)]="signupUsername"
-        autocomplete="username"
-        [attr.aria-invalid]="!!signupFieldErrors.username"
-        [class.input-invalid]="!!signupFieldErrors.username"
-        (ngModelChange)="onSignupInputChange('username')"
-      >
-      @if (signupFieldErrors.username) {
-        <div class="field-error">{{ signupFieldErrors.username }}</div>
-      }
-    </div>
-
-    <div class="form-group">
-      <label for="signup-email">Email</label>
-      <input
-        id="signup-email"
-        type="email"
-        [(ngModel)]="signupEmail"
-        autocomplete="email"
-        [attr.aria-invalid]="!!signupFieldErrors.email"
-        [class.input-invalid]="!!signupFieldErrors.email"
-        (ngModelChange)="onSignupInputChange('email')"
-      >
-      @if (signupFieldErrors.email) {
-        <div class="field-error">{{ signupFieldErrors.email }}</div>
-      }
-    </div>
-
-    <div class="form-group">
-      <label for="signup-date-of-birth">Date of Birth</label>
-      <input
-        id="signup-date-of-birth"
-        type="date"
-        [(ngModel)]="signupDateOfBirth"
-        autocomplete="bday"
-        [max]="maxDateOfBirth"
-        [attr.aria-invalid]="!!signupFieldErrors.dateOfBirth"
-        [class.input-invalid]="!!signupFieldErrors.dateOfBirth"
-        (ngModelChange)="onSignupInputChange('dateOfBirth')"
-      >
-      @if (signupFieldErrors.dateOfBirth) {
-        <div class="field-error">{{ signupFieldErrors.dateOfBirth }}</div>
-      }
-    </div>
-
-    <div class="form-group">
-      <label for="signup-phone">Phone Number</label>
-      <input
-        id="signup-phone"
-        type="text"
-        [(ngModel)]="signupPhoneNumber"
-        [attr.aria-invalid]="!!signupFieldErrors.phoneNumber"
-        [class.input-invalid]="!!signupFieldErrors.phoneNumber"
-        (ngModelChange)="onSignupInputChange('phoneNumber')"
-      >
-      @if (signupFieldErrors.phoneNumber) {
-        <div class="field-error">{{ signupFieldErrors.phoneNumber }}</div>
-      }
-    </div>
-
-    <div class="form-group">
-      <label for="signup-password">Password</label>
-      <input
-        id="signup-password"
-        type="password"
-        [(ngModel)]="signupPassword"
-        autocomplete="new-password"
-        [attr.aria-invalid]="!!signupFieldErrors.password"
-        [class.input-invalid]="!!signupFieldErrors.password"
-        (ngModelChange)="onSignupInputChange('password')"
-      >
-      @if (signupFieldErrors.password) {
-        <div class="field-error">{{ signupFieldErrors.password }}</div>
-      }
-    </div>
-
-    <div class="form-group">
-      <label for="signup-confirm-password">Confirm Password</label>
-      <input
-        id="signup-confirm-password"
-        type="password"
-        [(ngModel)]="signupConfirmPassword"
-        autocomplete="new-password"
-        [attr.aria-invalid]="!!signupFieldErrors.confirmPassword"
-        [class.input-invalid]="!!signupFieldErrors.confirmPassword"
-        (ngModelChange)="onSignupInputChange('confirmPassword')"
-      >
-      @if (signupFieldErrors.confirmPassword) {
-        <div class="field-error">{{ signupFieldErrors.confirmPassword }}</div>
-      }
-    </div>
-
-    <button type="button" class="btn-primary" (click)="signup()" [disabled]="signupLoading">
-      {{ signupLoading ? 'Registering…' : 'Create Account' }}
-    </button>
-
-    <button type="button" class="link-btn" (click)="goToLogin()">Back to sign in</button>
+<div class="login-card signup-card">
+  <div class="login-brand">
+    <app-brand-logo [size]="28"></app-brand-logo>
+    <span class="brand-name">BitTrader</span>
   </div>
+  <h1 class="login-heading">Create your account</h1>
+  <!-- Errors take the subtitle's place and invalid fields get a red outline, so the form never changes height. -->
+  @if (signupError) {
+    <p class="login-sub login-status is-error" role="alert"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.01"/></svg>{{ signupError }}</p>
+  } @else {
+    <p class="login-sub">Register a new user account to start trading.</p>
+  }
+
+  @if (signupSuccess) {
+    <p class="sr-only" role="status">{{ signupSuccess }}</p>
+  }
+
+  <div class="signup-fields">
+
+  <div class="form-group">
+    <label for="signup-username">Username</label>
+    <input
+      id="signup-username"
+      type="text"
+      [(ngModel)]="signupUsername"
+      autocomplete="username"
+      [attr.aria-invalid]="!!signupFieldErrors.username"
+      [class.input-invalid]="!!signupFieldErrors.username"
+      (ngModelChange)="onSignupInputChange('username')"
+    >
+    @if (signupFieldErrors.username) {
+      <div class="field-error sr-only">{{ signupFieldErrors.username }}</div>
+    }
+  </div>
+
+  <div class="form-group">
+    <label for="signup-email">Email</label>
+    <input
+      id="signup-email"
+      type="email"
+      [(ngModel)]="signupEmail"
+      autocomplete="email"
+      [attr.aria-invalid]="!!signupFieldErrors.email"
+      [class.input-invalid]="!!signupFieldErrors.email"
+      (ngModelChange)="onSignupInputChange('email')"
+    >
+    @if (signupFieldErrors.email) {
+      <div class="field-error sr-only">{{ signupFieldErrors.email }}</div>
+    }
+  </div>
+
+  <div class="form-group">
+    <label for="signup-date-of-birth">Date of Birth</label>
+    <input
+      id="signup-date-of-birth"
+      type="date"
+      [(ngModel)]="signupDateOfBirth"
+      autocomplete="bday"
+      [max]="maxDateOfBirth"
+      [attr.aria-invalid]="!!signupFieldErrors.dateOfBirth"
+      [class.input-invalid]="!!signupFieldErrors.dateOfBirth"
+      (ngModelChange)="onSignupInputChange('dateOfBirth')"
+    >
+    @if (signupFieldErrors.dateOfBirth) {
+      <div class="field-error sr-only">{{ signupFieldErrors.dateOfBirth }}</div>
+    }
+  </div>
+
+  <div class="form-group">
+    <label for="signup-phone">Phone Number</label>
+    <input
+      id="signup-phone"
+      type="text"
+      [(ngModel)]="signupPhoneNumber"
+      [attr.aria-invalid]="!!signupFieldErrors.phoneNumber"
+      [class.input-invalid]="!!signupFieldErrors.phoneNumber"
+      (ngModelChange)="onSignupInputChange('phoneNumber')"
+    >
+    @if (signupFieldErrors.phoneNumber) {
+      <div class="field-error sr-only">{{ signupFieldErrors.phoneNumber }}</div>
+    }
+  </div>
+
+  <div class="form-group">
+    <label for="signup-password">Password</label>
+    <input
+      id="signup-password"
+      type="password"
+      [(ngModel)]="signupPassword"
+      autocomplete="new-password"
+      [attr.aria-invalid]="!!signupFieldErrors.password"
+      [class.input-invalid]="!!signupFieldErrors.password"
+      (ngModelChange)="onSignupInputChange('password')"
+    >
+    @if (signupFieldErrors.password) {
+      <div class="field-error sr-only">{{ signupFieldErrors.password }}</div>
+    }
+  </div>
+
+  <div class="form-group">
+    <label for="signup-confirm-password">Confirm Password</label>
+    <input
+      id="signup-confirm-password"
+      type="password"
+      [(ngModel)]="signupConfirmPassword"
+      autocomplete="new-password"
+      [attr.aria-invalid]="!!signupFieldErrors.confirmPassword"
+      [class.input-invalid]="!!signupFieldErrors.confirmPassword"
+      (ngModelChange)="onSignupInputChange('confirmPassword')"
+    >
+    @if (signupFieldErrors.confirmPassword) {
+      <div class="field-error sr-only">{{ signupFieldErrors.confirmPassword }}</div>
+    }
+  </div>
+
+  </div>
+
+  <!-- Icons only while working: a spinner, then the button fills green with a check. It shakes if sign-up fails. -->
+  <button type="button" class="btn-primary auth-submit" (click)="signup()" [disabled]="signupLoading || signupDone"
+          [class.is-loading]="signupLoading" [class.is-done]="signupDone" [class.is-shake]="shake" [attr.aria-busy]="signupLoading">
+    @if (signupDone) {
+      <svg class="btn-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      <span class="sr-only">Account created</span>
+    } @else if (signupLoading) {
+      <span class="btn-spinner" aria-hidden="true"></span>
+      <span class="sr-only">Creating account</span>
+    } @else {
+      Create Account
+    }
+  </button>
+
+  <p class="login-alt">Already have an account? <button type="button" (click)="goToLogin()">Sign in</button></p>
 </div>
-
-

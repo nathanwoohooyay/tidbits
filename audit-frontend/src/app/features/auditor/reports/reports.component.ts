@@ -302,9 +302,9 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
     }
 
     .ticker-pill {
-      background: #f7ede0;
-      color: #6b3a1d;
-      border: 1px solid rgba(138, 78, 35, 0.2);
+      background: #EEE7DF;
+      color: #765043;
+      border: 1px solid rgba(122, 70, 56, 0.2);
       padding: 2px 8px;
       border-radius: var(--radius-sm);
       font-weight: 700;
@@ -312,9 +312,9 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
     }
 
     .zscore-tag {
-      background: rgba(163, 50, 36, 0.08);
-      border: 1px solid rgba(163, 50, 36, 0.25);
-      color: #a33224;
+      background: rgba(186, 11, 47, 0.08);
+      border: 1px solid rgba(186, 11, 47, 0.25);
+      color: #BA0B2F;
       padding: 2px 6px;
       border-radius: var(--radius-sm);
       font-weight: 700;
@@ -400,7 +400,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
       display: flex;
       flex-direction: column;
       gap: 16px;
-      background: #ffffff;
+      background: #F8F3EE;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
       padding: 16px;
@@ -459,7 +459,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
       color: var(--text-primary);
     }
 
-    .text-rose { color: #a33224; }
+    .text-rose { color: #BA0B2F; }
 
     .section-heading {
       font-size: 11px;
@@ -481,8 +481,8 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
       justify-content: space-between;
       font-size: 12px;
       padding: 6px 10px;
-      background: #faf6ee;
-      border: 1px solid rgba(62, 36, 21, 0.06);
+      background: #F8F3EE;
+      border: 1px solid rgba(76, 47, 36, 0.06);
       border-radius: var(--radius-sm);
     }
 

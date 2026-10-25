@@ -2,81 +2,92 @@
   <app-dashboard-header
     [accounts]="accounts()"
     [selectedAccountId]="selectedAccountId()"
-    [themeMode]="themeMode()"
     [rewardPoints]="currentUser()?.rewardPoints ?? currentUser()?.reward_points ?? 0"
-    (accountChange)="onAccountChange($event)"
-    (toggleTheme)="toggleTheme()"
-    (goToAccount)="goToAccount()"
-    (goToAccountManagement)="goToAccountManagement()"
-    (goToRewards)="goToRewards()"
-    (signOut)="signOut()">
+    (accountChange)="onAccountChange($event)">
   </app-dashboard-header>
 
   <main class="app-content" role="main">
-    <div class="dashboard-grid">
+    <div class="page dashboard-grid">
       <app-dashboard-greeting
         [username]="currentUser()?.username ?? ''"
         [accountNickname]="selectedAccount()?.nickname ?? 'No account selected'"
         [today]="today"
-        [usingPlaceholderMarketData]="usingPlaceholderMarketData()"
-        [accountCount]="accounts().length">
+        [loading]="greetingLoading()">
+        <app-dashboard-stock-search (stockSelected)="openTrade($event)"></app-dashboard-stock-search>
       </app-dashboard-greeting>
 
-      <!-- <app-dashboard-notices [notices]="notices()"></app-dashboard-notices> -->
-
       <app-dashboard-metrics
+        [loading]="metricsLoading()"
         [totalNetWorth]="totalNetWorth()"
         [cashBalance]="cashBalance()"
         [portfolioValue]="portfolioValue()"
-        [portfolioGainLoss]="portfolioChange()">
+        [portfolioGainLoss]="portfolioGainLoss()"
+        [dayChange]="dayChange()"
+        [dayChangePercent]="dayChangePercent()"
+        [unavailable]="!!holdingsError()"
+        (moveCash)="openCash()">
       </app-dashboard-metrics>
 
-      <app-dashboard-cash-panel
-        [selectedAccountId]="selectedAccountId()"
-        [cashBalance]="cashBalance()"
-        [cashAmount]="cashAmount"
-        [cashLoading]="cashLoading"
-        [cashError]="cashError"
-        [cashSuccess]="cashSuccess"
-        (cashAmountChange)="cashAmount = $event"
-        (deposit)="depositToSelectedAccount()"
-        (withdraw)="withdrawFromSelectedAccount()">
-      </app-dashboard-cash-panel>
+      @if (!metricsLoading() && !holdingsError()) {
+        <app-allocation-bar [holdings]="holdings()" [cash]="cashBalance()"></app-allocation-bar>
+      }
 
-      <app-dashboard-chart
-        [dataPoints]="chartDataPoints()"
-        [chartTimeframe]="chartTimeframe()"
-        (chartTimeframeChange)="setChartTimeframe($event)">
-      </app-dashboard-chart>
+      @if (loadError()) {
+        <app-error-state title="We couldn't load your accounts" [message]="loadError()" (retry)="retryLoad()"></app-error-state>
+      }
 
-      <app-dashboard-market-snapshot
-        [trendFilter]="trendFilter()"
-        (trendFilterChange)="setTrendFilter($event)"
-        (quickTrade)="onQuickTrade($event)">
-      </app-dashboard-market-snapshot>
+      <div class="dashboard-body">
+        <div class="dashboard-main">
+          <app-dashboard-chart
+            [dataPoints]="chartDataPoints()"
+            [chartTimeframe]="chartTimeframe()"
+            [loading]="chartLoading()"
+            (chartTimeframeChange)="setChartTimeframe($event)">
+          </app-dashboard-chart>
 
-      <app-dashboard-holdings
-              (portfolioValue)="setPortfolioValue($event)"
-              (portfolioChange)="setPortfolioChange($event)"
-        [selectedAccountId]="selectedAccountId()"
-        [refreshToken]="holdingsRefreshToken()"
-        (quickTrade)="onQuickTrade($event)">
-      </app-dashboard-holdings>
+          <app-dashboard-market-snapshot
+            [trendFilter]="trendFilter()"
+            (trendFilterChange)="setTrendFilter($event)"
+            (trade)="openTrade($event)">
+          </app-dashboard-market-snapshot>
 
-      <app-dashboard-trade-desk
-        [selectedAccountId]="selectedAccountId()"
-        [cashBalance]="cashBalance()"
-        [selectedMode]="quickTradeSelection()?.mode ?? 'buy'"
-        [selectedInstrumentId]="quickTradeSelection()?.instrumentId ?? null"
-        [selectedTicker]="quickTradeSelection()?.ticker ?? null"
-        [selectedInstrumentName]="quickTradeSelection()?.name ?? null"
-        (tradeExecuted)="onTradeExecuted($event)">
-      </app-dashboard-trade-desk>
+          <app-dashboard-trade-history [orders]="orders()" [loading]="ordersLoading()"></app-dashboard-trade-history>
+        </div>
 
-      <app-dashboard-trade-history
-        [selectedAccountId]="selectedAccountId()">
-      </app-dashboard-trade-history>
+        <aside class="dashboard-rail" aria-label="Account holdings">
+          <app-dashboard-holdings
+            [holdings]="holdings()"
+            [loading]="holdingsLoading()"
+            [error]="holdingsError()"
+            (trade)="openTrade($event)"
+            (retry)="retryHoldings()">
+          </app-dashboard-holdings>
+        </aside>
+      </div>
     </div>
   </main>
 </div>
 
+<app-dashboard-trade-modal
+  [target]="tradeTarget()"
+  [accountId]="selectedAccountId()"
+  [accountName]="selectedAccount()?.nickname ?? ''"
+  [cashBalance]="cashBalance()"
+  [ownedQuantity]="ownedQuantity()"
+  (closed)="closeTrade()"
+  (tradeExecuted)="onTradeExecuted()">
+</app-dashboard-trade-modal>
+
+<app-dashboard-cash-modal
+  [open]="cashOpen()"
+  [accountName]="selectedAccount()?.nickname ?? ''"
+  [cashBalance]="cashBalance()"
+  [cashAmount]="cashAmount"
+  [cashLoading]="cashLoading"
+  [cashError]="cashError"
+  [cashSuccess]="cashSuccess"
+  (cashAmountChange)="cashAmount = $event"
+  (deposit)="depositToSelectedAccount()"
+  (withdraw)="withdrawFromSelectedAccount()"
+  (closed)="closeCash()">
+</app-dashboard-cash-modal>

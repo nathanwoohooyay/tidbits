@@ -180,27 +180,27 @@ import { AdminDashboardStats } from '../../../core/models/models';
     }
 
     .stat-icon-wrap.purple {
-      background: rgba(51, 27, 14, 0.08);
-      color: #331b0e;
-      border: 1px solid rgba(51, 27, 14, 0.18);
+      background: rgba(76, 47, 36, 0.08);
+      color: #4C2F24;
+      border: 1px solid rgba(76, 47, 36, 0.18);
     }
 
     .stat-icon-wrap.blue {
-      background: rgba(138, 78, 35, 0.08);
-      color: #8a4e23;
-      border: 1px solid rgba(138, 78, 35, 0.18);
+      background: rgba(122, 70, 56, 0.08);
+      color: #7A4638;
+      border: 1px solid rgba(122, 70, 56, 0.18);
     }
 
     .stat-icon-wrap.cyan {
-      background: rgba(184, 117, 20, 0.08);
-      color: #b87514;
-      border: 1px solid rgba(184, 117, 20, 0.18);
+      background: rgba(160, 104, 32, 0.08);
+      color: #A06820;
+      border: 1px solid rgba(160, 104, 32, 0.18);
     }
 
     .stat-icon-wrap.emerald {
-      background: rgba(42, 97, 66, 0.08);
-      color: #2a6142;
-      border: 1px solid rgba(42, 97, 66, 0.18);
+      background: rgba(0, 127, 75, 0.08);
+      color: #007F4B;
+      border: 1px solid rgba(0, 127, 75, 0.18);
     }
 
     .stat-label {
@@ -294,8 +294,8 @@ import { AdminDashboardStats } from '../../../core/models/models';
       width: 32px;
       height: 32px;
       border-radius: var(--radius-sm);
-      background: rgba(138, 78, 35, 0.08);
-      border: 1px solid rgba(138, 78, 35, 0.16);
+      background: rgba(122, 70, 56, 0.08);
+      border: 1px solid rgba(122, 70, 56, 0.16);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -305,9 +305,9 @@ import { AdminDashboardStats } from '../../../core/models/models';
     }
 
     .text-rose {
-      color: #a33224;
-      background: rgba(163, 50, 36, 0.08);
-      border-color: rgba(163, 50, 36, 0.2);
+      color: #BA0B2F;
+      background: rgba(186, 11, 47, 0.08);
+      border-color: rgba(186, 11, 47, 0.2);
     }
 
     .action-item-body {

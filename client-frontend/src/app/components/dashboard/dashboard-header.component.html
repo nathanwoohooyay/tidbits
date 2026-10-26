@@ -9,7 +9,9 @@
       <div class="account-selector">
         <select [value]="selectedAccountId" (change)="onAccountSelect($event)" aria-label="Select account">
           @for (acc of accounts; track acc.accountId) {
-            <option [value]="acc.accountId">
+            <option [value]="acc.accountId"
+                    [selected]="acc.accountId === selectedAccountId"
+                >
               {{ acc.nickname }} — {{ formatCurrency(acc.cashBalance) }}
             </option>
           }

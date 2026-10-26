@@ -16,7 +16,8 @@ export interface AccountOrderStats {
   selector: 'app-dashboard-insight-feed',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './dashboard-insight-feed.component.html'
+  templateUrl: './dashboard-insight-feed.component.html',
+  styleUrls: ['./dashboard-insight-feed.component.css']
 })
 export class DashboardInsightFeedComponent {
   @Input() reportingOverview: ReportOverview | null = null;

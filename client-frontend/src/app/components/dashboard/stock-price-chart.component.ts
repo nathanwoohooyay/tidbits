@@ -6,7 +6,7 @@ import {
 } from 'lightweight-charts';
 import { PricingCandleDTO } from '../../services/pricing.service';
 import { ThemeService } from '../../services/theme.service';
-import { formatCompactNumber, formatCurrency, formatDayRange } from './dashboard.utils';
+import { formatCompactNumber, formatCurrency, formatDayRange, pricePrecision } from './dashboard.utils';
 import { ChartPalette, animateRange, baseChartOptions, baselineColors, rangeFor, readChartPalette, visibleIndices, withAlpha } from './lw-chart-theme';
 
 export type StockChartMode = 'line' | 'candles';
@@ -242,6 +242,9 @@ export class StockPriceChartComponent {
     }
 
     this.byDate = new Map(candles.map(c => [c.date, c]));
+    // Coins under a dollar need more than 2 decimal places on the axis and the last-price label.
+    const precision = pricePrecision(Math.min(...candles.map(c => c.close ?? Infinity)));
+    this.main.applyOptions({ priceFormat: { type: 'price', precision, minMove: 10 ** -precision } });
     this.setData(candles, mode, palette);
     this.markers?.setMarkers(this.toMarkers(candles, trades, palette));
 

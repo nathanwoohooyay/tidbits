@@ -564,8 +564,7 @@ th.right {
   letter-spacing: -.045em
 }
 
-/* Edge-to-edge candlestick ticker along the bottom of the screen, behind everything. It fades out towards the top
-   and the right edge so it reads as a backdrop; the left-edge fade is drawn by the component once it starts panning. */
+/* Edge-to-edge candlestick ticker along the bottom of the screen, behind everything. */
 .auth-curve {
   position: absolute;
   z-index: 0;
@@ -574,15 +573,7 @@ th.right {
   bottom: 0;
   width: 100%;
   height: var(--auth-curve-height);
-  pointer-events: none;
-  -webkit-mask-image:
-    linear-gradient(to top, #000 70%, transparent),
-    linear-gradient(to right, #000 97%, transparent);
-  -webkit-mask-composite: source-in;
-  mask-image:
-    linear-gradient(to top, #000 70%, transparent),
-    linear-gradient(to right, #000 97%, transparent);
-  mask-composite: intersect
+  pointer-events: none
 }
 
 .auth-main {
@@ -1928,6 +1919,17 @@ app-rolling-number.metric-value {
   color: var(--clr-loss)
 }
 
+.nowrap {
+  white-space: nowrap
+}
+
+.limit-tag {
+  margin-left: .35rem;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--clr-sienna)
+}
+
 .status-badge {
   text-transform: capitalize
 }
@@ -1952,9 +1954,15 @@ app-rolling-number.metric-value {
   color: var(--clr-accepted)
 }
 
-.status-created {
+.status-created,
+.status-canceled {
   background: var(--clr-surface-soft);
   color: var(--clr-sienna)
+}
+
+.status-rejected {
+  background: var(--clr-loss-light);
+  color: var(--clr-loss)
 }
 
 /* ---------------------------------------------------------------------------

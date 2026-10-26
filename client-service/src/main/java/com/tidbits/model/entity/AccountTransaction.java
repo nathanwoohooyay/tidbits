@@ -2,6 +2,7 @@ package com.tidbits.model.entity;
 
 import jakarta.persistence.*;
 import com.tidbits.model.enums.TransactionType;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,8 +20,8 @@ public class AccountTransaction {
     @Column(name = "order_id")
     private Integer orderId;
 
-    @Column(name = "amount")
-    private Double amount;
+    @Column(name = "amount", precision = 15, scale = 2)
+    private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type")
@@ -32,7 +33,7 @@ public class AccountTransaction {
     public AccountTransaction() {
     }
 
-    public AccountTransaction(Integer transactionId, Integer accountId, Integer orderId, Double amount,
+    public AccountTransaction(Integer transactionId, Integer accountId, Integer orderId, BigDecimal amount,
                               TransactionType transactionType, LocalDateTime createdAt) {
         this.transactionId = transactionId;
         this.accountId = accountId;
@@ -51,8 +52,8 @@ public class AccountTransaction {
     public Integer getOrderId() { return orderId; }
     public void setOrderId(Integer orderId) { this.orderId = orderId; }
 
-    public Double getAmount() { return amount; }
-    public void setAmount(Double amount) { this.amount = amount; }
+    public BigDecimal getAmount() { return amount; }
+    public void setAmount(BigDecimal amount) { this.amount = amount; }
 
     public TransactionType getTransactionType() { return transactionType; }
     public void setTransactionType(TransactionType transactionType) { this.transactionType = transactionType; }

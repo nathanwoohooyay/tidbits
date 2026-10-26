@@ -1,5 +1,6 @@
 package com.tidbits.service;
 
+import java.math.BigDecimal;
 import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.entity.Order;
 import com.tidbits.model.entity.OrderStatusHistory;
@@ -35,7 +36,7 @@ class OrderStatusHistoryServiceTest {
 
     @Test
     void switchStatus_updatesOrderAndCreatesHistoryRow() {
-        Order order = new Order(22, 42, 3, 1.0, 10.0, OrderType.BUY, OrderStatus.PLACED);
+        Order order = new Order(22, 42, 3, new BigDecimal("1.0"), new BigDecimal("10.0"), OrderType.BUY, OrderStatus.PLACED);
 
         orderStatusHistoryService.switchStatus(order, OrderStatus.PLACED, OrderStatus.ACCEPTED);
 

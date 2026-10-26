@@ -1,5 +1,6 @@
 package com.tidbits.controller;
 
+import java.math.BigDecimal;
 import com.tidbits.model.entity.AccountTransaction;
 import com.tidbits.model.enums.TransactionType;
 import com.tidbits.service.AccountTransactionService;
@@ -34,7 +35,7 @@ class AccountTransactionControllerTest {
 
     @Test
     void depositTransaction_returnsMappedTransaction() throws Exception {
-        when(accountTransactionService.depositCash(42, 120.50)).thenReturn(
+        when(accountTransactionService.depositCash(42, new BigDecimal("120.5"))).thenReturn(
                 tx(10, 42, 120.50, TransactionType.DEPOSIT)
         );
 
@@ -46,12 +47,12 @@ class AccountTransactionControllerTest {
                 .andExpect(jsonPath("$.amount").value(120.5))
                 .andExpect(jsonPath("$.transactionType").value("DEPOSIT"));
 
-        verify(accountTransactionService).depositCash(42, 120.50);
+        verify(accountTransactionService).depositCash(42, new BigDecimal("120.5"));
     }
 
     @Test
     void withdrawTransaction_returnsMappedTransaction() throws Exception {
-        when(accountTransactionService.withdrawCash(42, 25.25)).thenReturn(
+        when(accountTransactionService.withdrawCash(42, new BigDecimal("25.25"))).thenReturn(
                 tx(11, 42, 25.25, TransactionType.WITHDRAW)
         );
 
@@ -62,7 +63,7 @@ class AccountTransactionControllerTest {
                 .andExpect(jsonPath("$.transactionId").value(11))
                 .andExpect(jsonPath("$.transactionType").value("WITHDRAW"));
 
-        verify(accountTransactionService).withdrawCash(42, 25.25);
+        verify(accountTransactionService).withdrawCash(42, new BigDecimal("25.25"));
     }
 
     @Test
@@ -112,6 +113,6 @@ class AccountTransactionControllerTest {
     }
 
     private AccountTransaction tx(Integer transactionId, Integer accountId, Double amount, TransactionType type) {
-        return new AccountTransaction(transactionId, accountId, null, amount, type, LocalDateTime.now());
+        return new AccountTransaction(transactionId, accountId, null, BigDecimal.valueOf(amount), type, LocalDateTime.now());
     }
 }

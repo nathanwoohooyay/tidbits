@@ -1,5 +1,6 @@
 package com.tidbits.service;
 
+import java.math.BigDecimal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.tidbits.model.dto.OrderEventDTO;
@@ -20,7 +21,7 @@ class OrderEventConsumerTest {
     @Test
     void consumeOrderEvent_callsFillOrderForOrderPlaced() throws Exception {
         String payload = objectMapper.writeValueAsString(new OrderEventDTO(
-                "ORDER_PLACED", LocalDateTime.now(), 1, 42, null, 9, 1.0, 100.0, 100.0,
+                "ORDER_PLACED", LocalDateTime.now(), 1, 42, null, 9, new BigDecimal("1.0"), new BigDecimal("100.0"), new BigDecimal("100.0"),
                 "BUY", "PLACED", null, null
         ));
 
@@ -32,11 +33,11 @@ class OrderEventConsumerTest {
     @Test
     void consumeOrderEvent_ignoresAcceptedAndFilled() throws Exception {
         String accepted = objectMapper.writeValueAsString(new OrderEventDTO(
-                "ORDER_ACCEPTED", LocalDateTime.now(), 1, 42, null, 9, 1.0, 100.0, 100.0,
+                "ORDER_ACCEPTED", LocalDateTime.now(), 1, 42, null, 9, new BigDecimal("1.0"), new BigDecimal("100.0"), new BigDecimal("100.0"),
                 "BUY", "ACCEPTED", null, null
         ));
         String filled = objectMapper.writeValueAsString(new OrderEventDTO(
-                "ORDER_FILLED", LocalDateTime.now(), 1, 42, null, 9, 1.0, 100.0, 100.0,
+                "ORDER_FILLED", LocalDateTime.now(), 1, 42, null, 9, new BigDecimal("1.0"), new BigDecimal("100.0"), new BigDecimal("100.0"),
                 "BUY", "FILLED", null, null
         ));
 
@@ -56,7 +57,7 @@ class OrderEventConsumerTest {
     @Test
     void consumeOrderEvent_ignoresNullEventType() throws Exception {
         String payload = objectMapper.writeValueAsString(new OrderEventDTO(
-                null, LocalDateTime.now(), 1, 42, null, 9, 1.0, 100.0, 100.0,
+                null, LocalDateTime.now(), 1, 42, null, 9, new BigDecimal("1.0"), new BigDecimal("100.0"), new BigDecimal("100.0"),
                 "BUY", "PLACED", null, null
         ));
 

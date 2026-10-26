@@ -5,13 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tidbits.model.dto.OrderEventDTO;
 import com.tidbits.model.dto.OrderResponseDTO;
 import com.tidbits.model.entity.Order;
+import com.tidbits.util.Money;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.time.LocalDateTime;
 
 
 @Service
@@ -55,7 +55,7 @@ public class OrderEventPublisher {
         send(event, String.valueOf(order.getAccountId()));
     }
 
-    public void publishAccountTransactionEvent(String eventType, Integer accountId, Integer transactionId, Double amount) {
+    public void publishAccountTransactionEvent(String eventType, Integer accountId, Integer transactionId, BigDecimal amount) {
         OrderEventDTO event = new OrderEventDTO(
                 eventType,
                 LocalDateTime.now(),
@@ -83,15 +83,11 @@ public class OrderEventPublisher {
         }
     }
 
-    private Double resolveOrderAmount(Order order) {
+    private BigDecimal resolveOrderAmount(Order order) {
         if (order.getQuantity() == null || order.getStockPrice() == null) {
             return null;
         }
 
-        return floorToTwoDecimals(order.getQuantity() * order.getStockPrice());
-    }
-
-    private double floorToTwoDecimals(double value) {
-        return BigDecimal.valueOf(value).setScale(2, RoundingMode.FLOOR).doubleValue();
+        return Money.floorCents(order.getQuantity().multiply(order.getStockPrice()));
     }
 }

@@ -1,5 +1,6 @@
 package com.tidbits.service;
 
+import java.math.BigDecimal;
 import com.tidbits.exception.BadRequestException;
 import com.tidbits.model.entity.Account;
 import com.tidbits.repository.AccountRepository;
@@ -86,6 +87,6 @@ class PortfolioSnapshotServiceTest {
     }
 
     private Account account(Integer accountId, Integer userId) {
-        return new Account(accountId, userId, "Primary", 100.0, LocalDateTime.now());
+        return new Account(accountId, userId, "Primary", new BigDecimal("100.0"), LocalDateTime.now());
     }
 }

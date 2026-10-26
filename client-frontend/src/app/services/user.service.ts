@@ -45,8 +45,9 @@ export class UserService {
     return this.http.patch<UserDTO>(`${this.apiBase}/${userId}/change-phone-number`, payload);
   }
 
-  changePassword(userId: number, payload: ChangePasswordDTO): Observable<UserDTO> {
-    return this.http.patch<UserDTO>(`${this.apiBase}/${userId}/change-password`, payload);
+  // Passwords live in the auth service (client-service has no password endpoint). `userId` comes from the token.
+  changePassword(_userId: number, payload: ChangePasswordDTO): Observable<void> {
+    return this.http.patch<void>('/api/auth/change-password', payload);
   }
 
 }

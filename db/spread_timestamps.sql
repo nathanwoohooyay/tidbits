@@ -1,7 +1,7 @@
 -- Spread timestamps in tidbits_dev and tidbits_auth so seeded data looks realistic.
 -- Safe to rerun; it will re-space times from now.
 -- Accounts, holdings, orders, order history, transactions, snapshots and transaction logs are
--- already dated relative to CURRENT_DATE by db/generate_portfolio_seed.py, so they are not touched here.
+-- already dated relative to CURRENT_DATE in tidbits_dev_seed.sql, so they are not touched here.
 
 BEGIN;
 

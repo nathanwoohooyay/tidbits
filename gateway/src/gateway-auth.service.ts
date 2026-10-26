@@ -7,6 +7,8 @@ type JwtPayload = {
   sub?: string | number;
   tokenVersion?: string | number;
   roles?: string[];
+  // The sign-in session the token belongs to; absent on tokens issued before sessions were tracked.
+  sid?: string | number;
 };
 
 export class GatewayAuthError extends Error {
@@ -40,9 +42,10 @@ export class GatewayAuthService implements OnModuleDestroy {
     const userId = this.parseIntegerClaim(payload.sub, 'subject', 401);
     const role = payload.roles?.[0];
     const tokenVersion = this.parseIntegerClaim(payload.tokenVersion, 'tokenVersion', 401);
+    const sessionId = payload.sid == null ? null : this.parseIntegerClaim(payload.sid, 'sid', 401);
 
-    const persistedTokenVersion = await this.lookupTokenVersion(userId);
-    if (persistedTokenVersion !== tokenVersion) {
+    const persisted = await this.lookupTokenState(userId, sessionId);
+    if (persisted.tokenVersion !== tokenVersion || !persisted.sessionActive) {
       throw new GatewayAuthError(401, 'Unauthorized');
     }
 
@@ -111,18 +114,24 @@ export class GatewayAuthService implements OnModuleDestroy {
     throw new GatewayAuthError(statusCode, 'Unauthorized');
   }
 
-  private async lookupTokenVersion(userId: number): Promise<number> {
+  // The user's current token version, and whether the token's session is still live (signing out, or signing out
+  // other devices, deletes it). A token without a session id has nothing to check.
+  private async lookupTokenState(userId: number, sessionId: number | null): Promise<{ tokenVersion: number; sessionActive: boolean }> {
     try {
-      const result = await this.pool.query<{ token_version: number | null }>(
-        'SELECT token_version FROM users WHERE user_id = $1',
-        [userId],
+      const result = await this.pool.query<{ token_version: number | null; session_active: boolean }>(
+        `SELECT u.token_version,
+                ($2::int IS NULL OR EXISTS (
+                  SELECT 1 FROM refresh_tokens r WHERE r.token_id = $2 AND r.user_id = u.user_id AND r.expires_at > NOW()
+                )) AS session_active
+         FROM users u WHERE u.user_id = $1`,
+        [userId, sessionId],
       );
 
       if (result.rows.length === 0) {
         throw new GatewayAuthError(401, 'Unauthorized');
       }
 
-      return result.rows[0]?.token_version ?? 0;
+      return { tokenVersion: result.rows[0]?.token_version ?? 0, sessionActive: result.rows[0]?.session_active === true };
     } catch (error) {
       if (error instanceof GatewayAuthError) {
         throw error;

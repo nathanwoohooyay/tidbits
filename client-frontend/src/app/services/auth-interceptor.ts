@@ -1,30 +1,45 @@
-import {inject} from '@angular/core';
-import {HttpInterceptorFn, HttpErrorResponse} from '@angular/common/http';
+import { inject } from '@angular/core';
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { catchError, switchMap, throwError } from 'rxjs';
 import { SessionService } from './session.service';
-import { catchError } from 'rxjs/operators';
-import { Router } from '@angular/router';
-import { throwError } from 'rxjs';
+import { AuthSessionService } from './auth-session.service';
 
-export const authInterceptor: HttpInterceptorFn =
-  (req, next) => {
-    const session = inject(SessionService);
-    const router = inject(Router);
-    const token = session.getAuthToken();
+// Auth endpoints that take no access token (the rest of /api/auth, like sessions, do).
+const PUBLIC_AUTH_URL = /\/api\/auth\/(login|signup|refresh|logout|health)$/;
 
-    if (token && !req.url.endsWith('login')&& !req.url.endsWith('signup')) {
-      const authedReq = req.clone({
-        setHeaders: { Authorization: `Bearer ${token}` },
-      });
-      console.log(authedReq);
-      return next(authedReq).pipe(
-        catchError((error) => {
-          if (error.status === 401) {
-            session.clearAuthToken();
-            router.navigateByUrl('/login');
-          }
-      return throwError(() => error); // required: return ObservableInput
-        })
-    );
-    }
-    return next(req)
-  };
+// Adds the access token to API calls. When one comes back 401 because the token has expired, it gets a new token
+// with the refresh cookie and retries once. If that fails too, the session has ended and the user signs in again.
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const session = inject(SessionService);
+  const authSession = inject(AuthSessionService);
+  const token = session.getAuthToken();
+
+  if (!token || PUBLIC_AUTH_URL.test(req.url.split('?')[0])) {
+    return next(req);
+  }
+
+  const withToken = (value: string) => req.clone({ setHeaders: { Authorization: `Bearer ${value}` } });
+  const isUnauthorized = (error: unknown) => error instanceof HttpErrorResponse && error.status === 401;
+
+  return next(withToken(token)).pipe(
+    catchError(error => {
+      if (!isUnauthorized(error)) {
+        return throwError(() => error);
+      }
+      return authSession.refresh().pipe(
+        catchError(() => {
+          authSession.endSession();
+          return throwError(() => error);
+        }),
+        switchMap(fresh => next(withToken(fresh)).pipe(
+          catchError(retryError => {
+            if (isUnauthorized(retryError)) {
+              authSession.endSession();
+            }
+            return throwError(() => retryError);
+          }),
+        )),
+      );
+    }),
+  );
+};

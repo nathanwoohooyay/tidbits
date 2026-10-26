@@ -1,15 +1,17 @@
 package com.tidbits.model.dto;
 
+import java.math.BigDecimal;
+
 public class AccountDTO {
     private Integer accountId;
     private Integer userId;
     private String nickname;
-    private Double cashBalance;
+    private BigDecimal cashBalance;
 
     public AccountDTO() {
     }
 
-    public AccountDTO(Integer accountId, Integer userId, String nickname, Double cashBalance) {
+    public AccountDTO(Integer accountId, Integer userId, String nickname, BigDecimal cashBalance) {
         this.accountId = accountId;
         this.userId = userId;
         this.nickname = nickname;
@@ -22,6 +24,6 @@ public class AccountDTO {
     public void setUserId(Integer userId) { this.userId = userId; }
     public String getNickname() { return nickname; }
     public void setNickname(String nickname) { this.nickname = nickname; }
-    public Double getCashBalance() { return cashBalance; }
-    public void setCashBalance(Double cashBalance) { this.cashBalance = cashBalance; }
+    public BigDecimal getCashBalance() { return cashBalance; }
+    public void setCashBalance(BigDecimal cashBalance) { this.cashBalance = cashBalance; }
 }

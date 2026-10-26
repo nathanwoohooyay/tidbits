@@ -1,8 +1,11 @@
 import { Component, computed, effect, input, signal } from '@angular/core';
+import { isCrypto } from './stock';
 
-// Public logo CDN keyed by ticker; class shares use '-' (BRK.B -> BRK-B). Unknown tickers 404 and fall back.
+// Public logo CDN keyed by ticker; class shares use '-' (BRK.B -> BRK-B) and coins are dollar pairs (BTC -> BTCUSD).
+// Unknown tickers 404 and fall back.
 // It sends Access-Control-Allow-Origin: *, so images can be read back from a canvas and normalised.
-const LOGO_URL = (ticker: string) => `https://financialmodelingprep.com/image-stock/${encodeURIComponent(ticker.replace('.', '-'))}.png`;
+const LOGO_URL = (ticker: string) =>
+  `https://financialmodelingprep.com/image-stock/${encodeURIComponent(isCrypto(ticker) ? `${ticker}USD` : ticker.replace('.', '-'))}.png`;
 
 const OUTPUT_SIZE = 96;     // normalised logo is drawn into a square of this many px
 const PADDING = 0.08;       // share of the square left empty on each side

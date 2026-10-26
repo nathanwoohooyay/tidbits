@@ -1,5 +1,6 @@
 package com.tidbits.service;
 
+import java.math.BigDecimal;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tidbits.model.dto.OrderResponseDTO;
@@ -29,7 +30,7 @@ class OrderEventPublisherTest {
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
         OrderEventPublisher publisher = new OrderEventPublisher(kafkaTemplate, objectMapper, "order-topic");
-        Order order = new Order(7, 42, 9, 3.0, 10.129, OrderType.BUY, OrderStatus.PLACED);
+        Order order = new Order(7, 42, 9, new BigDecimal("3.0"), new BigDecimal("10.129"), OrderType.BUY, OrderStatus.PLACED);
 
         publisher.publish("ORDER_PLACED", order, emptyResponse());
 
@@ -44,7 +45,7 @@ class OrderEventPublisherTest {
 
         OrderEventPublisher publisher = new OrderEventPublisher(kafkaTemplate, objectMapper, "order-topic");
 
-        publisher.publishAccountTransactionEvent("DEPOSIT", 42, 1001, 12.34);
+        publisher.publishAccountTransactionEvent("DEPOSIT", 42, 1001, new BigDecimal("12.34"));
 
         verify(kafkaTemplate).send(eq("order-topic"), eq("42"), eq("{}"));
     }
@@ -56,7 +57,7 @@ class OrderEventPublisherTest {
         when(objectMapper.writeValueAsString(any())).thenThrow(new JsonProcessingException("boom") {});
 
         OrderEventPublisher publisher = new OrderEventPublisher(kafkaTemplate, objectMapper, "order-topic");
-        Order order = new Order(7, 42, 9, 3.0, 10.0, OrderType.BUY, OrderStatus.PLACED);
+        Order order = new Order(7, 42, 9, new BigDecimal("3.0"), new BigDecimal("10.0"), OrderType.BUY, OrderStatus.PLACED);
 
         assertThrows(IllegalStateException.class, () ->
             publisher.publish("ORDER_PLACED", order, emptyResponse())

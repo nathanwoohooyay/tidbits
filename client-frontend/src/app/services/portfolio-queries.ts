@@ -145,37 +145,42 @@ export class PortfolioQueries {
     });
   }
 
-  // Loads everything the dashboard shows for an account into the cache, using the same keys as the page, so it
-  // renders complete the moment it opens: the user, accounts, the account's holdings, orders and value history, the
-  // market snapshot, the watchlist, and the 1-month sparklines beside each holding, market and watchlist stock. Used while the sign-in button
-  // is still spinning. Uses the preferred account if it exists, otherwise the first. Failures are left for the page.
+  // Loads what the dashboard shows for an account into the cache, using the same keys as the page, so it renders
+  // complete the moment it opens: the user, accounts, the account's holdings, orders and value history, the market
+  // snapshot and the watchlist. Used while the sign-in button is still spinning, so it resolves once those are in.
+  // The 1-month sparklines beside each holding, market and watchlist stock are slow to fetch and the page shows
+  // placeholders for them, so they're only started then and keep loading in the background (starting them earlier
+  // would hold up the rest, as the browser only makes a few requests to the server at a time). Uses the preferred
+  // account if it exists, otherwise the first. Failures are left for the page.
   async preloadDashboard(userId: number, preferredAccountId: number): Promise<void> {
-    const sparklines = (tickers: string[]) =>
-      Promise.allSettled(tickers.map(t => this.queryClient.prefetchQuery(this.candles(t, '1M'))));
+    const sparklineTickers = new Set<string>(MARKET_SYMBOLS);
+    const queueSparklines = (tickers: string[]) => tickers.forEach(t => sparklineTickers.add(t));
     const account = this.queryClient.fetchQuery(this.accounts(userId)).then(list => {
       const id = list.some(a => a.accountId === preferredAccountId) ? preferredAccountId : list[0]?.accountId;
       if (!id) {
         return;
       }
       return Promise.allSettled([
-        this.queryClient.fetchQuery(this.holdings(id)).then(holdings => sparklines(holdings.map(h => h.ticker))),
+        this.queryClient.fetchQuery(this.holdings(id)).then(holdings => queueSparklines(holdings.map(h => h.ticker))),
         this.queryClient.prefetchQuery(this.orders(id)),
         this.queryClient.prefetchQuery(this.snapshots('account', id)),
       ]);
     });
     const watchlist = this.queryClient.fetchQuery(this.watchlistApi.list(userId)).then(items => {
       const tickers = items.map(item => item.ticker);
-      return tickers.length
-        ? Promise.allSettled([this.queryClient.prefetchQuery(this.quotes(tickers)), sparklines(tickers)])
-        : undefined;
+      if (!tickers.length) {
+        return;
+      }
+      queueSparklines(tickers);
+      return this.queryClient.prefetchQuery(this.quotes(tickers));
     });
     await Promise.allSettled([
       this.queryClient.prefetchQuery(this.user(userId)),
       this.queryClient.prefetchQuery(this.quotes(MARKET_SYMBOLS)),
-      sparklines(MARKET_SYMBOLS),
       account,
       watchlist,
     ]);
+    sparklineTickers.forEach(t => void this.queryClient.prefetchQuery(this.candles(t, '1M')));
   }
 
   // After a trade or cash movement: refresh the account's cash, positions, orders and history.

@@ -211,3 +211,18 @@ app-allocation-bar {
 .overview-chart-skeleton {
   height: 340px;
 }
+
+/* Top right of the header, level with the title (where the dashboard's bell sits beside its search). The header
+   doesn't wrap, so on narrow screens the text narrows instead of pushing the bell below it. */
+.page-head:has(.overview-bell) {
+  flex-wrap: nowrap;
+}
+
+.page-head:has(.overview-bell) > div {
+  min-width: 0;
+}
+
+.overview-bell {
+  align-self: flex-start;
+  margin-left: auto;
+}

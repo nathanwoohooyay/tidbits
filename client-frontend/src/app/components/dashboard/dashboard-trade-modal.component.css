@@ -151,6 +151,31 @@
   color: var(--clr-sienna);
 }
 
+/* "Market open · closes 4:00 PM ET", after the quote time, with a dot: green while open, grey while closed. */
+.market-state {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-left: .5rem;
+}
+
+.market-state::before {
+  content: '';
+  width: .4rem;
+  height: .4rem;
+  border-radius: 50%;
+  background: var(--clr-border-mid);
+}
+
+.market-state.is-open::before {
+  background: var(--clr-gain-strong);
+}
+
+.trade-summary-sub {
+  font-size: .8rem;
+  color: var(--clr-sienna);
+}
+
 .trade-input-head {
   display: flex;
   justify-content: space-between;
@@ -159,7 +184,8 @@
   margin-bottom: .25rem;
 }
 
-.trade-input-head label {
+.trade-input-head label,
+.trade-input-head .field-label {
   margin-bottom: 0;
 }
 

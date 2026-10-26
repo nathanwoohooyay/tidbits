@@ -1,6 +1,7 @@
 package com.tidbits.model.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,8 +19,8 @@ public class Account {
     @Column(name = "nickname")
     private String nickname;
 
-    @Column(name = "cash_balance")
-    private Double cashBalance;
+    @Column(name = "cash_balance", precision = 15, scale = 2)
+    private BigDecimal cashBalance;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -27,7 +28,7 @@ public class Account {
     public Account() {
     }
 
-    public Account(Integer accountId, Integer userId, String nickname, Double cashBalance, LocalDateTime createdAt) {
+    public Account(Integer accountId, Integer userId, String nickname, BigDecimal cashBalance, LocalDateTime createdAt) {
         this.accountId = accountId;
         this.userId = userId;
         this.nickname = nickname;
@@ -44,8 +45,8 @@ public class Account {
     public String getNickname() { return nickname; }
     public void setNickname(String nickname) { this.nickname = nickname; }
 
-    public Double getCashBalance() { return cashBalance; }
-    public void setCashBalance(Double cashBalance) { this.cashBalance = cashBalance; }
+    public BigDecimal getCashBalance() { return cashBalance; }
+    public void setCashBalance(BigDecimal cashBalance) { this.cashBalance = cashBalance; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

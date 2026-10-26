@@ -1,6 +1,7 @@
 package com.tidbits.model.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,11 +19,11 @@ public class AccountHolding {
     @Column(name = "instrument_id", nullable = false)
     private Integer instrumentId;
 
-    @Column(name = "quantity")
-    private Double quantity;
+    @Column(name = "quantity", precision = 17, scale = 4)
+    private BigDecimal quantity;
 
-    @Column(name = "amount_invested")
-    private Double amountInvested;
+    @Column(name = "amount_invested", precision = 15, scale = 2)
+    private BigDecimal amountInvested;
 
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
@@ -30,8 +31,8 @@ public class AccountHolding {
     public AccountHolding() {
     }
 
-    public AccountHolding(Integer holdingId, Integer accountId, Integer instrumentId, Double quantity, 
-                          Double amountInvested, LocalDateTime lastUpdated) {
+    public AccountHolding(Integer holdingId, Integer accountId, Integer instrumentId, BigDecimal quantity, 
+                          BigDecimal amountInvested, LocalDateTime lastUpdated) {
         this.holdingId = holdingId;
         this.accountId = accountId;
         this.instrumentId = instrumentId;
@@ -49,11 +50,11 @@ public class AccountHolding {
     public Integer getInstrumentId() { return instrumentId; }
     public void setInstrumentId(Integer instrumentId) { this.instrumentId = instrumentId; }
 
-    public Double getQuantity() { return quantity; }
-    public void setQuantity(Double quantity) { this.quantity = quantity; }
+    public BigDecimal getQuantity() { return quantity; }
+    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
 
-    public Double getAmountInvested() { return amountInvested; }
-    public void setAmountInvested(Double amountInvested) { this.amountInvested = amountInvested; }
+    public BigDecimal getAmountInvested() { return amountInvested; }
+    public void setAmountInvested(BigDecimal amountInvested) { this.amountInvested = amountInvested; }
 
     public LocalDateTime getLastUpdated() { return lastUpdated; }
     public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }

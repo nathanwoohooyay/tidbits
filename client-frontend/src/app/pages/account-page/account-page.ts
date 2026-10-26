@@ -3,18 +3,19 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin, firstValueFrom } from 'rxjs';
-import { SessionService } from '../../services/session.service';
+import { SessionService, SessionUser } from '../../services/session.service';
 import { UserService } from '../../services/user.service';
 import { AccountService } from '../../services/account.service';
 import { OrderService, placedOrderDTO } from '../../services/order.service';
 import { AccountOrderStats, DashboardInsightFeedComponent } from '../../components/dashboard/dashboard-insight-feed.component';
 import { ReportOverview } from '../../components/dashboard/dashboard.models';
 import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-header.component';
+import { SessionsPanelComponent } from '../../components/sessions-panel/sessions-panel.component';
 
 @Component({
   selector: 'app-account-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, DashboardInsightFeedComponent, DashboardHeaderComponent],
+  imports: [CommonModule, FormsModule, DashboardInsightFeedComponent, DashboardHeaderComponent, SessionsPanelComponent],
   templateUrl: './account-page.html',
   styleUrl: './account-page.css'
 })
@@ -48,14 +49,30 @@ export class AccountPageComponent implements OnInit {
   instrumentLabels = signal<Record<number, string>>({});
   accountOrderStats = signal<AccountOrderStats[]>([]);
 
+  // The profile is usually already in the session (the dashboard loads it). Opened directly or reloaded, it isn't,
+  // so it's fetched first; only when that fails does the user go back to sign in.
   ngOnInit() {
     const user = this.session.currentUser();
-    console.log(user);
-    if (!user) {
-      void this.router.navigateByUrl('/login');
+    if (user) {
+      this.showUser(user);
       return;
     }
 
+    const userId = this.session.getAuthenticatedUserId();
+    if (!userId) {
+      void this.router.navigateByUrl('/login');
+      return;
+    }
+    this.userApi.getUser(userId).subscribe({
+      next: loaded => {
+        this.session.setCurrentUser(loaded);
+        this.showUser(loaded);
+      },
+      error: () => void this.router.navigateByUrl('/login'),
+    });
+  }
+
+  private showUser(user: SessionUser) {
     this.currentUsername.set(user.username);
     this.currentEmail.set(user.email);
     this.currentPhoneNumber.set(user.phoneNumber ?? '');
@@ -91,7 +108,7 @@ export class AccountPageComponent implements OnInit {
       const sideOrders = orders.filter(order => order.orderType.toLowerCase() === side);
       return {
         side,
-        total_value: sideOrders.reduce((total, order) => total + order.quantity * order.price, 0),
+        total_value: sideOrders.reduce((total, order) => total + order.quantity * (order.price ?? 0), 0),
         order_count: sideOrders.length,
       };
     }).filter(item => item.order_count > 0);
@@ -107,7 +124,7 @@ export class AccountPageComponent implements OnInit {
         totalOrders: accountOrders.length,
         filledOrders: accountOrders.filter(order => order.status.toLowerCase() === 'filled').length,
         placedOrders: accountOrders.filter(order => order.status.toLowerCase() === 'placed').length,
-        totalNotional: accountOrders.reduce((total, order) => total + order.quantity * order.price, 0),
+        totalNotional: accountOrders.reduce((total, order) => total + order.quantity * (order.price ?? 0), 0),
       };
     }));
     this.reportingOverview.set({
@@ -116,7 +133,7 @@ export class AccountPageComponent implements OnInit {
         totalOrders: orders.length,
         filledOrders: orders.filter(order => order.status.toLowerCase() === 'filled').length,
         placedOrders: orders.filter(order => order.status.toLowerCase() === 'placed').length,
-        totalNotional: orders.reduce((total, order) => total + order.quantity * order.price, 0),
+        totalNotional: orders.reduce((total, order) => total + order.quantity * (order.price ?? 0), 0),
       },
       topInstrumentNotional: [],
       offlineMetrics: {

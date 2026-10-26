@@ -65,7 +65,7 @@ class DataExtractor:
         """Extract account holdings"""
         query = """
         SELECT ah.account_id, ah.instrument_id, ah.quantity, 
-               ah.amount_invested, ah.last_updated, i.ticker, i.name, i.type
+               ah.amount_invested, ah.last_updated, i.ticker, i.name, i.type, i.last_price
         FROM account_holdings ah
         JOIN instruments i ON ah.instrument_id = i.instrument_id
         ORDER BY ah.account_id

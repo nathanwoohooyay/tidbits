@@ -1,11 +1,15 @@
 import { Component, EventEmitter, Output, computed, signal } from '@angular/core';
 import { TradeTarget } from './dashboard.models';
-import { tickerToName } from './stock';
+import { instrumentKind, searchTerms, tickerToName } from './stock';
 import { TickerLogoComponent } from './ticker-logo.component';
 
-const STOCKS = Array.from(tickerToName.entries()).map(([ticker, name]) => ({ ticker, name }));
+const STOCKS = Array.from(tickerToName.entries()).map(([ticker, name]) => ({
+  ticker, name, kind: instrumentKind(ticker), terms: searchTerms(ticker),
+}));
 
-// Ticker/company search combobox. Picking a result (or pressing Enter on a typed ticker) emits it for trading.
+// Ticker/company search combobox for stocks, coins and ETFs. Matches tickers first, then names and other common words
+// for an instrument ('bitcoin', 's&p 500', 'gold'). Picking a result (or pressing Enter on a typed ticker) emits it for
+// trading.
 @Component({
   selector: 'app-dashboard-stock-search',
   standalone: true,
@@ -26,9 +30,10 @@ export class DashboardStockSearchComponent {
       return [];
     }
     const tickerMatches = STOCKS.filter(s => s.ticker.toLowerCase().startsWith(term));
-    const nameMatches = STOCKS.filter(s => !tickerMatches.includes(s)
-      && (s.ticker.toLowerCase().includes(term) || s.name.toLowerCase().includes(term)));
-    return [...tickerMatches, ...nameMatches].slice(0, 8);
+    const aliasMatches = STOCKS.filter(s => !tickerMatches.includes(s) && s.terms.some(t => t.startsWith(term)));
+    const nameMatches = STOCKS.filter(s => !tickerMatches.includes(s) && !aliasMatches.includes(s)
+      && (s.ticker.toLowerCase().includes(term) || s.name.toLowerCase().includes(term) || s.terms.some(t => t.includes(term))));
+    return [...tickerMatches, ...aliasMatches, ...nameMatches].slice(0, 8);
   });
 
   onInput(value: string) {

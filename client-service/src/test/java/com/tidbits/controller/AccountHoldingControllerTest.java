@@ -1,5 +1,6 @@
 package com.tidbits.controller;
 
+import java.math.BigDecimal;
 import com.tidbits.model.entity.AccountHolding;
 import com.tidbits.service.AccountHoldingService;
 import org.junit.jupiter.api.Test;
@@ -72,6 +73,6 @@ class AccountHoldingControllerTest {
 
     private AccountHolding holding(Integer holdingId, Integer accountId, Integer instrumentId,
                                    Double quantity, Double amountInvested) {
-        return new AccountHolding(holdingId, accountId, instrumentId, quantity, amountInvested, LocalDateTime.now());
+        return new AccountHolding(holdingId, accountId, instrumentId, BigDecimal.valueOf(quantity), BigDecimal.valueOf(amountInvested), LocalDateTime.now());
     }
 }

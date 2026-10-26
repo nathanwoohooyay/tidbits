@@ -36,12 +36,13 @@ CREATE TABLE instruments(
     name TEXT NOT NULL UNIQUE,
     type TEXT NOT NULL,
     exchange TEXT NOT NULL,
-    last_price NUMERIC(15, 2) CHECK (last_price > 0),
+    -- Prices carry 8 decimal places: some coins trade below a cent.
+    last_price NUMERIC(19, 8) CHECK (last_price > 0),
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     currency TEXT NOT NULL CHECK (length(currency) = 3),
-    change NUMERIC(15, 2),
+    change NUMERIC(19, 8),
     change_percent NUMERIC(5, 2),
-    prev_close NUMERIC(15, 2)
+    prev_close NUMERIC(19, 8)
 );
 
 -- Stocks a user follows on the dashboard. Stored by ticker (not instrument) so any searchable stock can be watched.
@@ -67,9 +68,16 @@ CREATE TABLE orders (
     account_id INT NOT NULL REFERENCES accounts(account_id),
     instrument_id INT NOT NULL REFERENCES instruments(instrument_id),
     quantity NUMERIC(17, 4) NOT NULL CHECK (quantity > 0),
-    stock_price NUMERIC(15, 2) CHECK (stock_price > 0),
+    stock_price NUMERIC(19, 8) CHECK (stock_price > 0),
     order_type order_type_enum NOT NULL,
-    status order_status_type DEFAULT 'CREATED' NOT NULL
+    status order_status_type DEFAULT 'CREATED' NOT NULL,
+    -- MARKET or LIMIT; limit orders fill only once the price reaches limit_price.
+    execution_type TEXT DEFAULT 'MARKET' CHECK (execution_type IN ('MARKET', 'LIMIT')),
+    limit_price NUMERIC(19, 8) CHECK (limit_price > 0),
+    -- Cash set aside while a buy waits to fill.
+    reserved_amount NUMERIC(15, 2) CHECK (reserved_amount >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP
 );
 
 CREATE TABLE order_status_history(
@@ -88,6 +96,22 @@ CREATE TABLE account_transactions (
     transaction_type transaction_type NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
+CREATE TABLE notifications (
+    notification_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(user_id),
+    category TEXT NOT NULL CHECK (category IN ('ORDER', 'CASH')),
+    title TEXT NOT NULL,
+    message TEXT,
+    account_id INT,
+    order_id INT,
+    transaction_id INT,
+    ticker TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    read_at TIMESTAMP
+);
+
+CREATE INDEX notifications_user_created_idx ON notifications (user_id, created_at);
 
 CREATE TABLE user_logs (
     log_id SERIAL PRIMARY KEY,

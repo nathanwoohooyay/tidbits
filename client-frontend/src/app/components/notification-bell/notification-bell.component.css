@@ -1,0 +1,257 @@
+:host {
+  position: relative;
+  display: block;
+  flex: none;
+}
+
+/* Round button the height of the search field, so the two sit together. */
+.bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 1px solid var(--clr-border);
+  border-radius: 50%;
+  background: var(--clr-input-bg);
+  color: var(--clr-sienna);
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), box-shadow var(--transition), transform .12s;
+}
+
+.bell:hover,
+.bell.is-open {
+  color: var(--clr-espresso);
+  border-color: var(--clr-border-mid);
+}
+
+.bell:focus-visible {
+  outline: none;
+  border-color: var(--clr-accent-ink);
+  box-shadow: 0 0 0 3px var(--clr-focus);
+}
+
+.bell:active {
+  transform: scale(.95);
+}
+
+.bell svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bell-badge {
+  position: absolute;
+  top: -.3rem;
+  right: -.35rem;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 .3rem;
+  border: 2px solid var(--page-background);
+  border-radius: var(--radius-pill);
+  background: var(--clr-loss-strong);
+  color: #FFFFFF;
+  font-size: .66rem;
+  font-weight: 700;
+  line-height: calc(1.2rem - 4px);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Drops down from the bell, right-aligned to it (the bell sits at the right of the page). */
+.panel {
+  position: absolute;
+  z-index: 45;
+  top: calc(100% + .5rem);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100vw - 2rem));
+  max-height: min(560px, calc(100dvh - 9rem));
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--clr-surface);
+  box-shadow: 0 18px 44px var(--clr-shadow-deep, var(--clr-shadow));
+  transform-origin: top right;
+  animation: panel-in .18s cubic-bezier(.2, .8, .2, 1) both;
+  outline: none;
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(-6px) scale(.98); }
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem .5rem;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--clr-espresso);
+}
+
+.panel-head .btn-link {
+  font-size: .8rem;
+}
+
+.panel-tabs {
+  padding: 0 .85rem .5rem;
+  border-bottom: 1px solid var(--clr-hairline);
+}
+
+.panel-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: .25rem .6rem .75rem;
+}
+
+.panel-empty {
+  margin: 0;
+  padding: 1.25rem .5rem;
+  font-size: .86rem;
+  color: var(--clr-sienna);
+}
+
+.notice-day {
+  margin: .85rem .5rem .2rem;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--clr-sienna);
+}
+
+.notice-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Icon, text and time on one row; the right padding leaves room for the unread dot so times line up. */
+.notice {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: .7rem;
+  padding: .65rem 1.5rem .65rem .5rem;
+  border-radius: var(--radius-md);
+}
+
+.notice + .notice {
+  border-top: 1px solid var(--clr-hairline);
+}
+
+.notice.is-unread {
+  background: color-mix(in oklab, var(--clr-accent-soft) 55%, transparent);
+}
+
+.notice-icon {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--clr-surface-soft);
+  color: var(--clr-sienna);
+}
+
+.notice-icon:has(app-ticker-logo) {
+  background: none;
+}
+
+.notice-icon svg {
+  width: .95rem;
+  height: .95rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.notice[data-kind="error"] .notice-icon {
+  background: var(--clr-loss-light);
+  color: var(--clr-loss);
+}
+
+.notice-title {
+  margin: 0;
+  font-size: .86rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--clr-espresso);
+}
+
+.notice[data-kind="buy"] .notice-title {
+  color: var(--clr-gain);
+}
+
+.notice[data-kind="sell"] .notice-title,
+.notice[data-kind="error"] .notice-title {
+  color: var(--clr-loss);
+}
+
+.notice-message {
+  margin: .1rem 0 0;
+  font-size: .78rem;
+  color: var(--clr-sienna);
+  font-variant-numeric: tabular-nums;
+}
+
+.notice-meta {
+  display: grid;
+  justify-items: end;
+  gap: .3rem;
+  min-width: 0;
+}
+
+/* Which account it happened in: a small chip under the time. */
+.notice-account {
+  max-width: 7.5rem;
+  padding: .05rem .45rem;
+  border-radius: var(--radius-pill);
+  background: var(--clr-surface-soft);
+  color: var(--clr-sienna);
+  font-size: .66rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notice-time {
+  padding-top: .1rem;
+  font-size: .72rem;
+  color: var(--clr-sienna);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.notice-dot {
+  position: absolute;
+  top: 1rem;
+  right: .6rem;
+  width: .42rem;
+  height: .42rem;
+  border-radius: 50%;
+  background: var(--clr-accent-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}

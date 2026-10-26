@@ -920,11 +920,12 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     }, this.autoRefreshMs);
   }
 
+  // One row per executed trade: an order's fill (or an older log that recorded the trade itself as BUY/SELL). An
+  // order's other lifecycle events (placed, waiting, accepted, rejected, cancelled, expired) would count the same
+  // order again, or count orders that never traded.
   private isTradeTransaction(txn: TransactionLog): boolean {
     const event = String(txn.event || '').toUpperCase();
-    const orderType = String(txn.orderType || '').toUpperCase();
-
-    return event === 'ORDER_FILLED' || event === 'ORDER_ACCEPTED' || orderType === 'BUY' || orderType === 'SELL';
+    return event === 'ORDER_FILLED' || event === 'BUY' || event === 'SELL';
   }
 
   private getInstrumentLabel(txn: TransactionLog): string {

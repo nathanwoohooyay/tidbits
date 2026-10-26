@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, computed, signal } from '@angular/core';
-import { formatCurrency, statusClass } from './dashboard.utils';
+import { formatCurrency, serverTime, statusClass } from './dashboard.utils';
 import { placedOrderDTO } from '../../services/order.service';
 import { TickerLogoComponent } from './ticker-logo.component';
 import { SkeletonRowsComponent } from '../skeleton-rows.component';
@@ -18,6 +18,7 @@ const PAGE_SIZE = 10;
 export class DashboardTradeHistoryComponent {
   readonly formatCurrency = formatCurrency;
   readonly statusClass = statusClass;
+  readonly serverTime = serverTime;
   readonly sideFilters: Array<[SideFilter, string]> = [['ALL', 'All'], ['BUY', 'Buys'], ['SELL', 'Sells']];
 
   @Input() loading = false;

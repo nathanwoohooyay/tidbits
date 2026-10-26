@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,8 +22,8 @@ public class PortfolioSnapshot {
     @Column(name = "account_id", nullable = false)
     private Long accountId;
 
-    @Column(name = "total_value", nullable = false)
-    private Double totalValue;
+    @Column(name = "total_value", nullable = false, precision = 15, scale = 2)
+    private BigDecimal totalValue;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -30,7 +31,7 @@ public class PortfolioSnapshot {
     public PortfolioSnapshot() {
     }
 
-    public PortfolioSnapshot(Long snapshotId, Long accountId, Double totalValue, LocalDateTime createdAt) {
+    public PortfolioSnapshot(Long snapshotId, Long accountId, BigDecimal totalValue, LocalDateTime createdAt) {
         this.snapshotId = snapshotId;
         this.accountId = accountId;
         this.totalValue = totalValue;
@@ -53,11 +54,11 @@ public class PortfolioSnapshot {
         this.accountId = accountId;
     }
 
-    public Double getTotalValue() {
+    public BigDecimal getTotalValue() {
         return totalValue;
     }
 
-    public void setTotalValue(Double totalValue) {
+    public void setTotalValue(BigDecimal totalValue) {
         this.totalValue = totalValue;
     }
 

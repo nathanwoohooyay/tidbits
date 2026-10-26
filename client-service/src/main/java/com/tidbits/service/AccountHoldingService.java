@@ -5,6 +5,7 @@ import com.tidbits.repository.AccountHoldingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,10 +15,10 @@ public class AccountHoldingService {
     @Autowired
     private AccountHoldingRepository accountHoldingRepository;
 
-    public double getStockHolding(Integer accountId, Integer instrumentId) {
+    public BigDecimal getStockHolding(Integer accountId, Integer instrumentId) {
         return accountHoldingRepository.findByAccountIdAndInstrumentId(accountId, instrumentId)
                 .map(accountHolding -> accountHolding.getQuantity())
-                .orElse(0.0);
+                .orElse(BigDecimal.ZERO);
     }
 
     public Optional<AccountHolding> getAccountHoldingById(Integer holdingId) {

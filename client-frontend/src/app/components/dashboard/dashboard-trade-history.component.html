@@ -42,7 +42,7 @@
       @for (order of pageOrders(); track order.orderId) {
       <tr class="is-expandable" (click)="toggleOrderHistory(order.orderId)" [attr.aria-expanded]="isOrderExpanded(order.orderId)">
         <td class="muted-cell">
-          {{ order.statusHistory[0]?.changedAt ? (order.statusHistory[0].changedAt | date:'MMM d, y · h:mm a') : 'Timestamp pending' }}
+          {{ order.statusHistory[0]?.changedAt ? (serverTime(order.statusHistory[0].changedAt) | date:'MMM d, y · h:mm a') : 'Timestamp pending' }}
         </td>
         <td>
           <div class="instrument-with-logo">
@@ -53,14 +53,25 @@
             </div>
           </div>
         </td>
-        <td>
+        <td class="nowrap">
           <span class="order-type-badge" [class.buy]="order.orderType === 'BUY'" [class.sell]="order.orderType === 'SELL'">
             {{ order.orderType }}
           </span>
+          @if (order.executionType === 'LIMIT') {
+            <span class="limit-tag">Limit</span>
+          }
         </td>
-        <td class="right">{{ formatCurrency(order.price) }}</td>
+        <td class="right">
+          @if (order.price != null) {
+            {{ formatCurrency(order.price) }}
+          } @else if (order.limitPrice != null) {
+            <span class="muted-cell nowrap" [title]="'Limit price'">{{ order.orderType === 'BUY' ? '≤' : '≥' }} {{ formatCurrency(order.limitPrice) }}</span>
+          } @else {
+            <span class="muted-cell">—</span>
+          }
+        </td>
         <td class="right">{{ order.quantity | number:'1.0-4' }}</td>
-        <td class="right price-value">{{ formatCurrency(order.price * order.quantity) }}</td>
+        <td class="right price-value">{{ order.price != null ? formatCurrency(order.price * order.quantity) : '—' }}</td>
         <td>
           <span class="status-badge" [ngClass]="statusClass(order.status)">{{ order.status }}</span>
         </td>
@@ -69,7 +80,7 @@
       @for (entry of order.statusHistory; track entry.historyId + entry.changedAt) {
       <tr class="history-detail-row">
         <td colspan="7">
-          {{ entry.changedAt | date:'MMM d, y · h:mm:ss a' }}
+          {{ serverTime(entry.changedAt) | date:'MMM d, y · h:mm:ss a' }}
           —
           <span class="status-badge" [ngClass]="statusClass(entry.newStatus)">{{ entry.newStatus }}</span>
         </td>

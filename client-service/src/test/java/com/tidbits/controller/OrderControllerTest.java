@@ -1,5 +1,6 @@
 package com.tidbits.controller;
 
+import java.math.BigDecimal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tidbits.model.dto.OrderResponseDTO;
 import com.tidbits.model.entity.Order;
@@ -46,8 +47,8 @@ class OrderControllerTest {
 
         OrderResponseDTO response = new OrderResponseDTO();
         response.setOrderId(501);
-        response.setQuantity(10.0);
-        response.setPrice(100.0);
+        response.setQuantity(new BigDecimal("10.0"));
+        response.setPrice(new BigDecimal("100.0"));
         response.setOrderType("BUY");
         response.setStatus("PLACED");
 
@@ -80,8 +81,8 @@ class OrderControllerTest {
 
         OrderResponseDTO response = new OrderResponseDTO();
         response.setOrderId(501);
-        response.setQuantity(10.0);
-        response.setPrice(100.0);
+        response.setQuantity(new BigDecimal("10.0"));
+        response.setPrice(new BigDecimal("100.0"));
         response.setOrderType("BUY");
         response.setStatus("PLACED");
 
@@ -119,8 +120,8 @@ class OrderControllerTest {
         Order order = new Order();
         order.setAccountId(accountId);
         order.setInstrumentId(instrumentId);
-        order.setQuantity(quantity);
-        order.setStockPrice(price);
+        order.setQuantity(BigDecimal.valueOf(quantity));
+        order.setStockPrice(BigDecimal.valueOf(price));
         order.setOrderType(orderType);
         order.setStatus(status);
         return order;

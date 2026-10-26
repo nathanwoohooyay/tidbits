@@ -108,3 +108,15 @@ input::-webkit-search-cancel-button {
   font-size: .82rem;
   color: var(--clr-sienna);
 }
+
+/* "Crypto" / "ETF" at the end of a result, so they're told apart from stocks. */
+.result-kind {
+  margin-left: auto;
+  flex: none;
+  padding: .05rem .45rem;
+  border-radius: var(--radius-pill);
+  background: var(--clr-surface-soft);
+  color: var(--clr-sienna);
+  font-size: .68rem;
+  font-weight: 600;
+}

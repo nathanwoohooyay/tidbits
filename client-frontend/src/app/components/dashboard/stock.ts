@@ -98,4 +98,67 @@ export const tickerToName = new Map<string, string>([
   ['SLB', 'Schlumberger'],
   ['ANET', 'Arista Networks'],
   ['EOG', 'EOG Resources'],
+  // Instrument ids 100-119: coins, then ETFs.
+  ['BTC', 'Bitcoin'],
+  ['ETH', 'Ethereum'],
+  ['SOL', 'Solana'],
+  ['XRP', 'XRP'],
+  ['BNB', 'BNB'],
+  ['DOGE', 'Dogecoin'],
+  ['ADA', 'Cardano'],
+  ['AVAX', 'Avalanche'],
+  ['LINK', 'Chainlink'],
+  ['LTC', 'Litecoin'],
+  ['SPY', 'SPDR S&P 500 ETF Trust'],
+  ['QQQ', 'Invesco QQQ Trust'],
+  ['VOO', 'Vanguard S&P 500 ETF'],
+  ['VTI', 'Vanguard Total Stock Market ETF'],
+  ['IWM', 'iShares Russell 2000 ETF'],
+  ['DIA', 'SPDR Dow Jones Industrial Average ETF Trust'],
+  ['GLD', 'SPDR Gold Shares'],
+  ['TLT', 'iShares 20+ Year Treasury Bond ETF'],
+  ['ARKK', 'ARK Innovation ETF'],
+  ['XLK', 'Technology Select Sector SPDR Fund'],
 ]);
+
+export type InstrumentKind = 'stock' | 'crypto' | 'etf';
+
+const CRYPTO = new Set(['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'AVAX', 'LINK', 'LTC']);
+const ETFS = new Set(['SPY', 'QQQ', 'VOO', 'VTI', 'IWM', 'DIA', 'GLD', 'TLT', 'ARKK', 'XLK']);
+
+export function instrumentKind(ticker: string): InstrumentKind {
+  const upper = ticker.toUpperCase();
+  return CRYPTO.has(upper) ? 'crypto' : ETFS.has(upper) ? 'etf' : 'stock';
+}
+
+export const isCrypto = (ticker: string) => instrumentKind(ticker) === 'crypto';
+
+// What follows a quantity: "sh" for shares, the ticker for coins ("0.25 BTC").
+export const quantityUnit = (ticker: string) => isCrypto(ticker) ? ticker.toUpperCase() : 'sh';
+
+// Other words people search with, beyond the ticker and name. Coins also match their Fauxnance symbol (X:BTC-USD).
+const ALIASES: Record<string, string[]> = {
+  BTC: ['btc', 'bitcoin'],
+  ETH: ['ether', 'ethereum'],
+  XRP: ['ripple'],
+  BNB: ['binance coin', 'binance'],
+  DOGE: ['doge'],
+  AVAX: ['avax'],
+  SPY: ['s&p 500', 'sp500', 's&p', 'spdr'],
+  QQQ: ['nasdaq 100', 'nasdaq', 'invesco'],
+  VOO: ['s&p 500', 'sp500', 's&p', 'vanguard'],
+  VTI: ['total market', 'vanguard'],
+  IWM: ['russell 2000', 'small cap'],
+  DIA: ['dow jones', 'dow'],
+  GLD: ['gold'],
+  TLT: ['treasury', 'bonds'],
+  ARKK: ['ark', 'innovation', 'cathie wood'],
+  XLK: ['technology', 'tech sector'],
+};
+
+// Lower-case words a search term can match for this ticker: its aliases, plus 'crypto' or 'etf'.
+export function searchTerms(ticker: string): string[] {
+  const kind = instrumentKind(ticker);
+  const extra = kind === 'crypto' ? ['crypto', 'coin', `x:${ticker.toLowerCase()}-usd`] : kind === 'etf' ? ['etf', 'fund'] : [];
+  return [...(ALIASES[ticker] ?? []), ...extra];
+}

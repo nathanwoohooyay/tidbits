@@ -1,5 +1,6 @@
 package com.tidbits.service;
 
+import java.math.BigDecimal;
 import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.entity.Account;
 import com.tidbits.repository.AccountRepository;
@@ -50,7 +51,7 @@ class AccountServiceTest {
 
         assertEquals(42, created.getUserId());
         assertEquals("My Wallet", created.getNickname());
-        assertEquals(0.0, created.getCashBalance());
+        assertEquals(BigDecimal.ZERO, created.getCashBalance());
         assertNull(created.getAccountId());
         assertNotNull(created.getCreatedAt());
         verify(accountRepository).save(any(Account.class));
@@ -231,7 +232,7 @@ class AccountServiceTest {
     }
 
     private Account account(Integer accountId, Integer userId, String nickname, Double balance) {
-        return new Account(accountId, userId, nickname, balance, LocalDateTime.now());
+        return new Account(accountId, userId, nickname, BigDecimal.valueOf(balance), LocalDateTime.now());
     }
 
 }

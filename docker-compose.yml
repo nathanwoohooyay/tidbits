@@ -103,7 +103,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_USER_AUDIT_TOPIC: ${KAFKA_USER_AUDIT_TOPIC:-user-audit-events}
     ports:
-      - "4000:4000"
+      # Local only: browsers reach auth through the frontends' nginx, which records the real client IP for login limits.
+      - "127.0.0.1:4000:4000"
     depends_on:
       postgres:
         condition: service_healthy

@@ -32,6 +32,12 @@ public class OrderController {
         return ResponseEntity.ok(orderService.toResponseDto(order));
     }
 
+    // Cancels an order that hasn't filled yet (a limit order, or a market order queued for the open).
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<OrderResponseDTO> cancelOrder(@PathVariable Integer orderId, @PathVariable Integer accountId) {
+        return ResponseEntity.ok(orderService.toResponseDto(orderService.cancelOrder(accountId, orderId)));
+    }
+
     @GetMapping
     public ResponseEntity<List<OrderResponseDTO>> getAllOrdersByAccountId(@PathVariable Integer accountId) {
         List<Order> orders = orderService.getOrdersByAccountId(accountId);

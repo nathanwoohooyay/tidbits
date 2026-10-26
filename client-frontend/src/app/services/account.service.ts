@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { map, Observable } from 'rxjs';
+import { map, Observable, tap } from 'rxjs';
+import { NotificationsService } from './notifications.service';
 
 export interface AccountTransactionDto {
   transactionId: number;
@@ -35,6 +36,7 @@ export interface PortfolioSnapshotDto {
 })
 export class AccountService {
   private readonly http = inject(HttpClient);
+  private readonly notifications = inject(NotificationsService);
   private readonly userApiBase = '/api/users';
   private readonly accountApiBase = '/api/accounts';
   private readonly portfolioSnapshotApiBase = '/api/portfolio-snapshots';
@@ -76,12 +78,17 @@ export class AccountService {
     return this.http.delete<void>(`${this.userApiBase}/${userId}/accounts/${accountId}`);
   }
 
+  // Callers confirm cash movements with their own toast, so the matching notifications don't toast again.
   depositCash(accountId: number, amount: number): Observable<AccountTransactionDto> {
-    return this.http.post<AccountTransactionDto>(`${this.accountApiBase}/${accountId}/deposit`, amount);
+    return this.http.post<AccountTransactionDto>(`${this.accountApiBase}/${accountId}/deposit`, amount).pipe(
+      tap(tx => this.notifications.markAnnounced('transaction', tx?.transactionId)),
+    );
   }
 
   withdrawCash(accountId: number, amount: number): Observable<AccountTransactionDto> {
-    return this.http.post<AccountTransactionDto>(`${this.accountApiBase}/${accountId}/withdraw`, amount);
+    return this.http.post<AccountTransactionDto>(`${this.accountApiBase}/${accountId}/withdraw`, amount).pipe(
+      tap(tx => this.notifications.markAnnounced('transaction', tx?.transactionId)),
+    );
   }
 }
 

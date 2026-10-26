@@ -6,7 +6,7 @@
     <header class="page-head">
       <div>
         <h1 class="page-title">Account settings</h1>
-        <p class="page-sub">Manage your profile, password, and activity.</p>
+        <p class="page-sub">Manage your profile, password, signed-in devices, and activity.</p>
       </div>
       <button type="button" class="btn-link" (click)="goBack()">← Back to Dashboard</button>
     </header>
@@ -129,6 +129,8 @@
         </button>
       </form>
     </section>
+
+    <app-sessions-panel></app-sessions-panel>
     } @else {
       <section class="statistics-panel">
         <app-dashboard-insight-feed

@@ -25,6 +25,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -34,23 +35,36 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class PricingService {
 
     private static final int MAX_SYMBOLS = 25;
+    private static final int MAX_CACHED_CANDLE_SERIES = 500;
+    // Coins are listed here by their short ticker (BTC); Fauxnance names them as a pair against the dollar (X:BTC-USD).
+    private static final Pattern FAUXNANCE_CRYPTO = Pattern.compile("^X:([A-Z0-9]+)-USD$");
 
     private final RestTemplate restTemplate;
     private final InstrumentRepository instrumentRepository;
     private final String apiKey;
     private final long quoteCacheTtlMinutes;
+    private final long candleCacheTtlMinutes;
+    // Daily candles only change once a day, so recent responses are reused instead of calling Fauxnance again.
+    private final Map<String, CachedCandles> candleCache = new ConcurrentHashMap<>();
+
+    private record CachedCandles(PricingCandlesResponseDTO response, Instant expiresAt) {
+    }
 
     public PricingService(
             RestTemplateBuilder restTemplateBuilder,
             InstrumentRepository instrumentRepository,
             @Value("${fauxnance.base-url}") String fauxnanceBaseUrl,
             @Value("${fauxnance.api-key:}") String apiKey,
-            @Value("${pricing.quote-cache-ttl-minutes:5}") long quoteCacheTtlMinutes
+            @Value("${pricing.quote-cache-ttl-minutes:5}") long quoteCacheTtlMinutes,
+            @Value("${pricing.candle-cache-ttl-minutes:60}") long candleCacheTtlMinutes
     ) {
         this.restTemplate = restTemplateBuilder
                 .rootUri(fauxnanceBaseUrl)
@@ -58,6 +72,7 @@ public class PricingService {
         this.instrumentRepository = instrumentRepository;
         this.apiKey = apiKey;
         this.quoteCacheTtlMinutes = quoteCacheTtlMinutes;
+        this.candleCacheTtlMinutes = candleCacheTtlMinutes;
     }
 
     public PricingBatchResponseDTO getBatchQuotes(List<String> rawSymbols, boolean refresh) {
@@ -147,7 +162,9 @@ public class PricingService {
 
         Map<String, Instrument> mutableInstrumentsBySymbol = new HashMap<>(existingInstrumentsBySymbol);
 
-        List<PricingQuoteDTO> requestedQuotes = requestQuotePriceFromFauxnance(symbols);
+        List<PricingQuoteDTO> requestedQuotes = requestQuotePriceFromFauxnance(symbols.stream()
+                .map(symbol -> toFauxnanceSymbol(symbol, mutableInstrumentsBySymbol.get(symbol.toUpperCase(Locale.ROOT))))
+                .toList());
         List<PricingQuoteDTO> quotesWithInstrumentIds = new ArrayList<>(requestedQuotes.size());
         for (PricingQuoteDTO requestedQuote : requestedQuotes) {
             if (requestedQuote.symbol() == null) {
@@ -175,13 +192,20 @@ public class PricingService {
         String symbol = normalizeSymbol(rawSymbol);
         String normalizedInterval = normalizeInterval(interval);
 
+        String cacheKey = symbol + "|" + from + "|" + to + "|" + normalizedInterval;
+        PricingCandlesResponseDTO cached = cachedCandles(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         HttpEntity<Void> requestEntity = authRequestEntity();
+        String fauxnanceSymbol = toFauxnanceSymbol(symbol, instrumentRepository.findByTicker(symbol).orElse(null));
 
         String uri = UriComponentsBuilder.fromPath("/candles/{symbol}")
                 .queryParamIfPresent("from", nullableDate(from))
                 .queryParamIfPresent("to", nullableDate(to))
                 .queryParam("interval", normalizedInterval)
-                .buildAndExpand(symbol)
+                .buildAndExpand(fauxnanceSymbol)
                 .toUriString();
 
         try {
@@ -201,7 +225,9 @@ public class PricingService {
                 throw new BusinessException("Fauxnance returned an empty candles response.");
             }
 
-            return toCandlesResponse(body);
+            PricingCandlesResponseDTO candles = toCandlesResponse(body);
+            cacheCandles(cacheKey, candles);
+            return candles;
         } catch (HttpClientErrorException.BadRequest ex) {
             throw new BadRequestException("Invalid candles request. Check symbol, dates, and interval.");
         } catch (HttpClientErrorException.NotFound ex) {
@@ -217,6 +243,37 @@ public class PricingService {
         } catch (RestClientException ex) {
             throw new BusinessException("Failed to call Fauxnance historical candles endpoint.");
         }
+    }
+
+    private PricingCandlesResponseDTO cachedCandles(String cacheKey) {
+        CachedCandles entry = candleCache.get(cacheKey);
+        if (entry == null) {
+            return null;
+        }
+
+        if (entry.expiresAt().isBefore(Instant.now())) {
+            candleCache.remove(cacheKey, entry);
+            return null;
+        }
+
+        return entry.response();
+    }
+
+    // Partial responses mean Fauxnance is still backfilling the series, so they are not kept.
+    private void cacheCandles(String cacheKey, PricingCandlesResponseDTO candles) {
+        if (candleCacheTtlMinutes <= 0 || Boolean.TRUE.equals(candles.partial())) {
+            return;
+        }
+
+        if (candleCache.size() >= MAX_CACHED_CANDLE_SERIES) {
+            Instant now = Instant.now();
+            candleCache.values().removeIf(entry -> entry.expiresAt().isBefore(now));
+            if (candleCache.size() >= MAX_CACHED_CANDLE_SERIES) {
+                candleCache.clear();
+            }
+        }
+
+        candleCache.put(cacheKey, new CachedCandles(candles, Instant.now().plusSeconds(candleCacheTtlMinutes * 60)));
     }
 
     private PricingCandlesResponseDTO acceptedCandlesResponse(String symbol, String interval) {
@@ -315,7 +372,7 @@ public class PricingService {
                 throw new BusinessException("Fauxnance symbol response format was not recognized.");
             }
 
-            String resolvedSymbol = textOrNull(dataNode.path("symbol"));
+            String resolvedSymbol = fromFauxnanceSymbol(textOrNull(dataNode.path("symbol")));
             String name = textOrNull(dataNode.path("name"));
             String exchange = textOrNull(dataNode.path("exchange"));
             String currency = textOrNull(dataNode.path("currency"));
@@ -425,7 +482,24 @@ public class PricingService {
             throw new BadRequestException("Symbol is required.");
         }
 
-        return rawSymbol.trim().toUpperCase();
+        return fromFauxnanceSymbol(rawSymbol.trim().toUpperCase());
+    }
+
+    // The symbol to ask Fauxnance for: X:BTC-USD for a coin, the ticker itself for anything else.
+    static String toFauxnanceSymbol(String ticker, Instrument instrument) {
+        if (instrument != null && instrument.getType() == InstrumentType.crypto) {
+            return "X:" + ticker.toUpperCase(Locale.ROOT) + "-USD";
+        }
+        return ticker;
+    }
+
+    // Our ticker for a symbol Fauxnance uses (X:BTC-USD -> BTC); other symbols are unchanged.
+    static String fromFauxnanceSymbol(String symbol) {
+        if (symbol == null) {
+            return null;
+        }
+        Matcher crypto = FAUXNANCE_CRYPTO.matcher(symbol.toUpperCase(Locale.ROOT));
+        return crypto.matches() ? crypto.group(1) : symbol;
     }
 
     private String normalizeInterval(String rawInterval) {
@@ -458,7 +532,7 @@ public class PricingService {
 
             String trimmed = symbol.trim();
             if (!trimmed.isEmpty()) {
-                normalized.add(trimmed.toUpperCase());
+                normalized.add(fromFauxnanceSymbol(trimmed.toUpperCase()));
             }
         }
 
@@ -489,7 +563,7 @@ public class PricingService {
 
         List<PricingQuoteDTO> quotes = new ArrayList<>();
         for (JsonNode item : quotesNode) {
-            String symbol = item.path("symbol").asText(null);
+            String symbol = fromFauxnanceSymbol(item.path("symbol").asText(null));
 
             if (item.hasNonNull("error")) {
                 JsonNode errorNode = item.path("error");
@@ -515,7 +589,7 @@ public class PricingService {
             JsonNode quoteNode = item.path("quote");
             quotes.add(new PricingQuoteDTO(
                     null,
-                    quoteNode.path("symbol").asText(symbol),
+                    fromFauxnanceSymbol(quoteNode.path("symbol").asText(symbol)),
                     numberOrNull(quoteNode.path("price")),
                     numberOrNull(quoteNode.path("change")),
                     numberOrNull(quoteNode.path("bid")),
@@ -558,7 +632,7 @@ public class PricingService {
         }
 
         return new PricingCandlesResponseDTO(
-                textOrNull(dataNode.path("symbol")),
+                fromFauxnanceSymbol(textOrNull(dataNode.path("symbol"))),
                 textOrNull(dataNode.path("interval")),
                 textOrNull(dataNode.path("currency")),
                 textOrNull(metaNode.path("asOf")),

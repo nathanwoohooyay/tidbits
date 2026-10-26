@@ -19,7 +19,7 @@
           <app-ticker-logo [ticker]="holding.ticker"></app-ticker-logo>
           <div class="instrument-cell">
             <span class="ticker-badge">{{ holding.ticker }}</span>
-            <span class="stock-name">{{ holding.quantity | number:'1.0-4' }} sh · {{ formatCurrency(holding.currentPrice) }}</span>
+            <span class="stock-name">{{ holding.quantity | number:'1.0-4' }} {{ quantityUnit(holding.ticker) }} · {{ formatCurrency(holding.currentPrice) }}</span>
           </div>
           <app-sparkline class="holding-spark" [ticker]="holding.ticker"></app-sparkline>
           <div class="holding-value">

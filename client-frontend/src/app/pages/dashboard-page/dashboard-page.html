@@ -10,6 +10,7 @@
     <div class="page dashboard-grid">
       <div class="dashboard-search-row">
         <app-dashboard-stock-search (stockSelected)="openTrade($event)"></app-dashboard-stock-search>
+        <app-notification-bell></app-notification-bell>
       </div>
 
       <app-dashboard-metrics
@@ -47,6 +48,8 @@
             (trendFilterChange)="setTrendFilter($event)"
             (trade)="openTrade($event)">
           </app-dashboard-market-snapshot>
+
+          <app-dashboard-open-orders [orders]="orders()" [cancellingId]="cancellingOrderId()" (cancel)="cancelOrder($event)"></app-dashboard-open-orders>
 
           <app-dashboard-trade-history [orders]="orders()" [loading]="ordersLoading()"></app-dashboard-trade-history>
         </div>

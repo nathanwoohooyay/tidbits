@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TradeTarget } from './dashboard.models';
 import { formatCurrency, formatPercent } from './dashboard.utils';
+import { quantityUnit } from './stock';
 import { RollingNumberComponent } from '../rolling-number.component';
 import { HoldingDTO } from '../../services/portfolio-queries';
 import { SparklineComponent } from './sparkline.component';
@@ -23,6 +24,8 @@ export class DashboardHoldingsComponent {
   @Output() retry = new EventEmitter<void>();
 
   readonly formatCurrency = formatCurrency;
+
+  readonly quantityUnit = quantityUnit;
   readonly formatPercent = formatPercent;
 
   // Largest positions first.

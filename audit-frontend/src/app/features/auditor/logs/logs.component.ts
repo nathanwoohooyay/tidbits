@@ -9,7 +9,11 @@ type LogsTab = 'USER' | 'TXN' | 'ORDERS' | 'POINTS';
 type StatusFilter = 'ALL' | 'SUCCESS' | 'FAILURE';
 
 const ACCOUNT_TRANSACTION_EVENTS = new Set(['DEPOSIT', 'WITHDRAW']);
-const ORDER_LIFECYCLE_EVENTS = new Set(['ORDER_PLACED', 'ORDER_ACCEPTED', 'ORDER_FILLED', 'ORDER_REJECTED']);
+// ORDER_PENDING: waiting to fill (a limit order, or a market order queued for the open). ORDER_CANCELED: cancelled by the
+// user. ORDER_EXPIRED: a limit order cancelled automatically after 90 days.
+const ORDER_LIFECYCLE_EVENTS = new Set([
+  'ORDER_PLACED', 'ORDER_PENDING', 'ORDER_ACCEPTED', 'ORDER_FILLED', 'ORDER_REJECTED', 'ORDER_CANCELED', 'ORDER_EXPIRED',
+]);
 const ACCOUNT_ORDER_EVENTS = new Set(['ORDER_ACCEPTED', 'ORDER_FILLED']);
 const ORDER_SIDE_TYPES = new Set(['BUY', 'SELL']);
 const POINTS_EVENT_LABELS: Record<string, string> = {
@@ -33,7 +37,7 @@ export interface AggregatedOrder {
   quantity: number;
   price: number;
   totalValue: number;
-  finalStatus: 'FILLED' | 'ACCEPTED' | 'REJECTED' | 'PLACED' | 'UNKNOWN';
+  finalStatus: 'FILLED' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'CANCELED' | 'PENDING' | 'PLACED' | 'UNKNOWN';
   timePlaced: string | null;
   timeAccepted: string | null;
   timeRejected: string | null;
@@ -1507,17 +1511,26 @@ export class LogsComponent implements OnInit {
       const acceptedEvent = events.find(e => e.event === 'ORDER_ACCEPTED');
       const rejectedEvent = events.find(e => e.event === 'ORDER_REJECTED' || e.status === 'REJECTED');
       const filledEvent = events.find(e => e.event === 'ORDER_FILLED' || e.status === 'FILLED');
+      const pendingEvent = events.find(e => e.event === 'ORDER_PENDING');
+      const expiredEvent = events.find(e => e.event === 'ORDER_EXPIRED');
+      const canceledEvent = events.find(e => e.event === 'ORDER_CANCELED');
 
-      const primary = filledEvent || acceptedEvent || placedEvent || events[0];
+      const primary = filledEvent || acceptedEvent || placedEvent || pendingEvent || events[0];
 
-      // Final status determination
-      let finalStatus: 'FILLED' | 'ACCEPTED' | 'REJECTED' | 'PLACED' | 'UNKNOWN' = 'PLACED';
+      // Final status determination: an outcome (filled, rejected, expired, cancelled) wins over an in-progress state.
+      let finalStatus: AggregatedOrder['finalStatus'] = 'PLACED';
       if (filledEvent) {
         finalStatus = 'FILLED';
       } else if (rejectedEvent) {
         finalStatus = 'REJECTED';
+      } else if (expiredEvent) {
+        finalStatus = 'EXPIRED';
+      } else if (canceledEvent) {
+        finalStatus = 'CANCELED';
       } else if (acceptedEvent) {
         finalStatus = 'ACCEPTED';
+      } else if (pendingEvent) {
+        finalStatus = 'PENDING';
       } else if (placedEvent) {
         finalStatus = 'PLACED';
       }
@@ -1850,7 +1863,10 @@ export class LogsComponent implements OnInit {
       case 'REJECTED':
         return 'badge-danger';
       case 'PLACED':
+      case 'PENDING':
         return 'badge-warning';
+      case 'CANCELED':
+      case 'EXPIRED':
       default:
         return 'badge-user';
     }
@@ -2046,6 +2062,12 @@ export class LogsComponent implements OnInit {
         return 'ORDER_ACCEPTED';
       case 'REJECTED':
         return 'ORDER_REJECTED';
+      case 'EXPIRED':
+        return 'ORDER_EXPIRED';
+      case 'CANCELED':
+        return 'ORDER_CANCELED';
+      case 'PENDING':
+        return 'ORDER_PENDING';
       case 'PLACED':
       default:
         return 'ORDER_PLACED';

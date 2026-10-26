@@ -1,4 +1,5 @@
 const { Kafka, logLevel } = require('kafkajs');
+const { clientIp } = require('../utils/clientIp');
 
 const brokers = String(process.env.KAFKA_BOOTSTRAP_SERVERS || '')
   .split(',')
@@ -47,13 +48,9 @@ async function getProducer() {
   return producer;
 }
 
+// The caller's address as recorded by our own proxy; see utils/clientIp.
 function resolveIpAddress(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.trim().length > 0) {
-    return forwarded.split(',')[0].trim();
-  }
-
-  return req.ip || null;
+  return clientIp(req);
 }
 
 async function publishUserAuditEvent({ eventType, userId, username, status, ipAddress, details }) {

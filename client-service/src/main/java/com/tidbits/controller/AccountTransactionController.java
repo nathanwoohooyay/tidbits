@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -19,12 +20,12 @@ public class AccountTransactionController {
     private AccountTransactionService accountTransactionService;
 
     @PostMapping("/deposit")
-    public ResponseEntity<AccountTransactionDTO> depositTransaction(@PathVariable Integer accountId, @RequestBody Double amount) {
+    public ResponseEntity<AccountTransactionDTO> depositTransaction(@PathVariable Integer accountId, @RequestBody BigDecimal amount) {
         return ResponseEntity.ok(AccountTransactionMapper.toDto(accountTransactionService.depositCash(accountId, amount)));
     }
 
     @PostMapping("/withdraw")
-    public ResponseEntity<AccountTransactionDTO> withdrawTransaction(@PathVariable Integer accountId, @RequestBody Double amount) {
+    public ResponseEntity<AccountTransactionDTO> withdrawTransaction(@PathVariable Integer accountId, @RequestBody BigDecimal amount) {
         return ResponseEntity.ok(AccountTransactionMapper.toDto(accountTransactionService.withdrawCash(accountId, amount)));
     }
 

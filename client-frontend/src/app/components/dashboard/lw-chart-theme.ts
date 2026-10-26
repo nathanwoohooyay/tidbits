@@ -1,4 +1,5 @@
 import { BaselineStyleOptions, ColorType, CrosshairMode, DeepPartial, ChartOptions, IChartApi, LineStyle, LogicalRange } from 'lightweight-charts';
+import { pricePrecision } from './dashboard.utils';
 
 // Colours for Lightweight Charts, read from the app's CSS variables so charts follow light/dark mode.
 export interface ChartPalette {
@@ -36,9 +37,9 @@ export function withAlpha(hex: string, alpha: number): string {
   return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
 }
 
-// Axis and crosshair prices: '$111,000' for big values, '$217.07' for share prices.
+// Axis and crosshair prices: '$111,000' for big values, '$217.07' for share prices, '$0.0775' for coins under a dollar.
 export function formatAxisPrice(price: number): string {
-  const digits = Math.abs(price) >= 1000 ? 0 : 2;
+  const digits = Math.abs(price) >= 1000 ? 0 : pricePrecision(price);
   return price.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 

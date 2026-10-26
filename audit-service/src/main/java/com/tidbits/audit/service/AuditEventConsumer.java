@@ -18,11 +18,16 @@ import java.util.Set;
 @Component
 public class AuditEventConsumer {
 
+    // ORDER_PENDING: a limit order, or a market order queued while the market is closed, is waiting to fill.
+    // ORDER_CANCELED: the user cancelled a waiting order. ORDER_EXPIRED: a limit order was cancelled automatically.
     private static final Set<String> TRANSACTION_EVENTS = Set.of(
             "ORDER_PLACED",
+            "ORDER_PENDING",
             "ORDER_ACCEPTED",
             "ORDER_REJECTED",
             "ORDER_FILLED",
+            "ORDER_CANCELED",
+            "ORDER_EXPIRED",
             "DEPOSIT",
             "WITHDRAW"
     );

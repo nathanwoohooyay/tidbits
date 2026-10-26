@@ -33,6 +33,9 @@
           <app-ticker-logo [ticker]="stock.ticker" style="--logo-size: 1.6rem"></app-ticker-logo>
           <span class="result-ticker">{{ stock.ticker }}</span>
           <span class="result-name">{{ stock.name }}</span>
+          @if (stock.kind !== 'stock') {
+            <span class="result-kind">{{ stock.kind === 'crypto' ? 'Crypto' : 'ETF' }}</span>
+          }
         </li>
       }
     </ul>

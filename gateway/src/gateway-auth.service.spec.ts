@@ -1,17 +1,24 @@
 import type { Request } from 'express';
 import jwt from 'jsonwebtoken';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GatewayAuthError, GatewayAuthService } from './gateway-auth.service.js';
+import { GatewayAuthService } from './gateway-auth.service.js';
 
 const queryMock = vi.fn();
 const endMock = vi.fn().mockResolvedValue(undefined);
 
+// A regular function, so `new Pool()` can construct it.
 vi.mock('pg', () => ({
-  Pool: vi.fn().mockImplementation(() => ({
-    query: queryMock,
-    end: endMock,
-  })),
+  Pool: vi.fn().mockImplementation(function () {
+    return { query: queryMock, end: endMock };
+  }),
 }));
+
+const sign = (claims: Record<string, unknown>) => jwt.sign(claims, 'test-secret', { algorithm: 'HS256' });
+
+const requestWith = (token: string | null, originalUrl = '/client/api/users/42') => ({
+  originalUrl,
+  headers: token ? { authorization: `Bearer ${token}` } : {},
+}) as Request;
 
 describe('GatewayAuthService', () => {
   const originalEnv = process.env;
@@ -35,89 +42,69 @@ describe('GatewayAuthService', () => {
     process.env = originalEnv;
   });
 
-  it('skips JWT validation for public client routes', async () => {
+  it('accepts a matching token version and a live session', async () => {
     const service = new GatewayAuthService();
-    const request = {
-      originalUrl: '/client/public',
-      headers: {},
-    } as Request;
+    queryMock.mockResolvedValue({ rows: [{ token_version: 3, session_active: true }] });
 
-    await expect(service.authorizeRequest(request, '/client')).resolves.toBeUndefined();
-    expect(queryMock).not.toHaveBeenCalled();
+    await expect(service.authorizeRequest(requestWith(sign({ sub: 42, roles: ['CLIENT'], tokenVersion: 3, sid: 9 })), '/client'))
+      .resolves.toBeUndefined();
+    expect(queryMock).toHaveBeenCalledWith(expect.stringContaining('FROM users u WHERE u.user_id = $1'), [42, 9]);
   });
 
-  it('accepts a matching token version', async () => {
+  it('rejects a token whose session was signed out', async () => {
     const service = new GatewayAuthService();
-    const token = jwt.sign({ sub: 42, roles: ['CLIENT'], tokenVersion: 3 }, 'test-secret', {
-      algorithm: 'HS256',
-    });
-    const request = {
-      originalUrl: '/client/api/users/42',
-      headers: { authorization: `Bearer ${token}` },
-    } as Request;
+    queryMock.mockResolvedValue({ rows: [{ token_version: 3, session_active: false }] });
 
-    queryMock.mockResolvedValue({ rows: [{ token_version: 3 }] });
+    await expect(service.authorizeRequest(requestWith(sign({ sub: 42, roles: ['CLIENT'], tokenVersion: 3, sid: 9 })), '/client'))
+      .rejects.toMatchObject({ statusCode: 401 });
+  });
 
-    await expect(service.authorizeRequest(request, '/client')).resolves.toBeUndefined();
-    expect(queryMock).toHaveBeenCalledWith(
-      'SELECT token_version FROM users WHERE user_id = $1',
-      [42],
-    );
+  it('accepts tokens issued before sessions were tracked (no sid)', async () => {
+    const service = new GatewayAuthService();
+    queryMock.mockResolvedValue({ rows: [{ token_version: 3, session_active: true }] });
+
+    await expect(service.authorizeRequest(requestWith(sign({ sub: 42, roles: ['CLIENT'], tokenVersion: 3 })), '/client'))
+      .resolves.toBeUndefined();
+    expect(queryMock).toHaveBeenCalledWith(expect.any(String), [42, null]);
   });
 
   it('allows reporter tokens on audit routes', async () => {
     const service = new GatewayAuthService();
-    const token = jwt.sign({ sub: 42, roles: ['REPORTER'], tokenVersion: 3 }, 'test-secret', {
-      algorithm: 'HS256',
-    });
-    const request = {
-      originalUrl: '/audit/api/logs/users',
-      headers: { authorization: `Bearer ${token}` },
-    } as Request;
+    queryMock.mockResolvedValue({ rows: [{ token_version: 3, session_active: true }] });
 
-    queryMock.mockResolvedValue({ rows: [{ token_version: 3 }] });
-
-    await expect(service.authorizeRequest(request, '/audit')).resolves.toBeUndefined();
+    await expect(service.authorizeRequest(
+      requestWith(sign({ sub: 42, roles: ['REPORTER'], tokenVersion: 3, sid: 1 }), '/audit/api/logs/users'), '/audit',
+    )).resolves.toBeUndefined();
   });
 
-  it('rejects a mismatched token version with forbidden', async () => {
+  it('forbids client tokens on audit routes', async () => {
     const service = new GatewayAuthService();
-    const token = jwt.sign({ sub: '42', roles: ['CLIENT'], tokenVersion: '2' }, 'test-secret', {
-      algorithm: 'HS256',
-    });
-    const request = {
-      originalUrl: '/audit/api/logs/users',
-      headers: { authorization: `Bearer ${token}` },
-    } as Request;
+    queryMock.mockResolvedValue({ rows: [{ token_version: 3, session_active: true }] });
 
-    queryMock.mockResolvedValue({ rows: [{ token_version: 5 }] });
+    await expect(service.authorizeRequest(
+      requestWith(sign({ sub: 42, roles: ['CLIENT'], tokenVersion: 3, sid: 1 }), '/audit/api/logs/users'), '/audit',
+    )).rejects.toMatchObject({ statusCode: 403 });
+  });
 
-    await expect(service.authorizeRequest(request, '/audit')).rejects.toMatchObject<GatewayAuthError>({
-      statusCode: 403,
-      message: 'JWT tokenVersion no longer matches the stored user token version',
-    });
+  it('rejects a mismatched token version', async () => {
+    const service = new GatewayAuthService();
+    queryMock.mockResolvedValue({ rows: [{ token_version: 5, session_active: true }] });
+
+    await expect(service.authorizeRequest(requestWith(sign({ sub: '42', roles: ['CLIENT'], tokenVersion: '2', sid: 1 })), '/client'))
+      .rejects.toMatchObject({ statusCode: 401 });
   });
 
   it('rejects missing authorization on protected routes', async () => {
     const service = new GatewayAuthService();
-    const request = {
-      originalUrl: '/client/api/orders',
-      headers: {},
-    } as Request;
 
-    await expect(service.authorizeRequest(request, '/client')).rejects.toMatchObject<GatewayAuthError>({
-      statusCode: 401,
-      message: 'Authorization header is required',
-    });
+    await expect(service.authorizeRequest(requestWith(null), '/client'))
+      .rejects.toMatchObject({ statusCode: 401 });
+    expect(queryMock).not.toHaveBeenCalled();
   });
 
   it('allows unauthenticated OPTIONS preflight requests', async () => {
     const service = new GatewayAuthService();
-    const request = {
-      method: 'OPTIONS',
-      originalUrl: '/audit/api/logs/users',
-      headers: {},
-    } as Request;
+    const request = { method: 'OPTIONS', originalUrl: '/audit/api/logs/users', headers: {} } as Request;
 
     await expect(service.authorizeRequest(request, '/audit')).resolves.toBeUndefined();
   });

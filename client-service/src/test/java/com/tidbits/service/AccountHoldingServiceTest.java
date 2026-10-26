@@ -1,5 +1,6 @@
 package com.tidbits.service;
 
+import java.math.BigDecimal;
 import com.tidbits.model.entity.AccountHolding;
 import com.tidbits.repository.AccountHoldingRepository;
 import org.junit.jupiter.api.Test;
@@ -31,18 +32,18 @@ class AccountHoldingServiceTest {
         AccountHolding holding = holding(7, 42, 3, 10.5, 1200.0);
         when(accountHoldingRepository.findByAccountIdAndInstrumentId(42, 3)).thenReturn(Optional.of(holding));
 
-        double result = accountHoldingService.getStockHolding(42, 3);
+        BigDecimal result = accountHoldingService.getStockHolding(42, 3);
 
-        assertEquals(10.5, result);
+        assertEquals(new BigDecimal("10.5"), result);
     }
 
     @Test
     void getStockHolding_returnsZeroWhenHoldingMissing() {
         when(accountHoldingRepository.findByAccountIdAndInstrumentId(42, 3)).thenReturn(Optional.empty());
 
-        double result = accountHoldingService.getStockHolding(42, 3);
+        BigDecimal result = accountHoldingService.getStockHolding(42, 3);
 
-        assertEquals(0.0, result);
+        assertEquals(BigDecimal.ZERO, result);
     }
 
     @Test
@@ -81,6 +82,6 @@ class AccountHoldingServiceTest {
 
     private AccountHolding holding(Integer holdingId, Integer accountId, Integer instrumentId,
                                    Double quantity, Double amountInvested) {
-        return new AccountHolding(holdingId, accountId, instrumentId, quantity, amountInvested, LocalDateTime.now());
+        return new AccountHolding(holdingId, accountId, instrumentId, BigDecimal.valueOf(quantity), BigDecimal.valueOf(amountInvested), LocalDateTime.now());
     }
 }

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Inject, Patch, Post, Req, Res, UseGuards, HttpCode  } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { AuthGuard } from '../authorization/auth.guard';
+import { AuthGuard, AuthenticatedUser } from '../authorization/auth.guard';
 import { RoleGuard } from '../authorization/role.guard';
 import { Roles } from '../authorization/roles.decorator';
 import { Role } from '../authorization/roles.enum';
@@ -48,6 +48,20 @@ export class AuthController {
   @UseGuards(AuthGuard, RoleGuard)
   async revokeAccess(@Req() req: Request, @Res() res: Response) {
     return this.authService.revokeAccess(req, res, Number(req.params.userId));
+  }
+
+  @Get('sessions')
+  @UseGuards(AuthGuard)
+  async listSessions(@Req() req: Request & { user: AuthenticatedUser }, @Res() res: Response) {
+    return this.authService.listSessions(req, res, req.user);
+  }
+
+  // Ends every session except the one making the request.
+  @Post('sessions/sign-out-others')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  async signOutOtherSessions(@Req() req: Request & { user: AuthenticatedUser }, @Res() res: Response) {
+    return this.authService.signOutOtherSessions(req, res, req.user);
   }
 
   @Get('whoami')

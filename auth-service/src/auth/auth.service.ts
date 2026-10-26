@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -7,6 +7,9 @@ import { Pool } from 'pg';
 import '../env';
 import { publishUserAuditEvent, resolveIpAddress } from '../audit/userAuditPublisher';
 import { sendError } from '../utils/errorResponse';
+import { clientIp } from '../utils/clientIp';
+import { ensureAuthSchema } from './auth-schema';
+import { LoginThrottle } from './login-throttle';
 import {
   getSignupConflictError,
   validateLoginInput,
@@ -17,6 +20,20 @@ const SALT_ROUNDS = 10;
 const DEFAULT_SIGNUP_ROLE = 'client';
 const REFRESH_COOKIE_NAME = 'refreshToken';
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Oldest sessions beyond this many per user are ended when another starts.
+const MAX_SESSIONS_PER_USER = 20;
+const THROTTLE_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+const SCHEMA_RETRY_MS = 10_000;
+
+// One signed-in device, as listed on the Settings page.
+export type SessionSummary = {
+  sessionId: number;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+  current: boolean;
+};
 
 type ChangePasswordBody = {
   currentPassword?: string;
@@ -58,7 +75,7 @@ type RoleRow = {
 };
 
 @Injectable()
-export class AuthService implements OnModuleDestroy {
+export class AuthService implements OnModuleInit, OnModuleDestroy {
   private readonly secret = process.env.JWT_SECRET as string;
 
   private readonly profilePool = new Pool({
@@ -77,7 +94,23 @@ export class AuthService implements OnModuleDestroy {
     database: process.env.DB_AUTH_NAME || 'tidbits_auth',
   });
 
+  private readonly throttle = new LoginThrottle(this.authPool);
+  private pruneTimer: NodeJS.Timeout | null = null;
+  private schemaRetryTimer: NodeJS.Timeout | null = null;
+
+  async onModuleInit() {
+    this.pruneTimer = setInterval(() => void this.throttle.prune().catch(() => undefined), THROTTLE_PRUNE_INTERVAL_MS);
+    this.pruneTimer.unref();
+    await this.updateSchema();
+  }
+
   async onModuleDestroy() {
+    if (this.pruneTimer) {
+      clearInterval(this.pruneTimer);
+    }
+    if (this.schemaRetryTimer) {
+      clearTimeout(this.schemaRetryTimer);
+    }
     await Promise.all([this.profilePool.end(), this.authPool.end()]);
   }
 
@@ -203,8 +236,27 @@ export class AuthService implements OnModuleDestroy {
     }
 
     const { normalizedUsername, password } = validation.data;
+    const ipAddress = clientIp(req);
+    const throttleKeys = LoginThrottle.keysFor(normalizedUsername, ipAddress);
 
     try {
+      const retryAfter = await this.throttle.retryAfterSeconds(throttleKeys);
+      if (retryAfter > 0) {
+        // Its own event (the audit log keeps the event and status, not the details), so auditors can see lockouts.
+        await publishUserAuditEvent({
+          eventType: 'LOGIN_BLOCKED',
+          userId: null,
+          username: (body as Record<string, unknown> | undefined)?.username,
+          status: 'FAILURE',
+          ipAddress,
+          details: 'TOO_MANY_ATTEMPTS',
+        });
+        const minutes = Math.max(1, Math.ceil(retryAfter / 60));
+        res.setHeader('Retry-After', String(retryAfter));
+        return sendError(res, req, 429, 'TOO_MANY_ATTEMPTS',
+          `Too many failed sign-in attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`);
+      }
+
       const profileResult = await this.profilePool.query<ProfileUserRow>(
         `
         SELECT u.user_id, u.username
@@ -223,6 +275,7 @@ export class AuthService implements OnModuleDestroy {
           ipAddress: resolveIpAddress(req),
           details: 'INVALID_LOGIN',
         });
+        await this.throttle.recordFailure(throttleKeys);
         return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
       }
 
@@ -246,6 +299,7 @@ export class AuthService implements OnModuleDestroy {
           ipAddress: resolveIpAddress(req),
           details: 'INVALID_LOGIN',
         });
+        await this.throttle.recordFailure(throttleKeys);
         return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
       }
 
@@ -260,26 +314,18 @@ export class AuthService implements OnModuleDestroy {
           ipAddress: resolveIpAddress(req),
           details: 'INVALID_LOGIN',
         });
+        await this.throttle.recordFailure(throttleKeys);
         return sendError(res, req, 401, 'INVALID_LOGIN', 'invalid username or password');
       }
 
-      const token = this.createAccessToken(profileUser.user_id, authUser.role_name || DEFAULT_SIGNUP_ROLE, authUser.token_version);
+      await this.throttle.clear(throttleKeys);
       const refreshToken = this.generateRefreshToken();
       const refreshTokenHash = this.hashRefreshToken(refreshToken);
       const refreshTokenExpiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+      const sessionId = await this.startSession(profileUser.user_id, refreshTokenHash, refreshTokenExpiresAt, req);
+      const token = this.createAccessToken(profileUser.user_id, authUser.role_name || DEFAULT_SIGNUP_ROLE, authUser.token_version, sessionId);
 
       await Promise.all([
-        this.authPool.query(
-          `
-          INSERT INTO refresh_tokens (user_id, refresh_token, expires_at)
-          VALUES ($1, $2, $3)
-          ON CONFLICT (user_id)
-          DO UPDATE SET
-            refresh_token = EXCLUDED.refresh_token,
-            expires_at = EXCLUDED.expires_at
-          `,
-          [profileUser.user_id, refreshTokenHash, refreshTokenExpiresAt],
-        ),
         this.profilePool.query(
           `
           UPDATE users
@@ -295,7 +341,7 @@ export class AuthService implements OnModuleDestroy {
         userId: profileUser.user_id,
         username: (body as Record<string, unknown> | undefined)?.username,
         status: 'SUCCESS',
-        ipAddress: resolveIpAddress(req),
+        ipAddress,
         details: null,
       });
 
@@ -323,9 +369,9 @@ export class AuthService implements OnModuleDestroy {
 
     try {
       const refreshTokenHash = this.hashRefreshToken(refreshToken);
-      const authResult = await this.authPool.query<{ user_id: number; expires_at: string; token_version: number }>(
+      const authResult = await this.authPool.query<{ token_id: number; user_id: number; expires_at: string; token_version: number }>(
         `
-        SELECT r.user_id, r.expires_at, u.token_version
+        SELECT r.token_id, r.user_id, r.expires_at, u.token_version
         FROM refresh_tokens r
         JOIN users u ON r.user_id = u.user_id
         WHERE r.refresh_token = $1
@@ -337,7 +383,7 @@ export class AuthService implements OnModuleDestroy {
         return sendError(res, req, 401, 'INVALID_REFRESH_TOKEN', 'invalid refresh token');
       }
 
-      const { user_id: userId, expires_at: tokenExpiresAt, token_version: tokenVersion } = authResult.rows[0];
+      const { token_id: sessionId, user_id: userId, expires_at: tokenExpiresAt, token_version: tokenVersion } = authResult.rows[0];
       if (new Date(tokenExpiresAt) < new Date()) {
         return sendError(res, req, 401, 'EXPIRED_REFRESH_TOKEN', 'refresh token has expired');
       }
@@ -358,7 +404,17 @@ export class AuthService implements OnModuleDestroy {
 
       const roleName = roleResult.rows[0].role_name;
 
-      const newToken = this.createAccessToken(userId, roleName, tokenVersion);
+      // Renewals are how a session shows as recently active (and from where) in the Sessions list.
+      await this.authPool.query(
+        `
+        UPDATE refresh_tokens
+        SET last_used_at = CURRENT_TIMESTAMP, ip_address = $2, user_agent = COALESCE($3, user_agent)
+        WHERE token_id = $1
+        `,
+        [sessionId, clientIp(req), this.userAgent(req)],
+      );
+
+      const newToken = this.createAccessToken(userId, roleName, tokenVersion, sessionId);
       return res.json({ accessToken: newToken });
     } catch {
       return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
@@ -388,6 +444,69 @@ export class AuthService implements OnModuleDestroy {
     } catch {
       return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
     }
+  }
+
+  // The user's signed-in devices, most recently active first. `current` marks the one making the request.
+  async listSessions(req: Request, res: Response, user: { userId: number; sessionId: number | null }) {
+    try {
+      const result = await this.authPool.query<{
+        token_id: number; user_agent: string | null; ip_address: string | null; created_at: Date; last_used_at: Date;
+      }>(
+        `
+        SELECT token_id, user_agent, ip_address, created_at, last_used_at
+        FROM refresh_tokens
+        WHERE user_id = $1 AND expires_at > NOW()
+        ORDER BY last_used_at DESC, token_id DESC
+        `,
+        [user.userId],
+      );
+      const sessions: SessionSummary[] = result.rows.map((row) => ({
+        sessionId: row.token_id,
+        userAgent: row.user_agent,
+        ipAddress: row.ip_address,
+        createdAt: new Date(row.created_at).toISOString(),
+        lastUsedAt: new Date(row.last_used_at).toISOString(),
+        current: row.token_id === user.sessionId,
+      }));
+      return res.json({ sessions });
+    } catch {
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+  }
+
+  // Ends every session but the one making the request. Their tokens stop working straight away: the gateway and the
+  // auth guard reject tokens whose session is gone.
+  async signOutOtherSessions(req: Request, res: Response, user: { userId: number; sessionId: number | null }) {
+    if (user.sessionId == null) {
+      return sendError(res, req, 400, 'SESSION_REQUIRED', 'sign in again to manage your sessions');
+    }
+    try {
+      const result = await this.authPool.query(
+        'DELETE FROM refresh_tokens WHERE user_id = $1 AND token_id <> $2',
+        [user.userId, user.sessionId],
+      );
+      const signedOut = result.rowCount ?? 0;
+      await publishUserAuditEvent({
+        eventType: 'SIGN_OUT_OTHER_SESSIONS',
+        userId: user.userId,
+        username: null,
+        status: 'SUCCESS',
+        ipAddress: clientIp(req),
+        details: `${signedOut} session${signedOut === 1 ? '' : 's'} ended`,
+      });
+      return res.json({ signedOut });
+    } catch {
+      return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
+    }
+  }
+
+  // Whether a token's session is still live (signing out, or signing out other devices, ends it).
+  async isSessionActive(userId: number, sessionId: number): Promise<boolean> {
+    const result = await this.authPool.query(
+      'SELECT 1 FROM refresh_tokens WHERE token_id = $1 AND user_id = $2 AND expires_at > NOW()',
+      [sessionId, userId],
+    );
+    return result.rows.length > 0;
   }
 
   async changePassword(req: Request, res: Response, body: ChangePasswordBody) {
@@ -742,16 +861,62 @@ export class AuthService implements OnModuleDestroy {
     return crypto.randomBytes(48).toString('hex');
   }
 
-  private createAccessToken(userId: number, roleName: string, tokenVersion: number) {
+  // `sid` is the session (refresh_tokens row) the token belongs to, so ending the session ends the token too.
+  private createAccessToken(userId: number, roleName: string, tokenVersion: number, sessionId: number) {
     return jwt.sign(
       {
         sub: userId,
         roles: [String(roleName).toUpperCase()],
         tokenVersion,
+        sid: sessionId,
       },
       this.secret,
       { algorithm: 'HS256', expiresIn: '15m' },
     );
+  }
+
+  // Runs at startup. If the database isn't reachable yet, keeps retrying in the background rather than stopping the
+  // service from starting.
+  private async updateSchema(): Promise<void> {
+    try {
+      await ensureAuthSchema(this.authPool);
+    } catch (error) {
+      console.warn(`Auth schema update failed (${(error as Error).message}); retrying in ${SCHEMA_RETRY_MS / 1000}s`);
+      this.schemaRetryTimer = setTimeout(() => void this.updateSchema(), SCHEMA_RETRY_MS);
+      this.schemaRetryTimer.unref();
+    }
+  }
+
+  // Records a new session and returns its id. Clears out the user's expired sessions, and the oldest ones beyond
+  // MAX_SESSIONS_PER_USER.
+  private async startSession(userId: number, refreshTokenHash: string, expiresAt: Date, req: Request): Promise<number> {
+    const inserted = await this.authPool.query<{ token_id: number }>(
+      `
+      INSERT INTO refresh_tokens (user_id, refresh_token, expires_at, user_agent, ip_address, last_used_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      RETURNING token_id
+      `,
+      [userId, refreshTokenHash, expiresAt, this.userAgent(req), clientIp(req)],
+    );
+    await this.authPool.query(
+      `
+      DELETE FROM refresh_tokens
+      WHERE user_id = $1
+        AND (expires_at <= NOW()
+             OR token_id NOT IN (
+               SELECT token_id FROM refresh_tokens
+               WHERE user_id = $1 AND expires_at > NOW()
+               ORDER BY last_used_at DESC, token_id DESC LIMIT $2
+             ))
+      `,
+      [userId, MAX_SESSIONS_PER_USER],
+    );
+    return inserted.rows[0].token_id;
+  }
+
+  private userAgent(req: Request): string | null {
+    const value = req.headers?.['user-agent'];
+    return typeof value === 'string' && value.trim() ? value.trim().slice(0, 512) : null;
   }
 
   private handleAuthenticationError(req: Request, res: Response, error: unknown) {

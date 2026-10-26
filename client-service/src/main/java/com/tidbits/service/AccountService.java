@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +36,7 @@ public class AccountService {
         account.setAccountId(null);
         account.setUserId(userId);
         account.setNickname(nickname);
-        account.setCashBalance(0.0);
+        account.setCashBalance(BigDecimal.ZERO);
         account.setCreatedAt(LocalDateTime.now());
 
         return accountRepository.save(account);

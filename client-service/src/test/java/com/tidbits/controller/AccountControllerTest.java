@@ -1,5 +1,6 @@
 package com.tidbits.controller;
 
+import java.math.BigDecimal;
 import com.tidbits.exception.ResourceNotFoundException;
 import com.tidbits.model.entity.Account;
 import com.tidbits.service.AccountService;
@@ -198,7 +199,7 @@ class AccountControllerTest {
     }
 
     private Account account(Integer accountId, Integer userId, String nickname, Double balance) {
-        return new Account(accountId, userId, nickname, balance, LocalDateTime.now());
+        return new Account(accountId, userId, nickname, BigDecimal.valueOf(balance), LocalDateTime.now());
     }
 }
 

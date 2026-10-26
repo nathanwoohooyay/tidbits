@@ -14,6 +14,8 @@ import com.tidbits.audit.repository.AccountTransactionRefRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -23,6 +25,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -90,10 +93,36 @@ class AuditEventConsumerTest {
         assertEquals(occurredAt, log.getHappenedAt());
     }
 
+    // Waiting orders, user cancellations and automatic expiries are part of the audit trail. They carry no fill price.
+    @ParameterizedTest
+    @ValueSource(strings = {"ORDER_PENDING", "ORDER_CANCELED", "ORDER_EXPIRED"})
+    void consumeOrderEvent_recordsWaitingCancelledAndExpiredOrders(String eventType) throws Exception {
+        OrderAuditEventDTO event = new OrderAuditEventDTO(
+                eventType, LocalDateTime.of(2026, 10, 26, 14, 0), 747, 12, null, 1, 100.0, null, null, "BUY", eventType.equals("ORDER_PENDING") ? "PENDING" : "CANCELED"
+        );
+        AccountRef accountRef = new AccountRef();
+        accountRef.setAccountId(12);
+        accountRef.setUserId(44);
+        when(accountRefRepository.findById(12)).thenReturn(Optional.of(accountRef));
+        when(accountTransactionRefRepository.findFirstByOrderIdOrderByTransactionIdDesc(747)).thenReturn(Optional.empty());
+
+        auditEventConsumer.consumeOrderEvent(objectMapper.writeValueAsString(event));
+
+        ArgumentCaptor<TransactionLog> captor = ArgumentCaptor.forClass(TransactionLog.class);
+        verify(transactionLogService).createTransactionLog(captor.capture());
+        TransactionLog log = captor.getValue();
+        assertEquals(eventType, log.getEvent());
+        assertEquals(747, log.getOrderId());
+        assertEquals(44, log.getUserId());
+        assertNull(log.getAmount());
+        assertNull(log.getTransactionId());
+        assertEquals(LogStatus.SUCCESS, log.getStatus());
+    }
+
     @Test
     void consumeOrderEvent_ignoresUnsupportedEvent() throws Exception {
         OrderAuditEventDTO event = new OrderAuditEventDTO(
-                "ORDER_CANCELLED", LocalDateTime.now(), 333, 12, 1, 7, 2.0, 5.0, null, "BUY", "SUCCESS"
+                "ORDER_REVIEWED", LocalDateTime.now(), 333, 12, 1, 7, 2.0, 5.0, null, "BUY", "SUCCESS"
         );
 
         auditEventConsumer.consumeOrderEvent(objectMapper.writeValueAsString(event));
@@ -115,7 +144,7 @@ class AuditEventConsumerTest {
 
     @Test
     void consumeUserEvent_createsUserLogAndUsesNowWhenOccurredAtMissing() throws Exception {
-        UserAuditEventDTO event = new UserAuditEventDTO("LOGIN", null, 50, "10.0.0.1", "SUCCESS", "ok");
+        UserAuditEventDTO event = new UserAuditEventDTO("LOGIN", null, 50, "alice", "10.0.0.1", "SUCCESS", "ok");
 
         auditEventConsumer.consumeUserEvent(objectMapper.writeValueAsString(event));
 

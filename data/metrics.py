@@ -7,6 +7,23 @@ from .extractors import DataExtractor
 
 logger = logging.getLogger(__name__)
 
+TRADE_TRANSACTION_TYPES = {'BUY', 'SELL'}
+
+
+def _filled(orders):
+    """Only orders that executed. Rejected orders and ones still waiting (limit orders, market orders queued for the
+    open) or cancelled never traded, so they don't count toward volume, outliers, fees or rewards."""
+    if orders.empty:
+        return orders
+    return orders[orders['status'].astype(str).str.upper() == 'FILLED'].copy()
+
+
+def _trades(transactions):
+    """Cash movements from buying and selling, without deposits and withdrawals."""
+    if transactions.empty:
+        return transactions
+    return transactions[transactions['transaction_type'].astype(str).str.upper().isin(TRADE_TRANSACTION_TYPES)].copy()
+
 class MetricsCalculator:
     """Calculate business metrics for trading volume, outliers, revenue, and rewards"""
     
@@ -15,7 +32,7 @@ class MetricsCalculator:
     @staticmethod
     def trade_volume_by_instrument_type():
         """Trade volume by instrument type"""
-        orders = DataExtractor.extract_orders()
+        orders = _filled(DataExtractor.extract_orders())
         
         if orders.empty:
             return pd.DataFrame()
@@ -51,7 +68,7 @@ class MetricsCalculator:
     @staticmethod
     def trade_volume_by_market():
         """Trade volume by market"""
-        orders = DataExtractor.extract_orders()
+        orders = _filled(DataExtractor.extract_orders())
         
         if orders.empty:
             return pd.DataFrame()
@@ -87,7 +104,7 @@ class MetricsCalculator:
     @staticmethod
     def trade_volume_by_side():
         """Trade volume by side (buy/sell)"""
-        orders = DataExtractor.extract_orders()
+        orders = _filled(DataExtractor.extract_orders())
         
         if orders.empty:
             return pd.DataFrame()
@@ -113,8 +130,8 @@ class MetricsCalculator:
     @staticmethod
     def trade_volume_over_time():
         """Trade volume over time (by day/time period)"""
-        transactions = DataExtractor.extract_transactions()
-        orders = DataExtractor.extract_orders()
+        transactions = _trades(DataExtractor.extract_transactions())
+        orders = _filled(DataExtractor.extract_orders())
         
         if transactions.empty:
             return pd.DataFrame()
@@ -162,7 +179,7 @@ class MetricsCalculator:
     @staticmethod
     def detect_outlier_trades():
         """Detect outlier trades (unusually large amounts)"""
-        orders = DataExtractor.extract_orders()
+        orders = _filled(DataExtractor.extract_orders())
         
         if orders.empty:
             return pd.DataFrame()
@@ -212,47 +229,53 @@ class MetricsCalculator:
     
     @staticmethod
     def detect_win_loss_outliers():
-        """Detect customers who won/lost a lot of money"""
-        transactions = DataExtractor.extract_transactions()
-        orders = DataExtractor.extract_orders()
-        
-        if transactions.empty or orders.empty:
+        """Detect customers who won/lost a lot of money.
+
+        An account's profit or loss is what it received from sells, less what it paid for buys, plus what it still
+        holds at the latest stored prices (positions without a stored price count at cost)."""
+        transactions = _trades(DataExtractor.extract_transactions())
+
+        if transactions.empty:
             return pd.DataFrame()
-        
-        # Convert amount to float to handle Decimal types
+
         transactions['amount'] = transactions['amount'].astype(float)
-        
-        # Merge transactions with orders to get transaction type and outcome
-        merged = transactions.merge(orders[['order_id', 'order_type']], on='order_id')
-        
-        # Calculate P&L per account (simplified: buy = negative, sell = positive)
-        account_pnl = merged.groupby('account_id').agg({
-            'amount': 'sum'
-        }).reset_index()
-        
+        sign = np.where(transactions['transaction_type'].astype(str).str.upper() == 'SELL', 1.0, -1.0)
+        transactions['cash_flow'] = transactions['amount'] * sign
+        account_pnl = transactions.groupby('account_id')['cash_flow'].sum().reset_index()
         account_pnl.columns = ['account_id', 'net_pnl']
+
+        holdings = DataExtractor.extract_holdings()
+        if not holdings.empty:
+            holdings['quantity'] = holdings['quantity'].astype(float)
+            holdings['amount_invested'] = holdings['amount_invested'].astype(float)
+            price = pd.to_numeric(holdings['last_price'], errors='coerce') if 'last_price' in holdings.columns else np.nan
+            holdings['market_value'] = (holdings['quantity'] * price).fillna(holdings['amount_invested'])
+            held = holdings.groupby('account_id')['market_value'].sum().reset_index()
+            account_pnl = account_pnl.merge(held, on='account_id', how='left')
+            account_pnl['net_pnl'] = account_pnl['net_pnl'] + account_pnl['market_value'].fillna(0.0)
+            account_pnl = account_pnl.drop(columns='market_value')
+
         account_pnl['net_pnl'] = account_pnl['net_pnl'].astype(float)
-        
+
         # Identify outliers
         pnl_mean = account_pnl['net_pnl'].mean()
         pnl_std = account_pnl['net_pnl'].std()
-        
-        account_pnl['is_outlier'] = (
-            (account_pnl['net_pnl'] > pnl_mean + 2 * pnl_std) |
-            (account_pnl['net_pnl'] < pnl_mean - 2 * pnl_std)
-        )
-        
+        if pd.isna(pnl_std) or pnl_std == 0:
+            return pd.DataFrame()
+
+        account_pnl['z_score'] = (account_pnl['net_pnl'] - pnl_mean) / pnl_std
+        account_pnl['is_outlier'] = account_pnl['z_score'].abs() > 2
+
         outlier_pnl = account_pnl[account_pnl['is_outlier']].copy()
-        outlier_pnl['z_score'] = (outlier_pnl['net_pnl'] - pnl_mean) / (pnl_std + 1)
         outlier_pnl['total_pnl'] = outlier_pnl['net_pnl']
 
         # Backward-compatible alias.
         outlier_pnl['pnl_zscore'] = outlier_pnl['z_score']
         outlier_pnl['metric_type'] = 'pnl_outliers'
         outlier_pnl['calculated_at'] = datetime.now()
-        
-        return outlier_pnl
-    
+
+        return outlier_pnl[['account_id', 'net_pnl', 'is_outlier', 'z_score', 'total_pnl', 'pnl_zscore', 'metric_type', 'calculated_at']]
+
     # ==================== REVENUE METRICS ====================
     
     @staticmethod
@@ -295,7 +318,7 @@ class MetricsCalculator:
         # Assuming 0.1% fee on trade value
         FEE_RATE = 0.001
         
-        orders = DataExtractor.extract_orders()
+        orders = _filled(DataExtractor.extract_orders())
         
         if orders.empty:
             return pd.DataFrame()
@@ -328,8 +351,8 @@ class MetricsCalculator:
         """Analyze if winning/reward points correlate with trade volume"""
         users = DataExtractor.extract_users()
         accounts = DataExtractor.extract_accounts()
-        orders = DataExtractor.extract_orders()
-        transactions = DataExtractor.extract_transactions()
+        orders = _filled(DataExtractor.extract_orders())
+        transactions = _trades(DataExtractor.extract_transactions())
         
         if users.empty:
             return pd.DataFrame()

@@ -17,6 +17,9 @@ import { ToastService } from '../../services/toast.service';
 import { AllocationBarComponent } from '../../components/dashboard/allocation-bar.component';
 import { ErrorStateComponent } from '../../components/error-state.component';
 import { DashboardWatchlistComponent } from '../../components/dashboard/dashboard-watchlist.component';
+import { DashboardOpenOrdersComponent } from '../../components/dashboard/dashboard-open-orders.component';
+import { NotificationBellComponent } from '../../components/notification-bell/notification-bell.component';
+import { OrderService, placedOrderDTO } from '../../services/order.service';
 import { AccountDto, AccountService } from '../../services/account.service';
 import { PortfolioQueries, REFRESH_INTERVAL_MS } from '../../services/portfolio-queries';
 
@@ -37,6 +40,8 @@ import { PortfolioQueries, REFRESH_INTERVAL_MS } from '../../services/portfolio-
     DashboardTradeHistoryComponent,
     ErrorStateComponent,
     DashboardWatchlistComponent,
+    DashboardOpenOrdersComponent,
+    NotificationBellComponent,
   ],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css'
@@ -47,6 +52,7 @@ export class DashboardPageComponent implements OnInit {
   private readonly accountApi = inject(AccountService);
   private readonly queries = inject(PortfolioQueries);
   private readonly toasts = inject(ToastService);
+  private readonly orderApi = inject(OrderService);
 
   private readonly userId = this.session.currentUser()?.userId ?? this.session.getAuthenticatedUserId() ?? 0;
 
@@ -59,6 +65,7 @@ export class DashboardPageComponent implements OnInit {
   chartTimeframe = signal<ChartTimeframe>('1M');
   tradeTarget = signal<TradeTarget | null>(null);
   cashOpen = signal(false);
+  cancellingOrderId = signal<number | null>(null);
 
   // Server data. Each query refetches in the background and keeps its last result on screen meanwhile.
   private readonly userQuery = injectQuery(() => ({
@@ -214,6 +221,32 @@ export class DashboardPageComponent implements OnInit {
       // Orders settle asynchronously after placement, so check again once they've had time to fill.
       setTimeout(() => this.queries.invalidateAccount(this.userId, accountId), 4000);
     }
+  }
+
+  cancelOrder(order: placedOrderDTO) {
+    const accountId = this.selectedAccountId();
+    if (!accountId || this.cancellingOrderId()) {
+      return;
+    }
+    this.cancellingOrderId.set(order.orderId);
+    this.orderApi.cancelOrder(accountId, order.orderId).subscribe({
+      next: () => {
+        this.cancellingOrderId.set(null);
+        this.queries.invalidateAccount(this.userId, accountId);
+        const side = order.orderType === 'BUY' ? 'buy' : 'sell';
+        this.toasts.show({
+          kind: 'success',
+          title: `Cancelled ${order.executionType === 'LIMIT' ? 'limit ' : ''}${side}: ${order.quantity} ${order.instrument.ticker}`,
+          message: order.reservedAmount ? 'The cash set aside for it is available again.' : undefined,
+        });
+      },
+      error: err => {
+        this.cancellingOrderId.set(null);
+        // It may have filled in the meantime; refresh so the list shows what happened.
+        this.queries.invalidateAccount(this.userId, accountId);
+        this.toasts.show({ kind: 'error', title: 'Order not cancelled', message: err?.error?.message ?? 'Please try again.' });
+      }
+    });
   }
 
   private submitCashMovement(direction: 'deposit' | 'withdraw') {

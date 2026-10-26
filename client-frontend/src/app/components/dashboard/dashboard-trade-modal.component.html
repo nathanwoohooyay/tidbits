@@ -88,9 +88,14 @@
             <div><dt>Bid</dt><dd>{{ formatCurrency(q.bid) }}</dd></div>
             <div><dt>Ask</dt><dd>{{ formatCurrency(q.ask) }}</dd></div>
             <div><dt>Prev close</dt><dd>{{ formatCurrency(q.prevClose) }}</dd></div>
-            <div><dt>You own</dt><dd>{{ ownedQuantity() | number:'1.0-4' }} sh</dd></div>
+            <div><dt>You own</dt><dd>{{ ownedQuantity() | number:'1.0-4' }} {{ unit() }}</dd></div>
           </dl>
-          <p class="trade-asof">Quote as of {{ q.asOf | date:'MMM d, h:mm:ss a' }}{{ q.stale ? ' · delayed' : '' }}</p>
+          <p class="trade-asof">
+            Quote as of {{ q.asOf | date:'MMM d, h:mm:ss a' }}{{ q.stale ? ' · delayed' : '' }}
+            @if (marketLabel()) {
+              <span class="market-state" [class.is-open]="marketOpen()">{{ marketLabel() }}</span>
+            }
+          </p>
         </section>
 
         <!-- Two steps: fill in the order, then review it and confirm. -->
@@ -103,11 +108,36 @@
 
           <div class="trade-input-group">
             <div class="trade-input-head">
+              <span class="field-label" id="trade-order-kind">Order type</span>
+              <div class="input-mode-toggle" role="radiogroup" aria-labelledby="trade-order-kind">
+                <button type="button" role="radio" [class.active]="orderKind() === 'market'" [attr.aria-checked]="orderKind() === 'market'" (click)="setOrderKind('market')">Market</button>
+                <button type="button" role="radio" [class.active]="orderKind() === 'limit'" [attr.aria-checked]="orderKind() === 'limit'" (click)="setOrderKind('limit')">Limit</button>
+              </div>
+            </div>
+            @if (orderKind() === 'limit') {
+              <label class="sr-only" for="trade-modal-limit">Limit price (USD)</label>
+              <div class="trade-qty-row">
+                <div class="amount-input-wrap">
+                  <span class="amount-prefix" aria-hidden="true">$</span>
+                  <input id="trade-modal-limit" name="limitPrice" type="number" min="0" step="any" placeholder="Limit price"
+                         [ngModel]="limitPrice()" (ngModelChange)="setLimitPrice($event)" />
+                </div>
+              </div>
+              @if (limitHint()) {
+                <p class="input-hint">{{ limitHint() }}</p>
+              }
+            } @else if (queuedForOpen()) {
+              <p class="input-hint">The market is closed. A market order waits and fills when it opens ({{ nextOpenLabel() }}) at that moment's price.</p>
+            }
+          </div>
+
+          <div class="trade-input-group">
+            <div class="trade-input-head">
               <label [for]="inputMode() === 'shares' ? 'trade-modal-qty' : 'trade-modal-amount'">
-                {{ inputMode() === 'shares' ? 'Quantity (shares)' : 'Amount (USD)' }}
+                {{ inputMode() === 'shares' ? (crypto() ? 'Quantity (' + q.symbol + ')' : 'Quantity (shares)') : 'Amount (USD)' }}
               </label>
               <div class="input-mode-toggle" role="radiogroup" aria-label="Order amount in">
-                <button type="button" role="radio" [class.active]="inputMode() === 'shares'" [attr.aria-checked]="inputMode() === 'shares'" (click)="setInputMode('shares')">Shares</button>
+                <button type="button" role="radio" [class.active]="inputMode() === 'shares'" [attr.aria-checked]="inputMode() === 'shares'" (click)="setInputMode('shares')">{{ crypto() ? q.symbol : 'Shares' }}</button>
                 <button type="button" role="radio" [class.active]="inputMode() === 'dollars'" [attr.aria-checked]="inputMode() === 'dollars'" (click)="setInputMode('dollars')">Dollars</button>
               </div>
             </div>
@@ -130,7 +160,7 @@
               }
             </div>
             @if (inputMode() === 'dollars' && orderQuantity() > 0) {
-              <p class="input-hint">≈ {{ formatShares(orderQuantity()) }} share{{ orderQuantity() === 1 ? '' : 's' }} at {{ formatCurrency(q.price) }}</p>
+              <p class="input-hint">≈ {{ formatShares(orderQuantity()) }} {{ crypto() ? q.symbol : 'share' + (orderQuantity() === 1 ? '' : 's') }} at {{ formatCurrency(refPrice()) }}{{ orderKind() === 'limit' ? ' (your limit)' : '' }}</p>
             }
           </div>
 
@@ -141,16 +171,27 @@
             </div>
             <div class="trade-summary-row">
               <span class="trade-summary-label">{{ mode() === 'buy' ? 'Cash available' : 'Position value' }}</span>
-              <span>{{ formatCurrency(mode() === 'buy' ? cashBalance() : ownedQuantity() * q.price) }}</span>
+              <span>{{ formatCurrency(mode() === 'buy' ? availableCash() : availableShares() * q.price) }}</span>
             </div>
+            @if (mode() === 'buy' && reservedCash() > 0) {
+              <div class="trade-summary-row trade-summary-sub">
+                <span class="trade-summary-label">Set aside for open orders</span>
+                <span>{{ formatCurrency(reservedCash()) }}</span>
+              </div>
+            } @else if (mode() === 'sell' && reservedShares() > 0) {
+              <div class="trade-summary-row trade-summary-sub">
+                <span class="trade-summary-label">In open sell orders</span>
+                <span>{{ formatShares(reservedShares()) }} {{ unit() }}</span>
+              </div>
+            }
             @if (inputMode() === 'dollars') {
               <div class="trade-summary-row">
-                <span class="trade-summary-label">Shares</span>
+                <span class="trade-summary-label">{{ crypto() ? 'Quantity' : 'Shares' }}</span>
                 <span>{{ formatShares(orderQuantity()) }}</span>
               </div>
             }
             <div class="trade-summary-row">
-              <span class="trade-summary-label">{{ mode() === 'buy' ? 'Estimated cost' : 'Estimated proceeds' }}</span>
+              <span class="trade-summary-label">{{ orderKind() === 'limit' ? (mode() === 'buy' ? 'Max cost' : 'Min proceeds') : (mode() === 'buy' ? 'Estimated cost' : 'Estimated proceeds') }}</span>
               <span>{{ formatCurrency(total()) }}</span>
             </div>
           </div>
@@ -158,18 +199,43 @@
             <div class="order-review" aria-labelledby="order-review-title">
               <p id="order-review-title" class="review-kicker">Review your order</p>
               <p class="review-headline">
-                <span [class.gain-text]="mode() === 'buy'" [class.loss-text]="mode() === 'sell'">{{ mode() === 'buy' ? 'Buy' : 'Sell' }}</span>
+                @if (orderKind() === 'limit') {
+                  Limit
+                }
+                <span [class.gain-text]="mode() === 'buy'" [class.loss-text]="mode() === 'sell'">{{ orderKind() === 'limit' ? (mode() === 'buy' ? 'buy' : 'sell') : (mode() === 'buy' ? 'Buy' : 'Sell') }}</span>
                 {{ formatShares(orderQuantity()) }} {{ q.symbol }}
               </p>
               <dl class="review-rows" aria-live="polite">
+                @if (orderKind() === 'limit') {
+                  <div><dt>Limit price</dt><dd>{{ formatCurrency(limitPrice() ?? 0) }}</dd></div>
+                }
                 <div><dt>Market price</dt><dd>{{ formatCurrency(q.price) }}</dd></div>
-                <div><dt>Shares</dt><dd>{{ formatShares(orderQuantity()) }}</dd></div>
-                <div class="review-total"><dt>{{ mode() === 'buy' ? 'Estimated cost' : 'Estimated proceeds' }}</dt><dd>{{ formatCurrency(total()) }}</dd></div>
-                <div><dt>Cash after</dt><dd>{{ formatCurrency(cashAfter()) }}</dd></div>
-                <div><dt>{{ q.symbol }} after</dt><dd>{{ formatShares(positionAfter()) }} sh</dd></div>
+                <div><dt>{{ crypto() ? 'Quantity' : 'Shares' }}</dt><dd>{{ formatShares(orderQuantity()) }}</dd></div>
+                <div class="review-total">
+                  <dt>{{ orderKind() === 'limit' ? (mode() === 'buy' ? 'Max cost' : 'Min proceeds') : (mode() === 'buy' ? 'Estimated cost' : 'Estimated proceeds') }}</dt>
+                  <dd>{{ formatCurrency(total()) }}</dd>
+                </div>
+                @if (mode() === 'buy' && (orderKind() === 'limit' || queuedForOpen())) {
+                  <div><dt>Set aside until it fills</dt><dd>{{ formatCurrency(total()) }}</dd></div>
+                }
+                <div><dt>Cash available after</dt><dd>{{ formatCurrency(cashAfter()) }}</dd></div>
+                <div><dt>{{ q.symbol }} after</dt><dd>{{ formatShares(positionAfter()) }} {{ unit() }}</dd></div>
+                @if (orderKind() === 'limit') {
+                  <div><dt>Good until</dt><dd>{{ limitExpires() | date:'MMM d, y' }}</dd></div>
+                }
                 <div><dt>Account</dt><dd>{{ accountName() }}</dd></div>
               </dl>
-              <p class="review-note">Market order: it fills at the current price, which can move slightly before it does.</p>
+              <p class="review-note">
+                @if (orderKind() === 'limit') {
+                  Fills only when {{ q.symbol }} trades at {{ formatCurrency(limitPrice() ?? 0) }} or {{ mode() === 'buy' ? 'lower' : 'better' }}{{ crypto() ? '' : ', during market hours' }}.
+                  {{ mode() === 'buy' ? 'The cash is set aside until then.' : (crypto() ? 'The coins are held for it until then.' : 'The shares are held for it until then.') }}
+                  Cancel any time from your dashboard.
+                } @else if (queuedForOpen()) {
+                  The market is closed. This order waits and fills when it opens ({{ nextOpenLabel() }}) at that moment's price, which may differ from {{ formatCurrency(q.price) }}.
+                } @else {
+                  Market order: it fills at the current price, which can move slightly before it does.
+                }
+              </p>
               <button type="button" class="btn-link review-back" (click)="editOrder()" [disabled]="submitting() || filled()">← Edit order</button>
             </div>
           }
@@ -185,12 +251,18 @@
                   [class.is-loading]="submitting()" [class.is-done]="filled()" [disabled]="!canSubmit()" [attr.aria-busy]="submitting()">
             @if (filled()) {
               <svg class="btn-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-              Order filled
+              {{ placedPending() ? 'Order placed' : 'Order filled' }}
             } @else if (submitting()) {
               <span class="btn-spinner" aria-hidden="true"></span>
               Placing order…
             } @else if (reviewing()) {
-              {{ (mode() === 'buy' ? 'Confirm buy · ' : 'Confirm sell · ') + formatCurrency(total()) }}
+              @if (orderKind() === 'limit') {
+                {{ (mode() === 'buy' ? 'Place limit buy · ' : 'Place limit sell · ') + formatCurrency(limitPrice() ?? 0) }}
+              } @else if (queuedForOpen()) {
+                {{ (mode() === 'buy' ? 'Queue buy · ' : 'Queue sell · ') + formatCurrency(total()) }}
+              } @else {
+                {{ (mode() === 'buy' ? 'Confirm buy · ' : 'Confirm sell · ') + formatCurrency(total()) }}
+              }
             } @else {
               Review order
             }

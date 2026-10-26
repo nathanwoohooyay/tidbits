@@ -39,4 +39,27 @@ describe('DashboardStockSearchComponent', () => {
       name: 'ZZZZNOTASTOCK',
     });
   });
+
+  it('finds coins and ETFs by name, nickname and Fauxnance symbol', () => {
+    const component = new DashboardStockSearchComponent();
+    const first = (term: string) => { component.onInput(term); return component.results()[0]?.ticker; };
+
+    expect(first('bitcoin')).toBe('BTC');
+    expect(first('btc')).toBe('BTC');
+    expect(first('X:BTC-USD')).toBe('BTC');
+    expect(first('doge')).toBe('DOGE');
+    expect(first('gold')).toBe('GLD');
+    expect(first('dow jones')).toBe('DIA');
+    component.onInput('s&p 500');
+    expect(component.results().map(r => r.ticker)).toEqual(expect.arrayContaining(['SPY', 'VOO']));
+  });
+
+  it('labels coins and ETFs in the results', () => {
+    const component = new DashboardStockSearchComponent();
+    component.onInput('crypto');
+    expect(component.results().length).toBeGreaterThan(0);
+    expect(component.results().every(r => r.kind === 'crypto')).toBe(true);
+    component.onInput('AAPL');
+    expect(component.results()[0].kind).toBe('stock');
+  });
 });

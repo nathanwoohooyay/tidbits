@@ -6,13 +6,12 @@ const STEP = 22;            // px between candle centres
 const BODY = 12;            // px candle body width
 const PERIOD_MS = 600;     // each candle trades live for one period, then the chart slides left one STEP
 const RIGHT_GAP = 96;       // px kept clear between the live candle and the right edge
-const LEFT_FADE_PX = 90;    // candles fade out over this many px as they leave on the left
 const MIN_RANGE = 0.05;     // the price scale always spans at least 5% of the price, so a flat stretch isn't magnified
 const WAYPOINTS = 7;        // turning points the live price passes through on its way from open to close
-const UP = '#3FAE77';
-const DOWN = '#D8607A';
-const ALPHA = 0.55;
-const LIVE_ALPHA = 0.9;     // the candle that's trading right now stands out a little from the settled ones
+const UP = '#2FC47F';
+const DOWN = '#EE4D6D';
+const ALPHA = 0.65;
+const LIVE_ALPHA = 0.95;    // the candle that's trading right now stands out a little from the settled ones
 const TOP_PAD = 0.08;       // share of the band left empty above the highest high
 const BOTTOM_PAD = 0.1;     // and below the lowest low
 
@@ -190,8 +189,8 @@ export class AuthBrandPanelComponent implements AfterViewInit {
     if (this.panX === null) {
       this.panX = this.width - RIGHT_GAP;
     }
-    // Drop candles once they have slid far enough left to be fully faded out.
-    const onScreen = Math.ceil((this.panX + STEP + LEFT_FADE_PX) / STEP) + 1;
+    // Drop candles once they have slid off the left edge.
+    const onScreen = Math.ceil((this.panX + STEP) / STEP) + 1;
     if (this.candles.length > onScreen) {
       this.candles.splice(0, this.candles.length - onScreen);
     }
@@ -230,9 +229,6 @@ export class AuthBrandPanelComponent implements AfterViewInit {
     const range = Math.max(this.hi - this.lo, 1e-6);
     const y = (v: number) => height * TOP_PAD + (1 - (v - this.lo) / range) * height * (1 - TOP_PAD - BOTTOM_PAD);
 
-    // Candles fade as they near the left edge, so they leave the frame gradually rather than being cut off.
-    const edge = (x: number) => Math.min(1, Math.max(0, x / LEFT_FADE_PX));
-
     ctx.clearRect(0, 0, width, height);
 
     // Faint dashed line from the left edge to the right at the live price, like a last-price line.
@@ -252,7 +248,7 @@ export class AuthBrandPanelComponent implements AfterViewInit {
       if (x < -STEP || x > width + STEP) {
         continue;
       }
-      ctx.globalAlpha = (i === n - 1 ? LIVE_ALPHA : ALPHA) * edge(x);
+      ctx.globalAlpha = i === n - 1 ? LIVE_ALPHA : ALPHA;
       ctx.fillStyle = c.close >= c.open ? UP : DOWN;
       ctx.fillRect(Math.round(x) - 0.5, y(c.high), 1, Math.max(1, y(c.low) - y(c.high)));
       const top = y(Math.max(c.open, c.close));

@@ -182,6 +182,9 @@ export class DashboardChartComponent {
   private values = new Map<string, number>();
   private viewKey = '';
   private gliding = false;
+  // Set by the user's own wheel/drag/touch on the chart; until then the view is the selected timeframe, even if the
+  // chart's size settles after it was drawn (e.g. while a panel is still sliding in).
+  private userMoved = false;
   private stopGlide = () => {};
 
   constructor() {
@@ -226,6 +229,10 @@ export class DashboardChartComponent {
       this.series = this.chart.addSeries(BaselineSeries, { lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
       this.chart.subscribeCrosshairMove(param => this.onCrosshair(param));
       this.chart.timeScale().subscribeVisibleLogicalRangeChange(range => this.onVisibleRange(range));
+      this.chart.timeScale().subscribeSizeChange(() => this.refitIfUntouched());
+      for (const type of ['wheel', 'pointerdown', 'touchstart']) {
+        host.addEventListener(type, () => this.userMoved = true, { passive: true });
+      }
     } else {
       this.chart.applyOptions(options);
     }
@@ -252,6 +259,7 @@ export class DashboardChartComponent {
     // Clear the old view so the header switches to the new timeframe straight away instead of reading as zoomed.
     this.visible.set(null);
     this.gliding = true;
+    this.userMoved = false;
     this.stopGlide = animateRange(this.chart!, rangeFor(this.chart!, span.first, span.last), () => {
       this.gliding = false;
       this.onVisibleRange(this.chart!.timeScale().getVisibleLogicalRange());
@@ -286,12 +294,20 @@ export class DashboardChartComponent {
     if (v?.first === current?.first && v?.last === current?.last) {
       return;
     }
-    // Mid-glide the view passes through in-between spans; only the end result counts as the user's zoom.
+    // Mid-glide the view passes through in-between spans, and before the user touches the chart any difference is
+    // just layout settling; only the user's own zoom counts.
     if (!this.gliding) {
-      this.visible.set(v);
+      this.visible.set(this.userMoved ? v : null);
     }
     if (this.series) {
-      this.updateStart(v?.first);
+      this.updateStart(this.userMoved || this.gliding ? v?.first : this.timeframeSpan()?.first);
+    }
+  }
+
+  private refitIfUntouched() {
+    const span = this.timeframeSpan();
+    if (this.chart && span && !this.userMoved && !this.gliding) {
+      this.chart.timeScale().setVisibleLogicalRange(rangeFor(this.chart, span.first, span.last));
     }
   }
 

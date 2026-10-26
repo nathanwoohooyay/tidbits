@@ -14,6 +14,11 @@
   min-width: 0;
 }
 
+/* Watchlist sits under Holdings in the right-hand column. */
+.rail-watchlist {
+  margin-top: 2.5rem;
+}
+
 /* Grid items default to their content's width; let charts and tables shrink to the screen instead. */
 .dashboard-main > *,
 .dashboard-rail > * {
@@ -25,11 +30,22 @@
    below that they move above the chart so they stay near the top. */
 @media (min-width: 1200px) {
   .dashboard-body {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-    gap: 3rem;
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+    gap: 2.5rem;
+  }
+
+  /* A thin vertical line between the main column and the holdings. */
+  .dashboard-rail {
+    align-self: stretch;
+    padding-left: 2.5rem;
+    border-left: 1px solid var(--clr-hairline);
+  }
+
+  .dashboard-main {
+    align-self: start;
   }
 }
+
 
 @media (max-width: 1199px) {
   .dashboard-rail {

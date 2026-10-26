@@ -152,7 +152,7 @@ export class NotFoundPageComponent {
   readonly session = inject(SessionService);
 
   home() {
-    return this.session.isAuthenticated() ? '/maindashboard' : '/login';
+    return this.session.isAuthenticated() ? '/dashboard' : '/login';
   }
 
   back() {

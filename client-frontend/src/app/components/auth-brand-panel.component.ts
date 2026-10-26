@@ -75,7 +75,7 @@ function openCandle(prevClose: number): Candle {
   template: `
     <div class="auth-brand-logo">
       <app-brand-logo [size]="34"></app-brand-logo>
-      <span>BitTrader</span>
+      <span class="auth-wordmark">BitTrader</span>
     </div>
 
     <h2 class="auth-brand-headline">Grow your wealth,<br>bit by bit.</h2>

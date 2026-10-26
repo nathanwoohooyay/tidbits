@@ -9,9 +9,16 @@
           <p class="modal-sub">{{ stock.name }}</p>
           </div>
         </div>
-        <button type="button" class="modal-close" (click)="requestClose()" aria-label="Close trade window">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-        </button>
+        <div class="modal-head-actions">
+          <button type="button" class="watch-toggle" [class.on]="watching()" (click)="toggleWatch()"
+                  [attr.aria-pressed]="watching()" [attr.aria-label]="(watching() ? 'Remove ' : 'Add ') + stock.ticker + (watching() ? ' from' : ' to') + ' watchlist'"
+                  [title]="watching() ? 'On your watchlist' : 'Add to watchlist'">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.8 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5 2.7.9-5.6-4-3.9 5.6-.8z"/></svg>
+          </button>
+          <button type="button" class="modal-close" (click)="requestClose()" aria-label="Close trade window">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
       </header>
 
       @if (quoteLoading()) {
@@ -86,7 +93,9 @@
           <p class="trade-asof">Quote as of {{ q.asOf | date:'MMM d, h:mm:ss a' }}{{ q.stale ? ' · delayed' : '' }}</p>
         </section>
 
-        <form class="trade-form" (ngSubmit)="submit()">
+        <!-- Two steps: fill in the order, then review it and confirm. -->
+        <form class="trade-form" (ngSubmit)="reviewing() ? submit() : review()">
+          @if (!reviewing()) {
           <div class="trade-mode-toggle" role="group" aria-label="Order side">
             <button type="button" class="trade-mode-btn buy" [class.active]="mode() === 'buy'" [attr.aria-pressed]="mode() === 'buy'" (click)="setMode('buy')">Buy</button>
             <button type="button" class="trade-mode-btn sell" [class.active]="mode() === 'sell'" [attr.aria-pressed]="mode() === 'sell'" (click)="setMode('sell')" [disabled]="ownedQuantity() <= 0">Sell</button>
@@ -145,6 +154,25 @@
               <span>{{ formatCurrency(total()) }}</span>
             </div>
           </div>
+          } @else {
+            <div class="order-review" aria-labelledby="order-review-title">
+              <p id="order-review-title" class="review-kicker">Review your order</p>
+              <p class="review-headline">
+                <span [class.gain-text]="mode() === 'buy'" [class.loss-text]="mode() === 'sell'">{{ mode() === 'buy' ? 'Buy' : 'Sell' }}</span>
+                {{ formatShares(orderQuantity()) }} {{ q.symbol }}
+              </p>
+              <dl class="review-rows" aria-live="polite">
+                <div><dt>Market price</dt><dd>{{ formatCurrency(q.price) }}</dd></div>
+                <div><dt>Shares</dt><dd>{{ formatShares(orderQuantity()) }}</dd></div>
+                <div class="review-total"><dt>{{ mode() === 'buy' ? 'Estimated cost' : 'Estimated proceeds' }}</dt><dd>{{ formatCurrency(total()) }}</dd></div>
+                <div><dt>Cash after</dt><dd>{{ formatCurrency(cashAfter()) }}</dd></div>
+                <div><dt>{{ q.symbol }} after</dt><dd>{{ formatShares(positionAfter()) }} sh</dd></div>
+                <div><dt>Account</dt><dd>{{ accountName() }}</dd></div>
+              </dl>
+              <p class="review-note">Market order: it fills at the current price, which can move slightly before it does.</p>
+              <button type="button" class="btn-link review-back" (click)="editOrder()" [disabled]="submitting() || filled()">← Edit order</button>
+            </div>
+          }
 
           @if (validationMessage()) {
             <div class="trade-error" role="alert">{{ validationMessage() }}</div>
@@ -161,8 +189,10 @@
             } @else if (submitting()) {
               <span class="btn-spinner" aria-hidden="true"></span>
               Placing order…
+            } @else if (reviewing()) {
+              {{ (mode() === 'buy' ? 'Confirm buy · ' : 'Confirm sell · ') + formatCurrency(total()) }}
             } @else {
-              {{ (mode() === 'buy' ? 'Buy ' : 'Sell ') + q.symbol }}
+              Review order
             }
           </button>
         </form>

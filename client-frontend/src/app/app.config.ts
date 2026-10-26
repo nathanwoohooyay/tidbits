@@ -5,6 +5,9 @@ import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-exper
 import {routes} from './routes';
 import {authInterceptor} from './services/auth-interceptor';
 
+// How long the sidebar/section cascade keeps going after the pan (last item's delay plus its duration).
+const ARRIVAL_TAIL_MS = 1200;
+
 const leafPath = (route: ActivatedRouteSnapshot) => {
   while (route.firstChild) {
     route = route.firstChild;
@@ -12,8 +15,9 @@ const leafPath = (route: ActivatedRouteSnapshot) => {
   return route.routeConfig?.path ?? '';
 };
 
-// Two navigations are animated (styles under html.auth-handoff / html.auth-swap in styles.css): signing in, where the
-// sign-in screen shrinks into the sidebar, and switching between sign-in and sign-up, where only the form cross-fades.
+// Two navigations are animated (styles under html.auth-handoff / html.auth-arrive / html.auth-swap in styles.css):
+// signing in, where the sign-in screen pans away left and the dashboard's sidebar and sections cascade in, and
+// switching between sign-in and sign-up, where only the form cross-fades.
 // Every other navigation swaps instantly as before.
 const signInTransition = withViewTransitions({
   skipInitialTransition: true,
@@ -25,13 +29,16 @@ const signInTransition = withViewTransitions({
       transition.finished.finally(() => root.classList.remove('auth-swap'));
       return;
     }
-    if (leafPath(from) !== 'login' || !['maindashboard', 'dashboard'].includes(leafPath(to))) {
+    if (leafPath(from) !== 'login' || leafPath(to) !== 'dashboard') {
       transition.skipTransition();
       return;
     }
-    root.style.setProperty('--vt-brand', getComputedStyle(document.body).getPropertyValue('--clr-header-bg'));
-    root.classList.add('auth-handoff');
-    transition.finished.finally(() => root.classList.remove('auth-handoff'));
+    // auth-arrive drives the cascade on the real page, which carries on after the transition itself has finished.
+    root.classList.add('auth-handoff', 'auth-arrive');
+    transition.finished.finally(() => {
+      root.classList.remove('auth-handoff');
+      setTimeout(() => root.classList.remove('auth-arrive'), ARRIVAL_TAIL_MS);
+    });
   },
 });
 

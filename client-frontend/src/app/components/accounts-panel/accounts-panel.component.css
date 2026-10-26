@@ -1,0 +1,343 @@
+/* Full-height panel pinned to the right edge; slides in from the right and back out on close. `display` and `overlay`
+   transition discretely so it stays visible until the slide-out has finished. */
+.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(600px, 100vw);
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-left: 1px solid var(--clr-hairline);
+  background: var(--page-background);
+  color: var(--clr-text);
+  box-shadow: -24px 0 60px var(--clr-shadow-deep);
+  overscroll-behavior: contain;
+  transform: translateX(100%);
+  transition:
+    transform .34s cubic-bezier(.2, .8, .2, 1),
+    display .34s allow-discrete,
+    overlay .34s allow-discrete;
+}
+
+.drawer[open] {
+  transform: none;
+}
+
+@starting-style {
+  .drawer[open] {
+    transform: translateX(100%);
+  }
+}
+
+.drawer::backdrop {
+  background: var(--clr-overlay);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity .34s ease, display .34s allow-discrete, overlay .34s allow-discrete;
+}
+
+.drawer[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .drawer[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+.drawer-body {
+  display: grid;
+  gap: 2rem;
+  padding: 1.75rem 2rem 3rem;
+}
+
+.drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.drawer-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -.025em;
+  color: var(--clr-espresso);
+}
+
+.drawer-sub {
+  margin-top: .25rem;
+  font-size: .88rem;
+  color: var(--clr-sienna);
+}
+
+/* --- Account list ------------------------------------------------------------------------------------------- */
+
+.account-list {
+  display: grid;
+}
+
+.account-item {
+  border-bottom: 1px solid var(--clr-hairline);
+}
+
+.account-item:last-child {
+  border-bottom: none;
+}
+
+.account-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8.5rem auto;
+  align-items: center;
+  gap: 1rem;
+  padding: .875rem .5rem;
+  border-radius: var(--radius-md);
+  transition: background var(--transition);
+}
+
+.account-row:hover {
+  background: color-mix(in oklab, var(--clr-surface-soft) 70%, transparent);
+}
+
+.account-ident {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+}
+
+/* Up to three holding logos side by side (they have no backing circle, so they must not overlap). */
+.logo-stack {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  flex: none;
+  width: 4.5rem;
+}
+
+.logo-stack-empty {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 1px dashed var(--clr-border-mid);
+}
+
+.account-ident-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The account name is the row's link; its ::after covers the row so the whole row is clickable. */
+.account-open {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--clr-espresso);
+  font-size: .95rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.account-open:focus-visible {
+  outline: none;
+}
+
+.account-open:focus-visible::after {
+  outline: 2px solid var(--clr-accent-ink);
+  outline-offset: -2px;
+  border-radius: var(--radius-md);
+}
+
+.account-sub {
+  font-size: .76rem;
+  color: var(--clr-sienna);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.num-stack {
+  display: grid;
+  justify-items: end;
+  gap: .125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.num-stack .price-value {
+  font-size: .95rem;
+}
+
+.num-label {
+  font-size: .72rem;
+  color: var(--clr-sienna);
+}
+
+/* Sits above the stretched row link so its buttons stay their own click targets. */
+.row-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--clr-sienna);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.icon-button:hover,
+.icon-button[aria-expanded="true"] {
+  background: var(--clr-surface-soft);
+  color: var(--clr-espresso);
+}
+
+.icon-button svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- Create / rename / delete ------------------------------------------------------------------------------- */
+
+.inline-editor {
+  display: grid;
+  gap: .5rem;
+  padding: .25rem .5rem 1.25rem 5.75rem;
+  animation: fadeIn .2s ease both;
+}
+
+.create-editor {
+  padding: 1rem .5rem;
+  border-bottom: 1px solid var(--clr-hairline);
+}
+
+.inline-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.inline-row input {
+  flex: 1;
+  min-width: 0;
+  padding: .5rem .75rem;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  background: var(--clr-input-bg);
+  color: var(--clr-espresso);
+  font-size: .9rem;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.inline-row input:focus {
+  border-color: var(--clr-accent-ink);
+  box-shadow: 0 0 0 3px var(--clr-focus);
+}
+
+.inline-row .btn-primary,
+.btn-danger {
+  padding: .5rem 1rem;
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  border: 1px solid var(--clr-loss-strong);
+  border-radius: var(--radius-md);
+  background: var(--clr-loss-strong);
+  color: #FFFFFF;
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.btn-danger:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.danger-link {
+  justify-self: start;
+  color: var(--clr-loss);
+  font-size: .8rem;
+}
+
+.danger-link:hover {
+  color: var(--clr-loss);
+  text-decoration: underline;
+}
+
+.danger-copy {
+  margin-bottom: .5rem;
+  font-size: .85rem;
+  color: var(--clr-text);
+}
+
+.inline-error {
+  font-size: .8rem;
+  color: var(--clr-loss);
+}
+
+@media (max-width: 720px) {
+  .drawer-body {
+    padding: 1.25rem 1rem 2rem;
+    gap: 1.5rem;
+  }
+
+  .account-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: .5rem;
+  }
+
+  .row-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .inline-editor {
+    padding-left: .5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .drawer::backdrop {
+    transition: none;
+  }
+}

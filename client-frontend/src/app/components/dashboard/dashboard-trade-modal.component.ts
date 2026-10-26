@@ -16,6 +16,7 @@ import { ChartSkeletonComponent } from './chart-skeleton.component';
 import { ErrorStateComponent } from '../error-state.component';
 import { RollingNumberComponent } from '../rolling-number.component';
 import { ToastService } from '../../services/toast.service';
+import { WatchlistService } from '../../services/watchlist.service';
 
 const formatShares = (qty: number) => qty.toLocaleString(undefined, { maximumFractionDigits: 4 });
 
@@ -41,6 +42,7 @@ export class DashboardTradeModalComponent implements OnDestroy {
   private readonly orderService = inject(OrderService);
   private readonly queries = inject(PortfolioQueries);
   private readonly toasts = inject(ToastService);
+  private readonly watchlist = inject(WatchlistService);
   private readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('dialog');
   private readonly priceChart = viewChild(StockPriceChartComponent);
 
@@ -69,6 +71,8 @@ export class DashboardTradeModalComponent implements OnDestroy {
   readonly submitting = signal(false);
   // The submit button shows a check for a moment after a fill, then the window closes and a toast confirms.
   readonly filled = signal(false);
+  // Second step: the filled-in order is shown for review before it's placed. Editing anything goes back a step.
+  readonly reviewing = signal(false);
   readonly result = signal<{ kind: 'success' | 'error'; text: string } | null>(null);
   // What the window shows. Kept for a moment after `target` clears so the content stays put while it animates out.
   readonly shown = signal<TradeTarget | null>(null);
@@ -185,6 +189,18 @@ export class DashboardTradeModalComponent implements OnDestroy {
     }
     return '';
   });
+  // What the account looks like if the order fills at the current price.
+  readonly cashAfter = computed(() => this.mode() === 'buy' ? this.cashBalance() - this.total() : this.cashBalance() + this.total());
+  readonly positionAfter = computed(() =>
+    Math.max(0, this.mode() === 'buy' ? this.ownedQuantity() + this.orderQuantity() : this.ownedQuantity() - this.orderQuantity()));
+
+  // Whether this stock is on the user's watchlist (the star in the header).
+  private readonly watchlistQuery = injectQuery(() => ({
+    ...this.watchlist.list(this.watchlist.userId()),
+    enabled: this.watchlist.userId() > 0 && !!this.ticker(),
+  }));
+  readonly watching = computed(() => (this.watchlistQuery.data() ?? []).some(item => item.ticker === this.ticker()));
+
   readonly canSubmit = computed(() =>
     !!this.quote()?.instrumentId && this.orderQuantity() > 0 && !this.validationMessage() && !this.submitting()
       && !this.filled() && this.accountId() > 0
@@ -208,16 +224,19 @@ export class DashboardTradeModalComponent implements OnDestroy {
 
   setMode(mode: TradeMode) {
     this.mode.set(mode);
+    this.reviewing.set(false);
     this.result.set(null);
   }
 
   setQuantity(value: number | null) {
     this.quantity.set(value);
+    this.reviewing.set(false);
     this.result.set(null);
   }
 
   setDollarAmount(value: number | null) {
     this.dollarAmount.set(value);
+    this.reviewing.set(false);
     this.result.set(null);
   }
 
@@ -235,6 +254,7 @@ export class DashboardTradeModalComponent implements OnDestroy {
       this.quantity.set(qty > 0 ? qty : null);
     }
     this.inputMode.set(mode);
+    this.reviewing.set(false);
     this.result.set(null);
   }
 
@@ -263,6 +283,24 @@ export class DashboardTradeModalComponent implements OnDestroy {
       this.setDollarAmount(this.maxDollars() || null);
     } else {
       this.setQuantity(this.maxQuantity() || null);
+    }
+  }
+
+  review() {
+    if (this.canSubmit()) {
+      this.result.set(null);
+      this.reviewing.set(true);
+    }
+  }
+
+  editOrder() {
+    this.reviewing.set(false);
+  }
+
+  toggleWatch() {
+    const stock = this.shown();
+    if (stock) {
+      void this.watchlist.toggle(stock.ticker, stock.name);
     }
   }
 
@@ -333,6 +371,7 @@ export class DashboardTradeModalComponent implements OnDestroy {
     this.dollarAmount.set(null);
     this.result.set(null);
     this.filled.set(false);
+    this.reviewing.set(false);
     this.zoomInfo.set(null);
     if (this.clearShownTimer) {
       clearTimeout(this.clearShownTimer);

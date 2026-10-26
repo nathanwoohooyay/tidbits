@@ -7,6 +7,10 @@ import { BrandLogoComponent } from '../../components/brand-logo.component';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
 import { ToastService } from '../../services/toast.service';
+import { PortfolioQueries } from '../../services/portfolio-queries';
+
+// Longest the spinner waits for the dashboard to preload before handing off anyway (it then finishes loading there).
+const PRELOAD_CAP_MS = 6000;
 
 @Component({
   selector: 'app-login-page',
@@ -21,6 +25,7 @@ export class LoginPageComponent {
   private readonly router = inject(Router);
   private readonly title = inject(Title);
   private readonly toasts = inject(ToastService);
+  private readonly queries = inject(PortfolioQueries);
   // The app is zoneless: state changed after an HTTP response or a timer has to ask for a re-render.
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -72,14 +77,16 @@ export class LoginPageComponent {
         }
 
         this.session.setAuthToken(res.token);
+        // Keep spinning while the dashboard's code and data load, so it's complete the moment the screen hands off.
+        await Promise.race([this.preloadDashboard(), new Promise(resolve => setTimeout(resolve, PRELOAD_CAP_MS))]);
         this.loginLoading = false;
         this.loginDone = true;
         this.cdr.markForCheck();
         // Long enough to see the button turn green and the check draw in.
         await new Promise(resolve => setTimeout(resolve, 700));
-        await this.router.navigateByUrl('/maindashboard');
-        // After the hand-off animation has settled.
-        setTimeout(() => this.toasts.show({ kind: 'success', title: `Welcome back, ${username}`, message: 'You\'re signed in to BitTrader.' }), 800);
+        await this.router.navigateByUrl('/dashboard');
+        // After the pan and the sidebar/section cascade have settled.
+        setTimeout(() => this.toasts.show({ kind: 'success', title: `Welcome back, ${username}`, message: 'You\'re signed in to BitTrader.' }), 2700);
       },
       error: err => {
         this.loginLoading = false;
@@ -87,6 +94,14 @@ export class LoginPageComponent {
         this.triggerShake();
       }
     });
+  }
+
+  private async preloadDashboard() {
+    const userId = this.session.getAuthenticatedUserId() ?? 0;
+    await Promise.allSettled([
+      import('../dashboard-page/dashboard-page'),
+      userId > 0 ? this.queries.preloadDashboard(userId, this.session.selectedAccountId()) : Promise.resolve(),
+    ]);
   }
 
   // Restart the shake on every failure: clear it, then set it again on the next tick so the animation replays.

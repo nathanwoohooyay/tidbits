@@ -17,6 +17,7 @@ import { DashboardCashModalComponent, TRANSFER_DONE_MS, transferToast } from '..
 import { ToastService } from '../../services/toast.service';
 import { AllocationBarComponent } from '../../components/dashboard/allocation-bar.component';
 import { ErrorStateComponent } from '../../components/error-state.component';
+import { DashboardWatchlistComponent } from '../../components/dashboard/dashboard-watchlist.component';
 import { AccountDto, AccountService } from '../../services/account.service';
 import { PortfolioQueries, REFRESH_INTERVAL_MS } from '../../services/portfolio-queries';
 
@@ -37,6 +38,7 @@ import { PortfolioQueries, REFRESH_INTERVAL_MS } from '../../services/portfolio-
     DashboardTradeModalComponent,
     DashboardTradeHistoryComponent,
     ErrorStateComponent,
+    DashboardWatchlistComponent,
   ],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css'

@@ -5,13 +5,12 @@ import { Instrument, TradeTarget, TrendFilter } from './dashboard.models';
 import { formatCurrency, formatPercent } from './dashboard.utils';
 import { tickerToName } from './stock';
 import { PricingQuoteDTO } from '../../services/pricing.service';
-import { PortfolioQueries, REFRESH_INTERVAL_MS } from '../../services/portfolio-queries';
+import { MARKET_SYMBOLS, PortfolioQueries, REFRESH_INTERVAL_MS } from '../../services/portfolio-queries';
 import { SparklineComponent } from './sparkline.component';
 import { TickerLogoComponent } from './ticker-logo.component';
 import { SkeletonRowsComponent } from '../skeleton-rows.component';
 import { ErrorStateComponent } from '../error-state.component';
 
-const MARKET_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'WMT', 'AMZN', 'META', 'TSLA'];
 
 @Component({
   selector: 'app-dashboard-market-snapshot',

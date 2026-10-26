@@ -180,6 +180,9 @@ export class StockPriceChartComponent {
   private viewKey = '';
   private visibleKey = '';
   private gliding = false;
+  // Set by the user's own wheel/drag/touch on the chart; until then the view is the selected range, even if the
+  // chart's size settles after it was drawn (the trade window is still opening when it first renders).
+  private userMoved = false;
   private stopGlide = () => {};
 
   constructor() {
@@ -211,6 +214,10 @@ export class StockPriceChartComponent {
       this.chart = createChart(this.host().nativeElement, baseChartOptions(palette));
       this.chart.subscribeCrosshairMove(param => this.onCrosshair(param));
       this.chart.timeScale().subscribeVisibleLogicalRangeChange(range => this.onVisibleRange(range));
+      this.chart.timeScale().subscribeSizeChange(() => this.refitIfUntouched());
+      for (const type of ['wheel', 'pointerdown', 'touchstart']) {
+        this.host().nativeElement.addEventListener(type, () => this.userMoved = true, { passive: true });
+      }
       this.volume = this.chart.addSeries(HistogramSeries, {
         priceScaleId: 'volume',
         priceFormat: { type: 'volume' },
@@ -249,12 +256,15 @@ export class StockPriceChartComponent {
         this.glideTo(span);
       }
     }
-    this.updateBaseline(visibleIndices(this.chart.timeScale().getVisibleLogicalRange(), candles.length)?.first ?? span?.first);
+    this.updateBaseline(this.userMoved
+      ? visibleIndices(this.chart.timeScale().getVisibleLogicalRange(), candles.length)?.first
+      : span?.first);
   }
 
   private glideTo(span: { first: number; last: number }) {
     this.stopGlide();
     this.gliding = true;
+    this.userMoved = false;
     this.emitVisible(null);
     this.stopGlide = animateRange(this.chart!, rangeFor(this.chart!, span.first, span.last, this.mode() === 'candles'), () => {
       this.gliding = false;
@@ -312,12 +322,12 @@ export class StockPriceChartComponent {
   private onVisibleRange(range: LogicalRange | null) {
     const candles = this.validCandles();
     const v = visibleIndices(range, candles.length);
-    this.updateBaseline(v?.first);
+    this.updateBaseline(this.userMoved || this.gliding ? v?.first : this.viewSpan()?.first);
     if (this.gliding) {
       return;
     }
     const span = this.viewSpan();
-    if (!v || !span || (v.first === span.first && v.last === span.last) || v.last - v.first < 1) {
+    if (!this.userMoved || !v || !span || (v.first === span.first && v.last === span.last) || v.last - v.first < 1) {
       this.emitVisible(null);
       return;
     }
@@ -328,6 +338,13 @@ export class StockPriceChartComponent {
       change: value(first) ? ((value(last) - value(first)) / value(first)) * 100 : 0,
       label: formatDayRange(first.date, last.date),
     }, `${v.first}:${v.last}`);
+  }
+
+  private refitIfUntouched() {
+    const span = this.viewSpan();
+    if (this.chart && span && !this.userMoved && !this.gliding) {
+      this.chart.timeScale().setVisibleLogicalRange(rangeFor(this.chart, span.first, span.last, this.mode() === 'candles'));
+    }
   }
 
   private emitVisible(info: { change: number; label: string } | null, key = '') {

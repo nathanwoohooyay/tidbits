@@ -22,8 +22,8 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/maindashboard-page/maindashboard').then(m => m.Maindashboard) },
   { path: 'account', canActivate:[authGuard],
     loadComponent: () => import('./pages/account-page/account-page').then(m => m.AccountPageComponent) },
-  { path: 'account-management', canActivate:[authGuard],
-    loadComponent: () => import('./pages/account-management-page/account-management-page').then(m => m.AccountManagementPageComponent) },
+  // Trading accounts are now managed from the Overview's Manage accounts panel.
+  { path: 'account-management', redirectTo: 'maindashboard' },
   { path: 'rewards', canActivate:[authGuard],
     loadComponent: () => import('./pages/rewards-page/rewards-page').then(m => m.RewardsPageComponent) },
   { path: '**',

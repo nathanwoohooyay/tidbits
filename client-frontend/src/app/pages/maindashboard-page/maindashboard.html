@@ -60,14 +60,17 @@
 
         <section class="section-card" aria-label="Account portfolio summaries">
           <div class="section-header">
-            <span class="section-title">Accounts</span>
-            <span class="section-meta">{{ accountSummaries().length }} account{{ accountSummaries().length !== 1 ? 's' : '' }}</span>
+            <span class="section-title">
+              Accounts
+              <span class="section-meta">{{ accountSummaries().length }} account{{ accountSummaries().length !== 1 ? 's' : '' }}</span>
+            </span>
+            <button type="button" class="btn-trade manage-accounts-btn" (click)="manageOpen.set(true)" aria-haspopup="dialog">Manage accounts</button>
           </div>
 
           @if (accountSummaries().length === 0) {
             <div class="empty-state">
               No accounts found.
-              <button type="button" class="btn-link" routerLink="/account-management">Add an account</button>
+              <button type="button" class="btn-link" (click)="manageOpen.set(true)">Add an account</button>
               to view portfolio summaries.
             </div>
           } @else {
@@ -120,6 +123,12 @@
     </div>
   </main>
 </div>
+
+<app-accounts-panel
+  [open]="manageOpen()"
+  (openAccount)="openAccountDashboard($event)"
+  (closed)="manageOpen.set(false)">
+</app-accounts-panel>
 
 <app-dashboard-cash-modal
   [open]="!!transferAccount()"

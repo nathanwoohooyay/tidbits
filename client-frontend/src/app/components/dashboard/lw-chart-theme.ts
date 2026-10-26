@@ -59,7 +59,9 @@ export function rangeFor(chart: IChartApi, first: number, last: number, keepHalf
   }
   const width = chart.timeScale().width();
   const pad = width > 0 ? (EDGE_PADDING_PX * (last - first)) / Math.max(width - 2 * EDGE_PADDING_PX, 1) : 0;
-  return { from: first + 0.5 - pad, to: last - 0.5 + pad } as LogicalRange;
+  // The right edge lock allows at most half a bar of space after the last point; asking for more on a narrow chart
+  // makes the chart shift the whole view left and drop the first point.
+  return { from: first + 0.5 - pad, to: last - 0.5 + Math.min(pad, 0.5) } as LogicalRange;
 }
 
 // Glides the view from wherever it is to `target` (e.g. 1W -> 3M zooms out smoothly), then calls `onDone`. Jumps

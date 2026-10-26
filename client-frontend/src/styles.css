@@ -767,11 +767,27 @@ html.auth-swap::view-transition-new(auth-form) {
   animation: vt-fade-in .2s ease .08s both
 }
 
-/* Sign-in hand-off to the dashboard (a view transition, only on that navigation; see app.config.ts). The brown sign-in
-   screen shrinks into the sidebar, the logo glides to the sidebar logo, and the dashboard slides in beside it.
-   The pseudo-elements hang off <html>, which can't see body.dark-mode, so the brand colour arrives as --vt-brand. */
-html.auth-handoff .login-screen,
-html.auth-handoff .app-sidebar {
+/* Sign-in hand-off to the dashboard (a view transition, only on that navigation; see app.config.ts). The dashboard is
+   already in place underneath; the sign-in screen slides off to the left like a sheet being pulled away while the logo
+   and wordmark glide to their sidebar spots. Then the sidebar items fly in from the left one after another and the
+   page sections rise into place. --vt-pan is how long the pan takes; everything after it waits for it. */
+:root {
+  --vt-pan: 1.2s;
+  --vt-ease: ease-in-out;
+  /* Once it has stopped over the sidebar, the leftover strip fades into it. */
+  --vt-fade: .25s;
+  /* Where the sliding sign-in screen stops: its right edge lines up with the sidebar's right edge, so it hands over
+     to the sidebar in place. On phones the sidebar is a top bar, so there it slides all the way off. */
+  --vt-pan-to: calc(-100vw + var(--sidebar-width))
+}
+
+@media (max-width: 720px) {
+  :root {
+    --vt-pan-to: -100vw
+  }
+}
+
+html.auth-handoff .login-screen {
   view-transition-name: auth-shell
 }
 
@@ -780,52 +796,79 @@ html.auth-handoff .sidebar-brand app-brand-logo {
   view-transition-name: auth-logo
 }
 
-::view-transition-group(auth-shell),
-::view-transition-group(auth-logo) {
-  animation-duration: .6s;
-  animation-timing-function: cubic-bezier(.2, .8, .2, 1)
+html.auth-handoff .auth-brand-logo .auth-wordmark,
+html.auth-handoff .sidebar-brand .brand-title {
+  view-transition-name: auth-wordmark
 }
 
-::view-transition-image-pair(auth-shell) {
-  overflow: clip;
-  background: var(--vt-brand, #4C2F24)
+/* The new page shows live (no snapshot animation) under the sliding sign-in screen. */
+html.auth-handoff::view-transition-old(root) {
+  display: none
 }
 
-/* Pin both snapshots to the top-left at their natural size, so the shrinking panel crops them instead of squashing. */
-::view-transition-old(auth-shell),
-::view-transition-new(auth-shell) {
-  width: 100%;
-  height: 100%;
-  object-fit: none;
-  object-position: left top
+html.auth-handoff::view-transition-new(root) {
+  animation: none
 }
 
-::view-transition-old(auth-shell) {
-  animation: vt-fade-out .22s ease both
+html.auth-handoff::view-transition-old(auth-shell) {
+  /* Slides to the sidebar's edge, then (sitting exactly over the sidebar, brown on brown) fades into it. Fading while
+     still moving would leave a see-through band over the page. */
+  animation:
+    vt-pan-out var(--vt-pan) var(--vt-ease) both,
+    vt-fade-out var(--vt-fade) ease var(--vt-pan) both
 }
 
-::view-transition-new(auth-shell) {
-  animation: vt-fade-in .3s ease .3s both
+html.auth-handoff::view-transition-group(auth-logo),
+html.auth-handoff::view-transition-group(auth-wordmark) {
+  animation-duration: var(--vt-pan);
+  animation-timing-function: var(--vt-ease)
 }
 
-::view-transition-old(root) {
-  animation: vt-fade-out .2s ease both
+@keyframes vt-pan-out {
+  to { transform: translateX(var(--vt-pan-to)) }
 }
 
-::view-transition-new(root) {
-  animation: vt-slide-in .85s cubic-bezier(.2, .8, .2, 1) .15s both
+/* After the pan: sidebar items fly in from off-screen left, ~60 ms apart (--i is each item's place in the queue). */
+html.auth-arrive .app-sidebar .nav-item,
+html.auth-arrive .app-sidebar .sidebar-account {
+  animation: vt-fly-in .5s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + var(--i, 0) * 60ms) backwards
 }
 
+html.auth-arrive .sidebar-nav > :nth-child(1) { --i: 0 }
+html.auth-arrive .sidebar-nav > :nth-child(2) { --i: 1 }
+html.auth-arrive .sidebar-nav > :nth-child(3) { --i: 2 }
+html.auth-arrive .sidebar-nav > :nth-child(4) { --i: 3 }
+html.auth-arrive .sidebar-nav > :nth-child(5) { --i: 4 }
+html.auth-arrive .sidebar-account { --i: 5 }
+html.auth-arrive .sidebar-footer > :nth-child(1) { --i: 6 }
+html.auth-arrive .sidebar-footer > :nth-child(2) { --i: 7 }
+
+@keyframes vt-fly-in {
+  from { opacity: 0; transform: translateX(-280px) }
+}
+
+/* ...and the page's sections rise into place, one after another. */
+html.auth-arrive .app-content .page > * {
+  animation: vt-rise-in .55s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + 60ms + var(--j, 0) * 80ms) backwards
+}
+
+html.auth-arrive .app-content .page > :nth-child(2) { --j: 1 }
+html.auth-arrive .app-content .page > :nth-child(3) { --j: 2 }
+html.auth-arrive .app-content .page > :nth-child(4) { --j: 3 }
+html.auth-arrive .app-content .page > :nth-child(5) { --j: 4 }
+html.auth-arrive .app-content .page > :nth-child(n + 6) { --j: 5 }
+
+@keyframes vt-rise-in {
+  from { opacity: 0; transform: translateY(18px) }
+}
+
+/* Swap and hand-off fades. */
 @keyframes vt-fade-out {
   to { opacity: 0 }
 }
 
 @keyframes vt-fade-in {
   from { opacity: 0 }
-}
-
-@keyframes vt-slide-in {
-  from { opacity: 0; transform: translateX(56px) }
 }
 
 .login-card .login-brand {
@@ -1451,30 +1494,23 @@ app-rolling-number.metric-value {
   gap: .25rem 1rem
 }
 
+/* Today's change beside a total: plain coloured text on the page background (green up, red down, muted unchanged). */
 .day-change {
   display: inline-flex;
   align-items: baseline;
   gap: .25rem;
-  padding: .15rem .5rem;
-  border-radius: var(--radius-pill);
   font-size: .86rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap
-}
-
-.day-change {
-  background: var(--clr-surface-soft);
+  white-space: nowrap;
   color: var(--clr-sienna)
 }
 
 .day-change.positive {
-  background: var(--clr-gain-light);
   color: var(--clr-gain)
 }
 
 .day-change.negative {
-  background: var(--clr-loss-light);
   color: var(--clr-loss)
 }
 
@@ -2186,6 +2222,16 @@ app-rolling-number.metric-value {
 
   .auth-submit.is-shake {
     animation: shake .45s cubic-bezier(.36, .07, .19, .97) both !important
+  }
+
+  /* The one-off sign-in arrival still plays too. */
+  html.auth-arrive .app-sidebar .nav-item,
+  html.auth-arrive .app-sidebar .sidebar-account {
+    animation: vt-fly-in .5s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + var(--i, 0) * 60ms) backwards !important
+  }
+
+  html.auth-arrive .app-content .page > * {
+    animation: vt-rise-in .55s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + 60ms + var(--j, 0) * 80ms) backwards !important
   }
 }
 

@@ -44,6 +44,15 @@ CREATE TABLE instruments(
     prev_close NUMERIC(15, 2)
 );
 
+-- Stocks a user follows on the dashboard. Stored by ticker (not instrument) so any searchable stock can be watched.
+CREATE TABLE watchlist_items (
+    watchlist_item_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(user_id),
+    ticker TEXT NOT NULL CHECK (length(ticker) BETWEEN 1 AND 8),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    UNIQUE (user_id, ticker)
+);
+
 CREATE TABLE account_holdings (
     account_id INT NOT NULL REFERENCES accounts(account_id),
     instrument_id INT NOT NULL REFERENCES instruments(instrument_id),

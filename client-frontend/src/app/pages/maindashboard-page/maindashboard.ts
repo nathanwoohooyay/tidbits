@@ -17,6 +17,7 @@ import { RollingNumberComponent } from '../../components/rolling-number.componen
 import { SkeletonRowsComponent } from '../../components/skeleton-rows.component';
 import { ChartSkeletonComponent } from '../../components/dashboard/chart-skeleton.component';
 import { ErrorStateComponent } from '../../components/error-state.component';
+import { AccountsPanelComponent } from '../../components/accounts-panel/accounts-panel.component';
 import {
   HoldingDTO, PortfolioQueries, REFRESH_INTERVAL_MS, aggregateSnapshotsByDay, snapshotSeriesByAccount
 } from '../../services/portfolio-queries';
@@ -48,7 +49,7 @@ const dayPercent = (change: number, current: number) => {
   standalone: true,
   imports: [
     CommonModule, RollingNumberComponent, SkeletonRowsComponent, ChartSkeletonComponent, ErrorStateComponent, DashboardChartComponent, DashboardHeaderComponent, DashboardCashModalComponent,
-    AllocationBarComponent, TickerLogoComponent, TrendLineComponent, RouterLink,
+    AllocationBarComponent, TickerLogoComponent, TrendLineComponent, RouterLink, AccountsPanelComponent,
   ],
   selector: 'app-maindashboard',
   styleUrl: './maindashboard.css',
@@ -159,6 +160,9 @@ export class Maindashboard implements OnInit {
 
   readonly portfolioSnapshotPoints = computed(() => this.chartQuery.data() ?? []);
   readonly chartLoading = computed(() => this.chartQuery.isPending() && this.userId > 0);
+
+  // The "Manage accounts" panel (create, rename, fund, delete) that slides in from the right.
+  readonly manageOpen = signal(false);
 
   // Transfer pop-up, opened for one account at a time.
   readonly transferAccount = signal<AccountSummary | null>(null);

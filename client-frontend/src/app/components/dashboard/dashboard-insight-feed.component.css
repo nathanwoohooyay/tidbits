@@ -1,0 +1,104 @@
+.insight-feed {
+  width: 50%;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--clr-surface), color-mix(in oklab, var(--clr-surface) 84%, var(--clr-surface-soft) 16%));
+  box-shadow: 0 12px 30px var(--clr-shadow);
+  overflow: hidden;
+}
+
+.insight-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.95rem 1.2rem;
+  border-bottom: 1px solid var(--clr-border);
+  background: color-mix(in oklab, var(--clr-parchment) 78%, transparent 22%);
+  flex-wrap: wrap;
+}
+
+.insight-timestamp {
+  font-size: 0.75rem;
+  color: var(--clr-sienna);
+}
+
+.insight-body {
+  padding: 1rem 1.2rem 1.2rem;
+}
+
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.insight-card {
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--clr-surface-soft) 66%, transparent 34%);
+  padding: 0.8rem;
+}
+
+.insight-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--clr-sienna);
+  margin-bottom: 0.35rem;
+}
+
+.insight-value {
+  font-size: 1.35rem;
+  line-height: 1.1;
+  font-weight: 800;
+  color: var(--clr-espresso);
+}
+
+.insight-subsection {
+  margin-top: 1rem;
+  border: 1px solid color-mix(in oklab, var(--clr-border) 78%, transparent 22%);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--clr-surface) 74%, var(--clr-surface-soft) 26%);
+  padding: 0.8rem;
+}
+
+.insight-subsection h4 {
+  margin: 0 0 0.55rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--clr-espresso);
+}
+
+.insight-row-set {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.insight-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--clr-parchment) 60%, transparent 40%);
+  color: var(--clr-ink-mid);
+  font-size: 0.85rem;
+}
+
+.account-stat-row {
+  align-items: baseline;
+}
+
+.insight-subject {
+  color: var(--clr-espresso);
+}
+
+@media (max-width: 840px) {
+  .insight-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

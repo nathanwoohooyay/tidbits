@@ -8,19 +8,16 @@
 
   <main class="app-content" role="main">
     <div class="page dashboard-grid">
-      <app-dashboard-greeting
-        [username]="currentUser()?.username ?? ''"
-        [accountNickname]="selectedAccount()?.nickname ?? 'No account selected'"
-        [today]="today"
-        [loading]="greetingLoading()">
+      <div class="dashboard-search-row">
         <app-dashboard-stock-search (stockSelected)="openTrade($event)"></app-dashboard-stock-search>
-      </app-dashboard-greeting>
+      </div>
 
       <app-dashboard-metrics
         [loading]="metricsLoading()"
         [totalNetWorth]="totalNetWorth()"
         [cashBalance]="cashBalance()"
         [portfolioValue]="portfolioValue()"
+        [accountName]="selectedAccount()?.nickname ?? ''"
         [portfolioGainLoss]="portfolioGainLoss()"
         [dayChange]="dayChange()"
         [dayChangePercent]="dayChangePercent()"

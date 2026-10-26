@@ -4,11 +4,10 @@ import { BrandLogoComponent } from './brand-logo.component';
 // Illustrative live candlestick ticker (random data, not a real market) along the bottom of the sign-in screens.
 const STEP = 22;            // px between candle centres
 const BODY = 12;            // px candle body width
-const PERIOD_MS = 600;     // each candle trades live for one period; once the chart is full it slides left one STEP
-const FIRST_X = 22;         // px from the left edge to the first candle
-const RIGHT_GAP = 96;       // the chart starts panning once a candle would open closer than this to the right edge
-const LEFT_FADE_PX = 90;    // once panning, candles fade out over this many px as they leave on the left
-const MIN_RANGE = 0.05;     // the price scale always spans at least 5% of the price, so the first few candles aren't huge
+const PERIOD_MS = 600;     // each candle trades live for one period, then the chart slides left one STEP
+const RIGHT_GAP = 96;       // px kept clear between the live candle and the right edge
+const LEFT_FADE_PX = 90;    // candles fade out over this many px as they leave on the left
+const MIN_RANGE = 0.05;     // the price scale always spans at least 5% of the price, so a flat stretch isn't magnified
 const WAYPOINTS = 7;        // turning points the live price passes through on its way from open to close
 const UP = '#3FAE77';
 const DOWN = '#D8607A';
@@ -93,10 +92,9 @@ export class AuthBrandPanelComponent implements AfterViewInit {
   private height = 0;
   private lo = 0;
   private hi = 0;
-  // Null while the chart is still filling from the left; once full, the x the newest settled candle sits at, with
-  // the live candle sliding in from one step to its right.
+  // Null until the chart is first laid out (and while the canvas has no width); then the x the newest settled candle
+  // sits at, with the live candle opening one step to its right and sliding into that spot over the period.
   private panX: number | null = null;
-  private panStartedAt = 0;
 
   ngAfterViewInit() {
     const canvas = this.canvas().nativeElement;
@@ -107,24 +105,23 @@ export class AuthBrandPanelComponent implements AfterViewInit {
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
+      const widthChanged = rect.width !== this.width;
       this.width = rect.width;
       this.height = rect.height;
       canvas.width = Math.round(rect.width * dpr);
       canvas.height = Math.round(rect.height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (this.panX !== null) {
-        this.panX = Math.min(this.panX, this.width - RIGHT_GAP);
+      if (!this.candles.length) {
+        this.layout();
+      } else if (widthChanged) {
+        // Re-anchor to the new right edge rather than rebuilding: mobile browsers fire resize as the URL bar
+        // slides, and restarting the walk each time would make the chart stutter.
+        this.panX = this.width - RIGHT_GAP;
       }
     };
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
     resize();
-
-    // The first candle opens at the left edge (a fresh chart each time the page opens).
-    anchor = 100;
-    this.candles = [openCandle(100)];
-    this.lo = 100 * (1 - MIN_RANGE / 2);
-    this.hi = 100 * (1 + MIN_RANGE / 2);
 
     // Animates even when the OS asks for reduced motion (Windows turns that on when "Show animations" is off, which is
     // common on Windows Server and over Remote Desktop): it's a slow, low-contrast backdrop, and the ticking chart is
@@ -135,11 +132,11 @@ export class AuthBrandPanelComponent implements AfterViewInit {
       const tick = (now: number) => {
         let progress = (now - periodStart) / PERIOD_MS;
         if (progress >= 1) {
-          this.closeLiveCandle(now);
+          this.closeLiveCandle();
           periodStart = progress > 2 ? now : periodStart + PERIOD_MS; // after a background tab, just carry on
           progress = (now - periodStart) / PERIOD_MS;
         }
-        this.draw(ctx, progress, now);
+        this.draw(ctx, progress);
         frame = requestAnimationFrame(tick);
       };
       frame = requestAnimationFrame(tick);
@@ -150,40 +147,65 @@ export class AuthBrandPanelComponent implements AfterViewInit {
     });
   }
 
-  // The live candle is done: lock in its close and open the next one. While filling, the next one simply takes the
-  // next spot to the right; once that spot would be too close to the right edge, the chart starts panning instead.
-  private closeLiveCandle(now: number) {
+  // Build a chart that already fills the canvas: a fresh random walk of candles ending one step short of the right
+  // edge, where the live candle opens. The startup fill is invisible to the viewer, so the panel never shows an empty
+  // chart growing from the left, and every period from the first one pans.
+  private layout() {
+    if (!this.width) {
+      return;
+    }
+    anchor = 100;
+    const panX = this.width - RIGHT_GAP;
+    // One more than fills the span, so the leftmost candle sits at or just past the edge and there's no bare gap.
+    const settled = Math.ceil(panX / STEP) + 1;
+    this.candles = [];
+    let close = 100;
+    for (let i = 0; i < settled; i++) {
+      const c = nextCandle(close);
+      this.candles.push(c);
+      close = c.close;
+    }
+    this.candles.push(openCandle(close));
+
+    // A random walk's range depends on the path it took, so give the first frame at least MIN_RANGE of headroom;
+    // after that the scale eases to whatever the visible candles actually span.
+    let lo = Math.min(...this.candles.map(c => c.low));
+    let hi = Math.max(...this.candles.map(c => c.high));
+    const mid = (lo + hi) / 2;
+    if (hi - lo < mid * MIN_RANGE) {
+      lo = mid * (1 - MIN_RANGE / 2);
+      hi = mid * (1 + MIN_RANGE / 2);
+    }
+    this.lo = lo;
+    this.hi = hi;
+
+    this.panX = panX;
+  }
+
+  // The live candle is done: lock in its close and open the next one at the right edge, sliding everything left.
+  private closeLiveCandle() {
     const last = this.candles[this.candles.length - 1];
     last.close = last.path[last.path.length - 1];
     this.candles.push(openCandle(last.close));
     if (this.panX === null) {
-      const nextX = FIRST_X + (this.candles.length - 1) * STEP;
-      if (nextX > this.width - RIGHT_GAP) {
-        this.panX = nextX - STEP;
-        this.panStartedAt = now;
-      }
+      this.panX = this.width - RIGHT_GAP;
     }
-    if (this.panX !== null) {
-      // Drop candles that have slid off the left edge.
-      const onScreen = Math.ceil((this.panX + STEP) / STEP) + 2;
-      if (this.candles.length > onScreen) {
-        this.candles.splice(0, this.candles.length - onScreen);
-      }
+    // Drop candles once they have slid far enough left to be fully faded out.
+    const onScreen = Math.ceil((this.panX + STEP + LEFT_FADE_PX) / STEP) + 1;
+    if (this.candles.length > onScreen) {
+      this.candles.splice(0, this.candles.length - onScreen);
     }
   }
 
   private xOf(i: number, progress: number): number {
     const n = this.candles.length;
-    if (this.panX === null) {
-      return FIRST_X + i * STEP;
-    }
     // The live candle opens one step right of panX and slides into it over the period, with the rest in tow.
-    return this.panX + STEP - progress * STEP - (n - 1 - i) * STEP;
+    return (this.panX ?? this.width - RIGHT_GAP) + STEP - progress * STEP - (n - 1 - i) * STEP;
   }
 
   // `progress` (0..1) is how far through the current period we are: it moves the live candle's price along its
-  // route, stretching the wicks whenever it sets a new high or low, and (once panning) slides the chart left.
-  private draw(ctx: CanvasRenderingContext2D, progress: number, now: number) {
+  // route, stretching the wicks whenever it sets a new high or low, and slides the chart left one step.
+  private draw(ctx: CanvasRenderingContext2D, progress: number) {
     const { width, height, candles } = this;
     if (!width || !height) {
       return;
@@ -208,20 +230,18 @@ export class AuthBrandPanelComponent implements AfterViewInit {
     const range = Math.max(this.hi - this.lo, 1e-6);
     const y = (v: number) => height * TOP_PAD + (1 - (v - this.lo) / range) * height * (1 - TOP_PAD - BOTTOM_PAD);
 
-    // Once panning, candles fade as they near the left edge; the fade eases in so nothing pops when panning starts.
-    const fadeIn = this.panX === null ? 0 : Math.min(1, (now - this.panStartedAt) / (PERIOD_MS * 3));
-    const edge = (x: number) => 1 - fadeIn * (1 - Math.min(1, Math.max(0, x / LEFT_FADE_PX)));
+    // Candles fade as they near the left edge, so they leave the frame gradually rather than being cut off.
+    const edge = (x: number) => Math.min(1, Math.max(0, x / LEFT_FADE_PX));
 
     ctx.clearRect(0, 0, width, height);
 
-    // Faint dashed line from the chart's start to the right edge at the live price, like a last-price line.
-    const lineFrom = this.panX === null ? FIRST_X - BODY : 0;
+    // Faint dashed line from the left edge to the right at the live price, like a last-price line.
     ctx.globalAlpha = 0.28;
     ctx.strokeStyle = live >= newest.open ? UP : DOWN;
     ctx.setLineDash([3, 5]);
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(lineFrom, Math.round(y(live)) + 0.5);
+    ctx.moveTo(0, Math.round(y(live)) + 0.5);
     ctx.lineTo(width, Math.round(y(live)) + 0.5);
     ctx.stroke();
     ctx.setLineDash([]);

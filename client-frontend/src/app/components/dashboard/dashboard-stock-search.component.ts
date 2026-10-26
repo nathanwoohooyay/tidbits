@@ -50,6 +50,9 @@ export class DashboardStockSearchComponent {
         this.activeIndex.set(Math.max(this.activeIndex() - 1, 0));
         break;
       case 'Enter': {
+        if (!this.open()) {
+          return;
+        }
         event.preventDefault();
         const picked = results[this.activeIndex()];
         const typed = this.term().trim().toUpperCase();

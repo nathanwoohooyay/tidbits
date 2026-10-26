@@ -13,6 +13,7 @@ export class DashboardMetricsComponent {
   @Input() totalNetWorth = 0;
   @Input() cashBalance = 0;
   @Input() portfolioValue = 0;
+  @Input() accountName = '';
   @Input() portfolioGainLoss = 0;
   @Input() loading = false;
   @Input() dayChange = 0;

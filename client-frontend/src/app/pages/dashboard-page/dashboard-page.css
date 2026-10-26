@@ -2,6 +2,11 @@
   min-width: 0;
 }
 
+.dashboard-search-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .dashboard-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

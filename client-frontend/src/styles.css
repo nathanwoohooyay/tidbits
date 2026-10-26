@@ -277,16 +277,6 @@ th.right {
   width: 11rem
 }
 
-.greeting-skeleton-title {
-  height: 2rem;
-  width: 14rem
-}
-
-.greeting-skeleton-sub {
-  width: 18rem;
-  margin-top: .5rem
-}
-
 .skeleton-block {
   height: 100%;
   min-height: 160px
@@ -1429,6 +1419,10 @@ app-dashboard-header {
    Metrics strip
    ------------------------------------------------------------------------ */
 
+.metrics-block {
+  min-width: 0
+}
+
 .hero-metrics {
   display: grid;
   grid-template-columns: repeat(3, auto);
@@ -1439,6 +1433,15 @@ app-dashboard-header {
 .metric-card {
   min-width: 0;
   padding: .25rem 3rem 0 0
+}
+
+.metric-eyebrow {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--clr-sienna);
+  margin-bottom: .6rem
 }
 
 .metric-label {

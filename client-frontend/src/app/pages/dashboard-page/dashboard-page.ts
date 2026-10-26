@@ -5,7 +5,6 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { SessionService, SessionAccount } from '../../services/session.service';
 import { ChartTimeframe, TradeTarget, TrendFilter } from '../../components/dashboard/dashboard.models';
 import { DashboardHeaderComponent } from '../../components/dashboard/dashboard-header.component';
-import { DashboardGreetingComponent } from '../../components/dashboard/dashboard-greeting.component';
 import { DashboardMetricsComponent } from '../../components/dashboard/dashboard-metrics.component';
 import { DashboardChartComponent } from '../../components/dashboard/dashboard-chart.component';
 import { DashboardMarketSnapshotComponent } from '../../components/dashboard/dashboard-market-snapshot.component';
@@ -29,7 +28,6 @@ import { PortfolioQueries, REFRESH_INTERVAL_MS } from '../../services/portfolio-
     DashboardCashModalComponent,
     AllocationBarComponent,
     DashboardHeaderComponent,
-    DashboardGreetingComponent,
     DashboardMetricsComponent,
     DashboardChartComponent,
     DashboardMarketSnapshotComponent,
@@ -44,8 +42,6 @@ import { PortfolioQueries, REFRESH_INTERVAL_MS } from '../../services/portfolio-
   styleUrl: './dashboard-page.css'
 })
 export class DashboardPageComponent implements OnInit {
-  readonly today = new Date();
-
   private readonly router = inject(Router);
   private readonly session = inject(SessionService);
   private readonly accountApi = inject(AccountService);
@@ -114,7 +110,6 @@ export class DashboardPageComponent implements OnInit {
   ordersLoading = computed(() => this.accountsLoading() || (this.ordersQuery.isPending() && this.selectedAccountId() > 0));
   chartLoading = computed(() => this.accountsLoading() || (this.snapshotsQuery.isPending() && this.selectedAccountId() > 0));
   metricsLoading = computed(() => this.holdingsLoading());
-  greetingLoading = computed(() => this.accountsLoading() || (this.userQuery.isPending() && this.userId > 0));
   orders = computed(() => this.ordersQuery.data() ?? []);
   chartDataPoints = computed(() => this.snapshotsQuery.data() ?? []);
 

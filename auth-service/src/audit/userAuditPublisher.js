@@ -1,4 +1,5 @@
 const { Kafka, logLevel } = require('kafkajs');
+const { timedCheck } = require('../utils/healthCheck');
 
 const brokers = String(process.env.KAFKA_BOOTSTRAP_SERVERS || '')
   .split(',')
@@ -79,6 +80,24 @@ async function publishUserAuditEvent({ eventType, userId, username, status, ipAd
   }
 }
 
+// Whether the Kafka brokers answer, for the health endpoint. Uses its own admin client that doesn't retry, so an outage
+// shows up within the check's time limit.
+async function checkKafka() {
+  if (!kafka) {
+    return { status: 'down', reason: 'Kafka not configured' };
+  }
+  const admin = kafka.admin({ retry: { retries: 0 } });
+  try {
+    return await timedCheck(async () => {
+      await admin.connect();
+      await admin.describeCluster();
+    }, 'Kafka unreachable');
+  } finally {
+    admin.disconnect().catch(() => undefined);
+  }
+}
+
 module.exports = {
   publishUserAuditEvent,
+  checkKafka,
 };

@@ -17,8 +17,10 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -52,11 +54,13 @@ class PricingServiceTest {
     @BeforeEach
     void setUp() {
         when(restTemplateBuilder.rootUri(any(String.class))).thenReturn(restTemplateBuilder);
+        when(restTemplateBuilder.additionalInterceptors(any(ClientHttpRequestInterceptor[].class))).thenReturn(restTemplateBuilder);
         when(restTemplateBuilder.build()).thenReturn(restTemplate);
 
         pricingService = new PricingService(
                 restTemplateBuilder,
                 instrumentRepository,
+                new MarketDataHealth(Clock.systemUTC()),
                 "http://fauxnance.example",
                 "test-key",
                 5,
@@ -237,7 +241,7 @@ class PricingServiceTest {
 
     @Test
     void getHistoricalCandles_cacheDisabledWhenTtlIsZero() throws Exception {
-        PricingService uncached = new PricingService(restTemplateBuilder, instrumentRepository, "http://fauxnance.example", "test-key", 5, 0);
+        PricingService uncached = new PricingService(restTemplateBuilder, instrumentRepository, new MarketDataHealth(Clock.systemUTC()), "http://fauxnance.example", "test-key", 5, 0);
         when(restTemplate.exchange(eq(CANDLES_URI), eq(HttpMethod.GET), any(HttpEntity.class), eq(JsonNode.class)))
                 .thenReturn(ResponseEntity.ok(candlesBody()));
 

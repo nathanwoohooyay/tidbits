@@ -1,4 +1,5 @@
 """Unit tests for pipeline components"""
+import json
 import pytest
 import pandas as pd
 from datetime import datetime
@@ -207,3 +208,23 @@ class TestPnlOutliers:
         mock_holdings.return_value = pd.DataFrame()
 
         assert MetricsCalculator.detect_win_loss_outliers().empty
+
+
+class TestHealth:
+    @patch('data.api.db')
+    def test_up_when_the_database_answers(self, mock_db):
+        from .api import health
+        response = health()
+        body = json.loads(response.body)
+        assert response.status_code == 200
+        assert body['status'] == 'up'
+        assert body['checks']['database']['status'] == 'up'
+        mock_db.get_cursor.assert_called_once_with(connect_timeout=2)
+
+    @patch('data.api.db')
+    def test_unavailable_when_the_database_is_down(self, mock_db):
+        from .api import health
+        mock_db.get_cursor.side_effect = Exception('could not connect to server')
+        response = health()
+        assert response.status_code == 503
+        assert json.loads(response.body)['checks']['database'] == {'status': 'down', 'reason': 'Database unreachable'}

@@ -28,6 +28,32 @@ test('health route stays on /api/auth/health', async () => {
   await app.close();
 });
 
+test('health route answers 503 when a dependency is down', async () => {
+  const body = {
+    status: 'down',
+    checks: { authDatabase: { status: 'up', latencyMs: 2 }, database: { status: 'up', latencyMs: 2 }, kafka: { status: 'down', reason: 'Kafka unreachable' } },
+  };
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule],
+  })
+    .overrideProvider(AuthService)
+    .useValue({
+      health: async () => body,
+    })
+    .compile();
+
+  const app = moduleRef.createNestApplication();
+  configureApp(app);
+  await app.init();
+
+  await request(app.getHttpServer())
+    .get('/api/auth/health')
+    .expect(503)
+    .expect(body);
+
+  await app.close();
+});
+
 test('login route preserves body and refresh cookie handling', async () => {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],

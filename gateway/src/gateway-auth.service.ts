@@ -32,6 +32,12 @@ export class GatewayAuthService implements OnModuleDestroy {
     database: process.env.DB_AUTH_NAME || 'tidbits_auth',
   });
 
+  constructor() {
+    // Postgres dropping an idle connection (a restart, say) is reported here; unhandled, it would crash the gateway.
+    // The pool opens a new connection on the next query.
+    this.pool.on('error', (error) => console.error('auth database connection lost', error.message));
+  }
+
   async authorizeRequest(request: Request, routePrefix: string): Promise<void> {
     if (request.method === 'OPTIONS') {
       return;
@@ -54,6 +60,11 @@ export class GatewayAuthService implements OnModuleDestroy {
     }
 
     if (routePrefix === "/client" && role !== "CLIENT") {
+      throw new GatewayAuthError(403, 'Forbidden');
+    }
+
+    // The gateway's own service status, for the admin dashboard.
+    if (routePrefix === "/system" && role !== "ADMIN") {
       throw new GatewayAuthError(403, 'Forbidden');
     }
   }

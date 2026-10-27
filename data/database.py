@@ -14,8 +14,8 @@ class DatabaseConnection:
         self.config = Config()
     
     @contextmanager
-    def get_connection(self):
-        """Context manager for database connections"""
+    def get_connection(self, connect_timeout=None):
+        """Context manager for database connections; connect_timeout (seconds) bounds the wait for a connection"""
         conn = None
         try:
             conn = psycopg2.connect(
@@ -23,7 +23,8 @@ class DatabaseConnection:
                 port=self.config.DB_PORT,
                 database=self.config.DB_NAME,
                 user=self.config.DB_USER,
-                password=self.config.DB_PASSWORD
+                password=self.config.DB_PASSWORD,
+                connect_timeout=connect_timeout
             )
             yield conn
             conn.commit()
@@ -37,9 +38,9 @@ class DatabaseConnection:
                 conn.close()
     
     @contextmanager
-    def get_cursor(self, dict_cursor=False):
+    def get_cursor(self, dict_cursor=False, connect_timeout=None):
         """Context manager for database cursors"""
-        with self.get_connection() as conn:
+        with self.get_connection(connect_timeout=connect_timeout) as conn:
             cursor_factory = RealDictCursor if dict_cursor else None
             cursor = conn.cursor(cursor_factory=cursor_factory)
             try:

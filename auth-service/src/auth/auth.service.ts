@@ -5,9 +5,10 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
 import '../env';
-import { publishUserAuditEvent } from '../audit/userAuditPublisher';
+import { checkKafka, publishUserAuditEvent } from '../audit/userAuditPublisher';
 import { sendError } from '../utils/errorResponse';
 import { clientIp } from '../utils/clientIp';
+import { timedCheck } from '../utils/healthCheck';
 import { ensureAuthSchema } from './auth-schema';
 import { LoginThrottle } from './login-throttle';
 import {
@@ -101,6 +102,14 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
   });
 
   private readonly throttle = new LoginThrottle(this.authPool);
+
+  constructor() {
+    // Postgres dropping an idle connection (a restart, say) is reported on the pool; unhandled, it would crash the
+    // service. The pool opens a new connection on the next query.
+    for (const [name, pool] of [['profile', this.profilePool], ['auth', this.authPool]] as const) {
+      pool.on('error', (error) => console.error(`${name} database connection lost`, error.message));
+    }
+  }
   private pruneTimer: NodeJS.Timeout | null = null;
   private schemaRetryTimer: NodeJS.Timeout | null = null;
 
@@ -855,8 +864,15 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  health() {
-    return { status: 'up' };
+  // Whether both databases and Kafka answer, for the gateway's service status.
+  async health() {
+    const [authDatabase, database, kafka] = await Promise.all([
+      timedCheck(() => this.authPool.query('SELECT 1'), 'Auth database unreachable'),
+      timedCheck(() => this.profilePool.query('SELECT 1'), 'Database unreachable'),
+      checkKafka(),
+    ]);
+    const checks = { authDatabase, database, kafka };
+    return { status: Object.values(checks).every((check) => check.status === 'up') ? 'up' : 'down', checks };
   }
 
   private hashRefreshToken(refreshToken: string) {

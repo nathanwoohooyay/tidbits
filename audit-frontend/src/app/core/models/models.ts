@@ -40,6 +40,23 @@ export interface AdminAccount {
   createdAt: string;
 }
 
+// From the gateway's service status check (see gateway/src/system-health.service.ts).
+export type HealthStatus = 'up' | 'slow' | 'degraded' | 'down' | 'unknown';
+
+export interface ComponentHealth {
+  id: string;
+  name: string;
+  status: HealthStatus;
+  latencyMs?: number;
+  reason?: string;
+  lastSuccessAt?: string;
+}
+
+export interface SystemHealth {
+  checkedAt: string;
+  components: ComponentHealth[];
+}
+
 export interface AdminDashboardStats {
   totalUsers: number;
   totalAccounts: number;

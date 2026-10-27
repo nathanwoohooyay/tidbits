@@ -2,6 +2,7 @@
 import logging
 import os
 import sys
+import time
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -16,6 +17,7 @@ logging.basicConfig(
     force=True
 )
 
+from .database import db
 from .metrics import MetricsCalculator
 from .pipeline import DataPipeline
 
@@ -210,4 +212,14 @@ def rewards_vs_volume():
 
 @app.get("/api/metrics/health")
 def health():
-    return {"status": "up", "service": "metrics-service"}
+    """Whether the database answers, for the gateway's service status; 503 when it doesn't."""
+    started = time.monotonic()
+    try:
+        with db.get_cursor(connect_timeout=2) as cursor:
+            cursor.execute("SELECT 1")
+        database = {"status": "up", "latencyMs": round((time.monotonic() - started) * 1000)}
+    except Exception:
+        database = {"status": "down", "reason": "Database unreachable"}
+    status = database["status"]
+    body = {"status": status, "service": "metrics-service", "checks": {"database": database}}
+    return JSONResponse(body, status_code=200 if status == "up" else 503)

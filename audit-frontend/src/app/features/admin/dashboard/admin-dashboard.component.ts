@@ -1,7 +1,8 @@
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService } from '../../../core/services/admin.service';
-import { AdminDashboardStats } from '../../../core/models/models';
+import { finalize } from 'rxjs';
+import { AdminDashboardStats, ComponentHealth, HealthStatus, SystemHealth } from '../../../core/models/models';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -72,53 +73,41 @@ import { AdminDashboardStats } from '../../../core/models/models';
         </div>
       </div>
 
-      <!-- Security Architecture Status Panel -->
       <div class="module-card glass-panel">
-        <div class="module-header">
+        <div class="module-header health-header">
           <h2 class="module-title">Service status</h2>
-        </div>
-
-        <div class="service-health-list">
-          <div class="health-row">
-            <div class="service-meta">
-              <span class="pulse-dot"></span>
-              <span>Client-Service (Spring Boot)</span>
-            </div>
-            <span class="badge badge-success">PORT 8082 ONLINE</span>
-          </div>
-
-          <div class="health-row">
-            <div class="service-meta">
-              <span class="pulse-dot"></span>
-              <span>Audit-Service (Spring Boot)</span>
-            </div>
-            <span class="badge badge-success">PORT 8083 ONLINE</span>
-          </div>
-
-          <div class="health-row">
-            <div class="service-meta">
-              <span class="pulse-dot"></span>
-              <span>FastAPI Analytics Service</span>
-            </div>
-            <span class="badge badge-success">PORT 8085 ONLINE</span>
-          </div>
-
-          <div class="health-row">
-            <div class="service-meta">
-              <span class="pulse-dot"></span>
-              <span>Auth Gateway (NestJS)</span>
-            </div>
-            <span class="badge badge-success">PORT 3000 ONLINE</span>
-          </div>
-
-          <div class="health-row">
-            <div class="service-meta">
-              <span class="pulse-dot"></span>
-              <span>Kafka Cluster (3 Partitions)</span>
-            </div>
-            <span class="badge badge-success">PORT 9092 ONLINE</span>
+          <div class="health-actions">
+            @if (health(); as h) {
+              <span class="checked-at" [class.check-failed]="healthError()">
+                {{ healthError() ? 'Last check failed · ' : '' }}Checked {{ ago(h.checkedAt) }}
+              </span>
+            }
+            <button type="button" class="btn btn-secondary btn-sm" (click)="loadHealth()" [disabled]="checking()">
+              {{ checking() ? 'Checking…' : 'Refresh' }}
+            </button>
           </div>
         </div>
+
+        @if (health(); as h) {
+          <ul class="service-health-list">
+            @for (component of h.components; track component.id) {
+              <li class="health-row">
+                <div class="service-meta">
+                  <span class="status-dot" [class.pulse-dot]="component.status === 'up'" [attr.data-status]="component.status"></span>
+                  <span>{{ component.name }}</span>
+                </div>
+                <div class="health-detail">
+                  <span class="health-note">{{ note(component) }}</span>
+                  <span class="badge" [ngClass]="badgeClass(component.status)">{{ statusLabel(component.status) }}</span>
+                </div>
+              </li>
+            }
+          </ul>
+        } @else if (healthError()) {
+          <p class="health-empty">Status unavailable: couldn't reach the gateway.</p>
+        } @else {
+          <p class="health-empty">Checking services…</p>
+        }
       </div>
     </div>
   `,
@@ -341,6 +330,88 @@ import { AdminDashboardStats } from '../../../core/models/models';
       border-bottom: 1px solid var(--border-subtle);
     }
 
+    .health-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .health-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .checked-at {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .checked-at.check-failed {
+      color: var(--accent-terracotta);
+    }
+
+    .service-health-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .health-row {
+      gap: 12px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex: none;
+      background: var(--text-dim);
+    }
+
+    .status-dot[data-status="up"] {
+      background: var(--accent-sage-light);
+    }
+
+    .status-dot[data-status="slow"],
+    .status-dot[data-status="degraded"] {
+      background: var(--accent-amber);
+    }
+
+    .status-dot[data-status="down"] {
+      background: var(--accent-terracotta);
+    }
+
+    .health-row .service-meta {
+      white-space: nowrap;
+    }
+
+    .health-detail {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      min-width: 0;
+    }
+
+    .health-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .health-empty {
+      margin: 8px 0 4px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
     .health-row:last-child {
       border-bottom: none;
       padding-bottom: 4px;
@@ -364,21 +435,88 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     totalTransactionLogs: 0
   });
 
+  health = signal<SystemHealth | null>(null);
+  healthError = signal(false);
+  checking = signal(false);
+  // Ticks so "Checked 12 s ago" stays current between checks.
+  private now = signal(Date.now());
+
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private healthTimer: ReturnType<typeof setInterval> | null = null;
+  private clockTimer: ReturnType<typeof setInterval> | null = null;
   private readonly autoRefreshMs = 15000;
+  private readonly healthRefreshMs = 30000;
 
   constructor(private adminService: AdminService) {}
 
   ngOnInit() {
     this.loadStats();
+    this.loadHealth();
     this.refreshTimer = setInterval(() => this.loadStats(), this.autoRefreshMs);
+    this.healthTimer = setInterval(() => this.loadHealth(), this.healthRefreshMs);
+    this.clockTimer = setInterval(() => this.now.set(Date.now()), 1000);
   }
 
   ngOnDestroy() {
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
-      this.refreshTimer = null;
+    for (const timer of [this.refreshTimer, this.healthTimer, this.clockTimer]) {
+      if (timer) {
+        clearInterval(timer);
+      }
     }
+    this.refreshTimer = this.healthTimer = this.clockTimer = null;
+  }
+
+  // Keeps the last result on screen when a check fails, marked as such.
+  loadHealth() {
+    if (this.checking()) {
+      return;
+    }
+    this.checking.set(true);
+    this.adminService.getSystemHealth()
+      .pipe(finalize(() => this.checking.set(false)))
+      .subscribe({
+        next: health => {
+          this.health.set(health);
+          this.healthError.set(false);
+        },
+        error: () => this.healthError.set(true)
+      });
+  }
+
+  statusLabel(status: HealthStatus): string {
+    return { up: 'Up', slow: 'Slow', degraded: 'Degraded', down: 'Down', unknown: 'Unknown' }[status] ?? 'Unknown';
+  }
+
+  badgeClass(status: HealthStatus): string {
+    return status === 'up' ? 'badge-success'
+      : status === 'slow' || status === 'degraded' ? 'badge-warning'
+      : status === 'down' ? 'badge-danger'
+      : 'badge-user';
+  }
+
+  // Response time while a service is answering, why when it isn't; for the price feed, when a price last came in.
+  note(component: ComponentHealth): string {
+    if (component.id === 'market-data' && component.status === 'up') {
+      return component.lastSuccessAt ? `Last price ${this.ago(component.lastSuccessAt)}` : '';
+    }
+    if ((component.status === 'up' || component.status === 'slow') && component.latencyMs != null) {
+      return component.latencyMs < 1000 ? `${component.latencyMs} ms` : `${(component.latencyMs / 1000).toFixed(1)} s`;
+    }
+    return component.reason ?? '';
+  }
+
+  ago(iso: string): string {
+    const seconds = Math.max(0, Math.round((this.now() - Date.parse(iso)) / 1000));
+    if (Number.isNaN(seconds) || seconds < 5) {
+      return 'just now';
+    }
+    if (seconds < 60) {
+      return `${seconds} s ago`;
+    }
+    if (seconds < 3600) {
+      return `${Math.floor(seconds / 60)} min ago`;
+    }
+    return `${Math.floor(seconds / 3600)} h ago`;
   }
 
   private loadStats() {

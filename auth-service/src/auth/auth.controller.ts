@@ -69,8 +69,11 @@ export class AuthController {
     return this.authService.whoAmI(req, res);
   }
 
+  // 503 when a database or Kafka is down, so anything polling it sees the failure without reading the body.
   @Get('health')
-  health() {
-    return this.authService.health();
+  async health(@Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.health();
+    res.status(result.status === 'up' ? 200 : 503);
+    return result;
   }
 }

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AdminUser, AdminAccount, AdminDashboardStats, RoleDefinition } from '../models/models';
+import { AdminUser, AdminAccount, AdminDashboardStats, RoleDefinition, SystemHealth } from '../models/models';
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +15,11 @@ export class AdminService {
 
   getDashboardStats(): Observable<AdminDashboardStats> {
     return this.http.get<AdminDashboardStats>(`${this.baseUrl}/admin/dashboard/stats`);
+  }
+
+  // Answered by the gateway itself, which checks every backend service.
+  getSystemHealth(): Observable<SystemHealth> {
+    return this.http.get<SystemHealth>(`${this.baseUrl}/admin/system-health`);
   }
 
   getAllUsers(): Observable<AdminUser[]> {

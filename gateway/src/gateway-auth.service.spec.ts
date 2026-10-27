@@ -9,7 +9,7 @@ const endMock = vi.fn().mockResolvedValue(undefined);
 // A regular function, so `new Pool()` can construct it.
 vi.mock('pg', () => ({
   Pool: vi.fn().mockImplementation(function () {
-    return { query: queryMock, end: endMock };
+    return { query: queryMock, end: endMock, on: vi.fn() };
   }),
 }));
 
@@ -84,6 +84,17 @@ describe('GatewayAuthService', () => {
     await expect(service.authorizeRequest(
       requestWith(sign({ sub: 42, roles: ['CLIENT'], tokenVersion: 3, sid: 1 }), '/audit/api/logs/users'), '/audit',
     )).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it('allows only admins to see service status', async () => {
+    const service = new GatewayAuthService();
+    queryMock.mockResolvedValue({ rows: [{ token_version: 3, session_active: true }] });
+    const url = '/audit/api/admin/system-health';
+
+    await expect(service.authorizeRequest(requestWith(sign({ sub: 1, roles: ['ADMIN'], tokenVersion: 3, sid: 1 }), url), '/system'))
+      .resolves.toBeUndefined();
+    await expect(service.authorizeRequest(requestWith(sign({ sub: 2, roles: ['AUDITOR'], tokenVersion: 3, sid: 1 }), url), '/system'))
+      .rejects.toMatchObject({ statusCode: 403 });
   });
 
   it('rejects a mismatched token version', async () => {

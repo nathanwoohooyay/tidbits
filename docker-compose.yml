@@ -179,6 +179,8 @@ services:
       CLIENT_SERVICE_URL: http://client-service:8082
       AUDIT_SERVICE_URL: http://audit-service:8083
       METRICS_SERVICE_URL: http://metrics-service:8085
+      # Only for the admin dashboard's service status; auth requests don't go through the gateway.
+      AUTH_SERVICE_URL: http://auth-service:4000
       DB_AUTH_HOST: ${DB_HOST}
       DB_AUTH_PORT: ${DB_PORT}
       DB_AUTH_NAME: tidbits_auth

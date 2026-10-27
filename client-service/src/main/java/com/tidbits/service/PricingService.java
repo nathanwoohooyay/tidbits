@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,9 +47,12 @@ public class PricingService {
     private static final int MAX_CACHED_CANDLE_SERIES = 500;
     // Coins are listed here by their short ticker (BTC); Fauxnance names them as a pair against the dollar (X:BTC-USD).
     private static final Pattern FAUXNANCE_CRYPTO = Pattern.compile("^X:([A-Z0-9]+)-USD$");
+    // Asked for when the health check needs to know whether the feed is answering.
+    private static final String FEED_PROBE_SYMBOL = "AAPL";
 
     private final RestTemplate restTemplate;
     private final InstrumentRepository instrumentRepository;
+    private final MarketDataHealth marketDataHealth;
     private final String apiKey;
     private final long quoteCacheTtlMinutes;
     private final long candleCacheTtlMinutes;
@@ -61,6 +65,7 @@ public class PricingService {
     public PricingService(
             RestTemplateBuilder restTemplateBuilder,
             InstrumentRepository instrumentRepository,
+            MarketDataHealth marketDataHealth,
             @Value("${fauxnance.base-url}") String fauxnanceBaseUrl,
             @Value("${fauxnance.api-key:}") String apiKey,
             @Value("${pricing.quote-cache-ttl-minutes:5}") long quoteCacheTtlMinutes,
@@ -68,11 +73,29 @@ public class PricingService {
     ) {
         this.restTemplate = restTemplateBuilder
                 .rootUri(fauxnanceBaseUrl)
+                .additionalInterceptors(marketDataHealth.interceptor())
                 .build();
         this.instrumentRepository = instrumentRepository;
+        this.marketDataHealth = marketDataHealth;
         this.apiKey = apiKey;
         this.quoteCacheTtlMinutes = quoteCacheTtlMinutes;
         this.candleCacheTtlMinutes = candleCacheTtlMinutes;
+    }
+
+    // The price feed's state for the health check. When the feed has been quiet, one quote is requested in the
+    // background so the next check knows; this one reports what is known now rather than waiting on Fauxnance.
+    public MarketDataHealth.Snapshot checkFeed() {
+        boolean apiKeyConfigured = apiKey != null && !apiKey.isBlank();
+        if (apiKeyConfigured && marketDataHealth.shouldProbe()) {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    requestQuotePriceFromFauxnance(List.of(FEED_PROBE_SYMBOL));
+                } catch (RuntimeException ignored) {
+                    // The outcome is recorded by MarketDataHealth's interceptor.
+                }
+            });
+        }
+        return marketDataHealth.snapshot(apiKeyConfigured);
     }
 
     public PricingBatchResponseDTO getBatchQuotes(List<String> rawSymbols, boolean refresh) {

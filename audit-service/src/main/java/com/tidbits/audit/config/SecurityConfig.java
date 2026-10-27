@@ -38,6 +38,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> req
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    // Called by the gateway's service status check, which carries no user token.
+                    .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/admin/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "AUDITOR")
                     .anyRequest().denyAll())

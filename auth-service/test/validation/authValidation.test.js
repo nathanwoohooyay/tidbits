@@ -50,6 +50,7 @@ test('validateSignupInput returns 422 for invalid username', () => {
     password: 'Password1',
     email: 'alice@example.com',
     phoneNumber: '5555555555',
+    dateOfBirth: '1990-01-01',
   });
 
   assert.deepEqual(result, {

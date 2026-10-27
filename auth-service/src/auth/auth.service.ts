@@ -1020,7 +1020,8 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     return {
       httpOnly: true,
       sameSite: 'strict' as const,
-      secure: false,
+      // On only behind HTTPS (CloudFront in docker-compose.aws.yml); local docker compose serves plain HTTP.
+      secure: process.env.AUTH_COOKIE_SECURE === 'true',
       maxAge: REFRESH_TOKEN_TTL_MS,
       path: '/api/auth',
     };

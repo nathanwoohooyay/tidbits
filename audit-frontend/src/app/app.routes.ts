@@ -2,11 +2,10 @@ import { Routes } from '@angular/router';
 import { LoginComponent } from './features/login/login.component';
 import { ShellComponent } from './features/shell/shell.component';
 import { AnalyticsComponent } from './features/auditor/analytics/analytics.component';
-import { ReportsComponent } from './features/auditor/reports/reports.component';
 import { LogsComponent } from './features/auditor/logs/logs.component';
 import { AdminDashboardComponent } from './features/admin/dashboard/admin-dashboard.component';
 import { AdminUsersComponent } from './features/admin/users/admin-users.component';
-import { authGuard, adminGuard, auditorGuard } from './core/guards/auth.guard';
+import { authGuard, adminGuard, analyticsGuard, auditLogsGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -23,26 +22,21 @@ export const routes: Routes = [
         pathMatch: 'full',
         redirectTo: 'auditor/analytics'
       },
-      // Auditor Routes
+      // Shared role-specific views
       {
         path: 'auditor/analytics',
         component: AnalyticsComponent,
-        canActivate: [auditorGuard]
-      },
-      {
-        path: 'auditor/compliance',
-        component: ReportsComponent,
-        canActivate: [auditorGuard]
-      },
-      {
-        path: 'auditor/reports',
-        redirectTo: 'auditor/compliance'
+        canActivate: [analyticsGuard]
       },
       {
         path: 'auditor/logs',
         component: LogsComponent,
-        canActivate: [auditorGuard]
+        canActivate: [auditLogsGuard]
       },
+      // The Compliance page was removed; old links land on analytics (auditors are sent on to the logs by its guard)
+      // instead of the login screen.
+      { path: 'auditor/compliance', redirectTo: 'auditor/analytics' },
+      { path: 'auditor/reports', redirectTo: 'auditor/analytics' },
       // Admin Routes
       {
         path: 'admin/dashboard',

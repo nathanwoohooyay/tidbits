@@ -22,7 +22,8 @@ import { AuthService } from '../../core/services/auth.service';
         <div class="nav-scroll">
           <div class="nav-section-label">Audit intelligence</div>
           <nav class="nav-links" aria-label="Audit">
-            <a id="nav-analytics" routerLink="/auditor/analytics" routerLinkActive="active" class="nav-item">
+            <!-- Reporters see analytics, auditors see the logs, admins see both (see core/guards/auth.guard.ts). -->
+            <a *ngIf="authService.canViewAnalytics()" id="nav-analytics" routerLink="/auditor/analytics" routerLinkActive="active" class="nav-item">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="20" x2="18" y2="10"></line>
                 <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -31,14 +32,7 @@ import { AuthService } from '../../core/services/auth.service';
               <span>Trading analytics</span>
             </a>
 
-            <a id="nav-reports" routerLink="/auditor/compliance" routerLinkActive="active" class="nav-item">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-              <span>Compliance</span>
-            </a>
-
-            <a id="nav-logs" routerLink="/auditor/logs" routerLinkActive="active" class="nav-item">
+            <a *ngIf="authService.canViewAuditLogs()" id="nav-logs" routerLink="/auditor/logs" routerLinkActive="active" class="nav-item">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <line x1="12" y1="18" x2="12" y2="12"></line>

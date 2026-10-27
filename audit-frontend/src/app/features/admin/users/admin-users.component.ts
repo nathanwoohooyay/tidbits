@@ -1,5 +1,5 @@
-import { Component, HostListener, OnInit, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, HostListener, Inject, OnDestroy, OnInit, Renderer2, signal, computed } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { AdminService } from '../../../core/services/admin.service';
@@ -36,6 +36,35 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
         </svg>
         <span>{{ toastMessage() }}</span>
         <button class="toast-close" (click)="toastMessage.set(null)">✕</button>
+      </div>
+
+      <div class="role-overview glass-panel">
+        <div class="role-overview-header">
+          <div>
+            <h2 class="section-title">Role distribution</h2>
+            <p class="section-subtitle">Current user access across the platform</p>
+          </div>
+          <div class="role-total">
+            <strong>{{ users().length | number }}</strong>
+            <span>Total users</span>
+          </div>
+        </div>
+        <div class="role-bars">
+          <div *ngFor="let role of roleDistribution()" class="role-bar-row">
+            <div class="role-bar-label">
+              <span class="badge" [ngClass]="getRoleBadgeClass(role.name)">{{ role.name }}</span>
+              <span class="role-count mono-font">{{ role.count | number }}</span>
+            </div>
+            <div class="role-track">
+              <div
+                class="role-fill"
+                [ngClass]="getRoleBadgeClass(role.name)"
+                [style.width.%]="role.percent"
+              ></div>
+            </div>
+            <span class="role-percent mono-font">{{ role.percent | number:'1.0-0' }}%</span>
+          </div>
+        </div>
       </div>
 
       <!-- Filter Controls -->
@@ -160,6 +189,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               <div class="badge badge-admin">Account details</div>
               <h2 class="modal-title">Accounts: {{ selectedUserForAccounts()?.username }}</h2>
               <span class="modal-sub">User ID #{{ selectedUserForAccounts()?.userId }}</span>
+              <h3 class="modal-sub">Reward points: {{ (selectedUserForAccounts()?.rewardPoints || 0) | number }}</h3>
             </div>
             <button class="modal-close" (click)="closeAccountsModal()">✕</button>
           </div>
@@ -292,6 +322,89 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       color: var(--text-secondary);
     }
 
+    .role-overview {
+      padding: 18px 22px;
+    }
+
+    .role-overview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      color: var(--text-primary);
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .section-subtitle {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .role-total {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .role-total strong {
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+    }
+
+    .role-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .role-bar-row {
+      display: grid;
+      grid-template-columns: 112px minmax(120px, 1fr) 42px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .role-bar-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .role-count,
+    .role-percent {
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .role-track {
+      height: 9px;
+      overflow: hidden;
+      background: #e5dac9;
+      border-radius: 999px;
+    }
+
+    .role-fill {
+      height: 100%;
+      min-width: 2px;
+      border-radius: inherit;
+    }
+
+    .role-fill.badge-admin { background: #713b22; }
+    .role-fill.badge-auditor { background: #1f6b4a; }
+    .role-fill.badge-reporter { background: #a8651b; }
+    .role-fill.badge-user { background: #46617a; }
+
     .toast-banner {
       display: flex;
       align-items: center;
@@ -376,6 +489,15 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     .table-card {
       padding: 0;
       overflow: hidden;
+      height: clamp(360px, 58vh, 680px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-container {
+      height: 100%;
+      min-height: 0;
+      overflow: auto;
     }
 
     .user-name-cell {
@@ -396,10 +518,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     /* Modal Styling */
     .modal-backdrop {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      inset: 0;
       background: rgba(34, 28, 24, 0.65);
       backdrop-filter: blur(8px);
       display: flex;
@@ -407,6 +526,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       justify-content: center;
       z-index: 1000;
       padding: 20px;
+      overflow: hidden;
     }
 
     .modal-card {
@@ -420,6 +540,8 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       display: flex;
       flex-direction: column;
       gap: 20px;
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     .modal-card.modal-sm {
@@ -476,8 +598,6 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       display: grid;
       grid-template-columns: 1fr;
       gap: 12px;
-      max-height: 380px;
-      overflow-y: auto;
     }
 
     .account-item {
@@ -557,9 +677,20 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       padding: 30px;
       color: var(--text-muted);
     }
+
+    @media (max-width: 640px) {
+      .role-overview-header {
+        align-items: flex-start;
+      }
+
+      .role-bar-row {
+        grid-template-columns: 102px minmax(80px, 1fr) 36px;
+        gap: 8px;
+      }
+    }
   `]
 })
-export class AdminUsersComponent implements OnInit {
+export class AdminUsersComponent implements OnInit, OnDestroy {
   users = signal<AdminUser[]>([]);
   searchQuery = signal('');
   roleFilter = signal('ALL');
@@ -600,7 +731,29 @@ export class AdminUsersComponent implements OnInit {
     return list;
   });
 
-  constructor(private adminService: AdminService) {}
+  roleDistribution = computed(() => {
+    const roles = ['ADMIN', 'AUDITOR', 'REPORTER', 'USER'];
+    const total = this.users().length;
+
+    return roles.map(name => {
+      const count = this.users().filter((user: AdminUser) => this.getUserRole(user) === name).length;
+      return {
+        name,
+        count,
+        percent: total === 0 ? 0 : (count / total) * 100
+      };
+    });
+  });
+
+  constructor(
+    private adminService: AdminService,
+    @Inject(DOCUMENT) private document: Document,
+    private renderer: Renderer2
+  ) {}
+
+  ngOnDestroy() {
+    this.unlockPageScroll();
+  }
 
   ngOnInit() {
     this.loadUsers();
@@ -647,6 +800,7 @@ export class AdminUsersComponent implements OnInit {
 
   // View accounts
   viewAccounts(user: AdminUser) {
+    this.lockPageScroll();
     this.selectedUserForAccounts.set(user);
     this.loadingAccounts.set(true);
     this.adminService.getUserAccounts(user.userId).subscribe((accounts: AdminAccount[]) => {
@@ -670,16 +824,19 @@ export class AdminUsersComponent implements OnInit {
   closeAccountsModal() {
     this.selectedUserForAccounts.set(null);
     this.userAccounts.set([]);
+    this.unlockPageScroll();
   }
 
   // Change role
   openRoleModal(user: AdminUser) {
+    this.lockPageScroll();
     this.selectedUserForRole.set(user);
     this.newRoleSelection = user.role || 'USER';
   }
 
   closeRoleModal() {
     this.selectedUserForRole.set(null);
+    this.unlockPageScroll();
   }
 
   saveRoleChange() {
@@ -705,11 +862,21 @@ export class AdminUsersComponent implements OnInit {
 
   // Revoke access
   confirmRevoke(user: AdminUser) {
+    this.lockPageScroll();
     this.selectedUserForRevoke.set(user);
   }
 
   closeRevokeModal() {
     this.selectedUserForRevoke.set(null);
+    this.unlockPageScroll();
+  }
+
+  private lockPageScroll() {
+    this.renderer.setStyle(this.document.body, 'overflow', 'hidden');
+  }
+
+  private unlockPageScroll() {
+    this.renderer.removeStyle(this.document.body, 'overflow');
   }
 
   executeRevoke() {

@@ -46,6 +46,15 @@ describe('assignColors', () => {
     expect(new Set(colors.values()).size).toBe(3);
   });
 
+  it('lets an iconic brand keep its hue over a bigger, less famous one', () => {
+    // The top stocks seen in Trading Analytics: LLY is biggest, but Tesla is the red people expect.
+    const colors = assignColors(['LLY', 'META', 'MA', 'JNJ', 'TSLA']);
+    expect(colors.get('TSLA')).toBe(BRAND_COLORS['TSLA'].color);
+    expect(colors.get('META')).toBe(BRAND_COLORS['META'].color);
+    expect(colors.get('LLY')).not.toBe(BRAND_COLORS['LLY'].color);
+    expect(new Set(colors.values()).size).toBe(5);
+  });
+
   it('draws black brands in the theme ink so they show in dark mode', () => {
     expect(assignColors(['AAPL']).get('AAPL')).toBe('var(--alloc-ink)');
   });

@@ -1,7 +1,7 @@
 import { Component, computed, input, signal } from '@angular/core';
 import { HoldingDTO } from '../../services/portfolio-queries';
 import { formatCurrency } from './dashboard.utils';
-import { BRAND_COLORS, ColorFamily } from './brand-colors';
+import { ColorFamily, claimBrandColors } from './brand-colors';
 
 interface Segment {
   key: string;
@@ -40,15 +40,15 @@ export function assignSlots(tickers: string[], blocked: ReadonlySet<number> = ne
 }
 
 // Each ticker's colour: its brand colour (Tesla red, Nvidia green) when it has one, else an --alloc slot.
-// Tickers are given biggest first, so when two brands share a hue the bigger position keeps its brand colour.
+// Tickers are given biggest first; when two brands share a hue, an iconic brand wins, else the bigger position.
 export function assignColors(tickers: string[]): Map<string, string> {
-  const usedFamilies = new Set<ColorFamily>();
+  const claimed = claimBrandColors(tickers);
+  const usedFamilies = new Set<ColorFamily>([...claimed.values()].map(c => c.family));
   const colors = new Map<string, string>();
   const unbranded: string[] = [];
   for (const ticker of tickers) {
-    const brand = BRAND_COLORS[ticker.toUpperCase()];
-    if (brand && !usedFamilies.has(brand.family)) {
-      usedFamilies.add(brand.family);
+    const brand = claimed.get(ticker);
+    if (brand) {
       // Black brands would vanish in dark mode, so they use the ink colour for the current theme.
       colors.set(ticker, brand.family === 'black' ? 'var(--alloc-ink)' : brand.color);
     } else {

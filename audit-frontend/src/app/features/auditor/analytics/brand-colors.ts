@@ -70,21 +70,35 @@ export const BRAND_COLORS: Record<string, FamilyColor> = {
   LTC: { color: '#345D9D', family: 'blue' },
 };
 
-// Picks one colour per label, in the order given (biggest first, so the biggest positions keep their brand colour).
-// Labels without a brand colour, or whose brand family is already shown, take the first palette colour whose family
-// isn't shown yet.
-export function pickColors(labels: string[], palette: FamilyColor[]): FamilyColor[] {
+// Brands people recognise by colour. When one shares a hue with a less famous brand, it keeps the colour even if its
+// slice is smaller: Tesla stays red next to a bigger Eli Lilly.
+const ICONIC = new Set([
+  'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'META', 'NVDA', 'TSLA', 'NFLX', 'KO', 'SBUX', 'NKE', 'TMUS', 'BTC', 'ETH', 'SOL',
+]);
+
+// Which labels keep their brand colour: iconic brands claim their hue first, then the rest; within each group the
+// order given (biggest first) decides. Labels sharing a hue with an earlier claim get none.
+export function claimBrandColors(labels: string[]): Map<string, FamilyColor> {
   const usedFamilies = new Set<ColorFamily>();
-  const usedColors = new Set<string>();
-  const picked: (FamilyColor | null)[] = labels.map(label => {
+  const claimed = new Map<string, FamilyColor>();
+  const iconicFirst = [...labels.filter(l => ICONIC.has(l.toUpperCase())), ...labels.filter(l => !ICONIC.has(l.toUpperCase()))];
+  for (const label of iconicFirst) {
     const brand = BRAND_COLORS[label.toUpperCase()];
-    if (!brand || usedFamilies.has(brand.family)) {
-      return null;
+    if (brand && !usedFamilies.has(brand.family)) {
+      usedFamilies.add(brand.family);
+      claimed.set(label, brand);
     }
-    usedFamilies.add(brand.family);
-    usedColors.add(brand.color);
-    return brand;
-  });
+  }
+  return claimed;
+}
+
+// Picks one colour per label, in the order given (biggest first). Labels without a brand colour, or whose hue another
+// brand already claimed, take the first palette colour whose family isn't shown yet.
+export function pickColors(labels: string[], palette: FamilyColor[]): FamilyColor[] {
+  const claimed = claimBrandColors(labels);
+  const usedFamilies = new Set([...claimed.values()].map(c => c.family));
+  const usedColors = new Set([...claimed.values()].map(c => c.color));
+  const picked = labels.map(label => claimed.get(label) ?? null);
 
   return picked.map(choice => {
     if (choice) {

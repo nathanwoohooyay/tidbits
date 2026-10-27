@@ -118,6 +118,10 @@ export class DashboardPageComponent implements OnInit {
   chartLoading = computed(() => this.accountsLoading() || (this.snapshotsQuery.isPending() && this.selectedAccountId() > 0));
   metricsLoading = computed(() => this.holdingsLoading());
   orders = computed(() => this.ordersQuery.data() ?? []);
+  // Cash held for pending buys; still part of the balance, but not spendable.
+  reservedCash = computed(() => this.orders()
+    .filter(order => order.status === 'PENDING')
+    .reduce((sum, order) => sum + (order.reservedAmount ?? 0), 0));
   chartDataPoints = computed(() => this.snapshotsQuery.data() ?? []);
 
   portfolioValue = computed(() => this.holdings().reduce((sum, h) => sum + h.totalValue, 0));

@@ -1,8 +1,4 @@
 <section class="metrics-block" aria-label="Portfolio overview" [attr.aria-busy]="loading">
-  @if (accountName) {
-    <div class="metric-eyebrow">{{ accountName }}</div>
-  }
-
   <div class="hero-metrics">
     <div class="metric-card hero">
       <div class="metric-label">Total net worth</div>
@@ -35,6 +31,11 @@
         <span class="skeleton skeleton-figure"></span>
       } @else {
         <app-rolling-number class="metric-value" [value]="cashBalance"></app-rolling-number>
+        @if (reservedCash > 0) {
+          <div class="metric-note">
+            {{ formatCurrency(reservedCash) }} set aside for open orders · {{ formatCurrency(Math.max(cashBalance - reservedCash, 0)) }} available
+          </div>
+        }
         <button type="button" class="btn-trade metric-action" (click)="moveCash.emit()">Transfer</button>
       }
     </div>

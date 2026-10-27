@@ -107,6 +107,7 @@ public class AuditEventConsumer {
         log.setUserId(event.userId());
         log.setUsername(event.username());
         log.setIpAddress(event.ipAddress());
+        log.setUserAgent(event.userAgent());
         log.setEvent(event.eventType());
         log.setStatus(LogStatus.fromValue(event.status()));
         log.setHappenedAt(event.occurredAt() == null ? LocalDateTime.now() : event.occurredAt());

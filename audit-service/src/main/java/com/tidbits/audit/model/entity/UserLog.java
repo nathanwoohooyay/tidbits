@@ -24,6 +24,10 @@ public class UserLog {
     @Column(name = "ip_address")
     private String ipAddress;
 
+    // The browser's User-Agent header, when the event came from one.
+    @Column(name = "user_agent", length = 512)
+    private String userAgent;
+
     @Column(name = "event")
     private String event;
 
@@ -60,6 +64,9 @@ public class UserLog {
 
     public String getIpAddress() { return ipAddress; }
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
+
+    public String getUserAgent() { return userAgent; }
+    public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
 
     public String getEvent() { return event; }
     public void setEvent(String event) { this.event = event; }

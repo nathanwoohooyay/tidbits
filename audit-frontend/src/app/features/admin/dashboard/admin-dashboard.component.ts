@@ -11,7 +11,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
     <div class="admin-dash-container animate-fade-in">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Executive Administration</h1>
+          <h1 class="page-title">Administration</h1>
         </div>
       </div>
 
@@ -25,7 +25,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
-            <span class="stat-label">Registered Users</span>
+            <span class="stat-label">Registered users</span>
           </div>
           <div class="stat-val mono-font">{{ stats().totalUsers | number }}</div>
         </div>
@@ -38,7 +38,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
                 <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
               </svg>
             </div>
-            <span class="stat-label">Trading Accounts</span>
+            <span class="stat-label">Trading accounts</span>
           </div>
           <div class="stat-val mono-font">{{ stats().totalAccounts | number }}</div>
         </div>
@@ -52,7 +52,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
                 <line x1="9" y1="15" x2="15" y2="15"></line>
               </svg>
             </div>
-            <span class="stat-label">User Event Records</span>
+            <span class="stat-label">User events</span>
           </div>
           <div class="stat-val mono-font">{{ stats().totalUserLogs | number }}</div>
         </div>
@@ -66,7 +66,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
                 <line x1="6" y1="20" x2="6" y2="14"></line>
               </svg>
             </div>
-            <span class="stat-label">Transactions Tracked</span>
+            <span class="stat-label">Transactions tracked</span>
           </div>
           <div class="stat-val mono-font">{{ stats().totalTransactionLogs | number }}</div>
         </div>
@@ -75,7 +75,7 @@ import { AdminDashboardStats } from '../../../core/models/models';
       <!-- Security Architecture Status Panel -->
       <div class="module-card glass-panel">
         <div class="module-header">
-          <h2 class="module-title">Security Architecture Status</h2>
+          <h2 class="module-title">Service status</h2>
         </div>
 
         <div class="service-health-list">

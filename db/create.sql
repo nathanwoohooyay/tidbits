@@ -118,6 +118,7 @@ CREATE TABLE user_logs (
     user_id INT REFERENCES users(user_id),
     username TEXT,
     ip_address TEXT,
+    user_agent VARCHAR(512),
     event TEXT NOT NULL,
     status log_status_type,
     happened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL

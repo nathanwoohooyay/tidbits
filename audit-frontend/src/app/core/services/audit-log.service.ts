@@ -4,6 +4,30 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { UserLog, TransactionLog, PointsLog } from '../models/models';
 
+// "Chrome on macOS" from a User-Agent header, matching the client app's session list. Undefined when the event has
+// no user agent (events recorded before it was captured, or calls that didn't come from a browser).
+export function describeDevice(userAgent: string | null | undefined): string | undefined {
+  if (!userAgent) {
+    return undefined;
+  }
+  const ua = userAgent;
+  const browser = /Edg\//.test(ua) ? 'Edge'
+    : /OPR\/|Opera/.test(ua) ? 'Opera'
+    : /Firefox\//.test(ua) ? 'Firefox'
+    : /Chrome\/|CriOS\//.test(ua) ? 'Chrome'
+    : /Safari\//.test(ua) && /Version\//.test(ua) ? 'Safari'
+    : null;
+  const os = /iPhone/.test(ua) ? 'iOS'
+    : /iPad/.test(ua) ? 'iPadOS'
+    : /Android/.test(ua) ? 'Android'
+    : /CrOS/.test(ua) ? 'ChromeOS'
+    : /Windows NT/.test(ua) ? 'Windows'
+    : /Mac OS X|Macintosh/.test(ua) ? 'macOS'
+    : /Linux/.test(ua) ? 'Linux'
+    : null;
+  return browser && os ? `${browser} on ${os}` : browser ?? os ?? 'Unknown device';
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -78,7 +102,8 @@ export class AuditLogService {
           action: String(log.action ?? log.event ?? ''),
           status: String(log.status ?? 'UNKNOWN'),
           ipAddress: log.ipAddress,
-          deviceInfo: log.deviceInfo,
+          deviceInfo: describeDevice(log.userAgent),
+          userAgent: log.userAgent || undefined,
           timestamp
         };
       })

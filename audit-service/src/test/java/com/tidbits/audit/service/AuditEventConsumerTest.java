@@ -144,7 +144,8 @@ class AuditEventConsumerTest {
 
     @Test
     void consumeUserEvent_createsUserLogAndUsesNowWhenOccurredAtMissing() throws Exception {
-        UserAuditEventDTO event = new UserAuditEventDTO("LOGIN", null, 50, "alice", "10.0.0.1", "SUCCESS", "ok");
+        UserAuditEventDTO event = new UserAuditEventDTO("LOGIN", null, 50, "alice", "10.0.0.1", "SUCCESS", "ok",
+                "Mozilla/5.0 (Macintosh) Chrome/130.0");
 
         auditEventConsumer.consumeUserEvent(objectMapper.writeValueAsString(event));
 
@@ -154,6 +155,7 @@ class AuditEventConsumerTest {
         UserLog log = captor.getValue();
         assertEquals(50, log.getUserId());
         assertEquals("10.0.0.1", log.getIpAddress());
+        assertEquals("Mozilla/5.0 (Macintosh) Chrome/130.0", log.getUserAgent());
         assertEquals("LOGIN", log.getEvent());
         assertEquals(LogStatus.SUCCESS, log.getStatus());
         assertNotNull(log.getHappenedAt());

@@ -28,7 +28,7 @@ import { AuthService } from '../../core/services/auth.service';
                 <line x1="12" y1="20" x2="12" y2="4"></line>
                 <line x1="6" y1="20" x2="6" y2="14"></line>
               </svg>
-              <span>Trading Analytics</span>
+              <span>Trading analytics</span>
             </a>
 
             <a id="nav-reports" routerLink="/auditor/compliance" routerLinkActive="active" class="nav-item">
@@ -44,7 +44,7 @@ import { AuthService } from '../../core/services/auth.service';
                 <line x1="12" y1="18" x2="12" y2="12"></line>
                 <line x1="9" y1="15" x2="15" y2="15"></line>
               </svg>
-              <span>Audit Event Logs</span>
+              <span>Audit logs</span>
             </a>
           </nav>
 
@@ -59,7 +59,7 @@ import { AuthService } from '../../core/services/auth.service';
                   <rect x="14" y="14" width="7" height="7"></rect>
                   <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                <span>Admin Dashboard</span>
+                <span>Admin dashboard</span>
               </a>
 
               <a id="nav-admin-users" routerLink="/admin/users" routerLinkActive="active" class="nav-item">
@@ -69,7 +69,7 @@ import { AuthService } from '../../core/services/auth.service';
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                   <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
-                <span>User Management</span>
+                <span>Users and roles</span>
               </a>
             </nav>
           </div>
@@ -88,13 +88,13 @@ import { AuthService } from '../../core/services/auth.service';
             </div>
           </div>
 
-          <button id="btn-logout" class="logout-btn" (click)="logout()" title="Terminate secure session">
+          <button id="btn-logout" class="logout-btn" (click)="logout()" title="Sign out">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            <span>Exit</span>
+            <span>Sign out</span>
           </button>
         </div>
       </aside>

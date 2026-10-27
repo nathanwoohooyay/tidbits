@@ -14,7 +14,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     <div class="users-container animate-fade-in">
       <div class="page-header">
         <div>
-          <h1 class="page-title">User & Role Management</h1>
+          <h1 class="page-title">Users and roles</h1>
         </div>
         <div class="header-actions">
           <button id="btn-refresh-users" class="btn btn-secondary btn-sm" (click)="loadUsers()">
@@ -23,7 +23,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               <polyline points="1 20 1 14 7 14"></polyline>
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
             </svg>
-            <span>Refresh Users</span>
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -49,20 +49,20 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
             id="input-user-search"
             type="text"
             class="input-control search-input"
-            placeholder="Search by username, email, or user ID..."
+            placeholder="Search by username, email or user ID…"
             [ngModel]="searchQuery()"
             (ngModelChange)="searchQuery.set($event)"
           />
         </div>
 
         <div class="role-filter-group">
-          <label>Filter Role:</label>
+          <label>Role</label>
           <select
             class="input-control select-role"
             [ngModel]="roleFilter()"
             (ngModelChange)="roleFilter.set($event)"
           >
-            <option value="ALL">All Roles</option>
+            <option value="ALL">All roles</option>
             <option value="ADMIN">ADMIN</option>
             <option value="AUDITOR">AUDITOR</option>
             <option value="REPORTER">REPORTER</option>
@@ -79,12 +79,12 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               <tr>
                 <th>User ID</th>
                 <th>Username</th>
-                <th>Email Address</th>
-                <th>Contact Phone</th>
-                <th>Reward Points</th>
-                <th>Assigned Role</th>
-                <th>Member Since</th>
-                <th style="text-align: right;">Administrative Actions</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Reward points</th>
+                <th>Role</th>
+                <th>Member since</th>
+                <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -108,7 +108,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
                       [id]="'btn-accounts-' + user.userId"
                       class="btn btn-secondary btn-sm"
                       (click)="viewAccounts(user)"
-                      title="Inspect user financial accounts"
+                      title="View accounts"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
@@ -121,7 +121,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
                       [id]="'btn-role-' + user.userId"
                       class="btn btn-secondary btn-sm"
                       (click)="openRoleModal(user)"
-                      title="Modify assigned security role"
+                      title="Change role"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
@@ -133,7 +133,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
                       [id]="'btn-revoke-' + user.userId"
                       class="btn btn-danger btn-sm"
                       (click)="confirmRevoke(user)"
-                      title="Invalidate all active JWT tokens"
+                      title="Sign this user out everywhere"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
@@ -145,7 +145,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
                 </td>
               </tr>
               <tr *ngIf="filteredUsers().length === 0">
-                <td colspan="8" class="empty-cell">No users found matching search criteria.</td>
+                <td colspan="8" class="empty-cell">No users match your search.</td>
               </tr>
             </tbody>
           </table>
@@ -157,7 +157,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
         <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <div>
-              <div class="badge badge-admin">ACCOUNT DETAILS</div>
+              <div class="badge badge-admin">Account details</div>
               <h2 class="modal-title">Accounts: {{ selectedUserForAccounts()?.username }}</h2>
               <span class="modal-sub">User ID #{{ selectedUserForAccounts()?.userId }}</span>
             </div>
@@ -166,24 +166,24 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
 
           <div class="modal-body">
             <div *ngIf="loadingAccounts()" class="loading-state">
-              <span>Retrieving account ledger...</span>
+              <span>Loading accounts…</span>
             </div>
 
             <div *ngIf="!loadingAccounts()" class="accounts-list">
               <div *ngFor="let acc of userAccounts()" class="account-item">
                 <div class="acc-top">
-                  <span class="acc-id mono-font">ACC #{{ acc.accountId }}</span>
+                  <span class="acc-id mono-font">Account #{{ acc.accountId }}</span>
                 </div>
-                <div class="acc-name">{{ acc.nickname || 'Standard Custody Account' }}</div>
+                <div class="acc-name">{{ acc.nickname || 'Unnamed account' }}</div>
                 <div class="acc-balance">
-                  <span class="bal-label">Cash Balance:</span>
+                  <span class="bal-label">Cash balance:</span>
                   <span class="bal-val mono-font text-emerald">\${{ acc.cashBalance | number:'1.2-2' }}</span>
                 </div>
                 <div class="acc-date text-muted mono-font">Opened: {{ acc.createdAt | date:'mediumDate' }}</div>
               </div>
 
               <div *ngIf="userAccounts().length === 0" class="empty-cell">
-                No accounts currently registered for this user.
+                This user has no accounts.
               </div>
             </div>
           </div>
@@ -199,7 +199,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
         <div class="modal-card glass-panel modal-sm" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <div>
-              <h2 class="modal-title">Modify Security Role</h2>
+              <h2 class="modal-title">Change role</h2>
               <span class="modal-sub">User: {{ selectedUserForRole()?.username }} (#{{ selectedUserForRole()?.userId }})</span>
             </div>
             <button class="modal-close" (click)="closeRoleModal()">✕</button>
@@ -207,16 +207,16 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
 
           <div class="modal-body">
             <div class="form-group">
-              <label>Select Authorization Tier:</label>
+              <label>Role</label>
               <select class="input-control" [(ngModel)]="newRoleSelection">
-                <option value="USER">USER (Standard Trader)</option>
-                <option value="AUDITOR">AUDITOR (Compliance & Surveillance)</option>
-                <option value="REPORTER">REPORTER (Read-Only Reporting)</option>
-                <option value="ADMIN">ADMIN (Full Administrative Control)</option>
+                <option value="USER">User (trader)</option>
+                <option value="AUDITOR">Auditor (compliance)</option>
+                <option value="REPORTER">Reporter (read-only reports)</option>
+                <option value="ADMIN">Admin (full access)</option>
               </select>
             </div>
             <p class="role-warning">
-              A user has to relogin for the changes to go into place
+              The user needs to sign in again for the new role to take effect.
             </p>
           </div>
 
@@ -228,8 +228,8 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               [disabled]="updatingRole()"
               (click)="saveRoleChange()"
             >
-              <span *ngIf="!updatingRole()">Apply Role Change</span>
-              <span *ngIf="updatingRole()">Updating...</span>
+              <span *ngIf="!updatingRole()">Change role</span>
+              <span *ngIf="updatingRole()">Saving…</span>
             </button>
           </div>
         </div>
@@ -240,7 +240,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
         <div class="modal-card glass-panel modal-sm" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <div>
-              <h2 class="modal-title">Confirm Access Revocation</h2>
+              <h2 class="modal-title">Revoke access?</h2>
             </div>
             <button class="modal-close" (click)="closeRevokeModal()">✕</button>
           </div>
@@ -259,8 +259,8 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
               [disabled]="revoking()"
               (click)="executeRevoke()"
             >
-              <span *ngIf="!revoking()">Confirm Revocation</span>
-              <span *ngIf="revoking()">Revoking...</span>
+              <span *ngIf="!revoking()">Revoke access</span>
+              <span *ngIf="revoking()">Revoking…</span>
             </button>
           </div>
         </div>
@@ -364,8 +364,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       gap: 10px;
       font-size: 12px;
       color: var(--text-muted);
-      font-weight: 700;
-      text-transform: uppercase;
+      font-weight: 600;
     }
 
     .select-role {

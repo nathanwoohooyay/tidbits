@@ -15,6 +15,15 @@ import {
 
 Chart.register(...registerables);
 
+// One distinct colour per instrument type, so a slice keeps its colour whatever else is in the chart.
+const INSTRUMENT_TYPE_COLORS: Record<string, string> = {
+  equity: '#4C2F24',
+  etf: '#2F6F8F',
+  crypto: '#D08A1E',
+};
+const FALLBACK_COLORS = ['#007F4B', '#8E3B5A', '#6B6F2A'];
+const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 'ETFs', crypto: 'Crypto' };
+
 @Component({
   selector: 'app-analytics',
   standalone: true,
@@ -24,7 +33,7 @@ Chart.register(...registerables);
       <!-- Page Header -->
       <div class="page-header">
         <div>
-          <h1 class="page-title">Trading Analytics</h1>
+          <h1 class="page-title">Trading analytics</h1>
         </div>
         <div class="header-actions">
           <button id="btn-refresh-metrics" class="btn btn-primary btn-sm" (click)="loadMetrics()">
@@ -33,7 +42,7 @@ Chart.register(...registerables);
               <polyline points="1 20 1 14 7 14"></polyline>
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
             </svg>
-            <span>Refresh Stream</span>
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -48,7 +57,7 @@ Chart.register(...registerables);
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
               </svg>
             </div>
-            <span class="stat-label">Total Trade Volume</span>
+            <span class="stat-label">Total trade volume</span>
           </div>
           <div class="stat-val mono-font">\${{ totalVolumeFormatted() }}</div>
         </div>
@@ -62,7 +71,7 @@ Chart.register(...registerables);
                 <polyline points="17 11 19 13 23 9"></polyline>
               </svg>
             </div>
-            <span class="stat-label">Audited Orders</span>
+            <span class="stat-label">Audited orders</span>
           </div>
           <div class="stat-val mono-font">{{ totalOrdersCount() }}</div>
         </div>
@@ -76,7 +85,7 @@ Chart.register(...registerables);
                 <polyline points="2 12 12 17 22 12"></polyline>
               </svg>
             </div>
-            <span class="stat-label">Active Instruments</span>
+            <span class="stat-label">Active instruments</span>
           </div>
           <div class="stat-val mono-font">{{ availableInstruments().length }}</div>
         </div>
@@ -89,7 +98,7 @@ Chart.register(...registerables);
                 <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
               </svg>
             </div>
-            <span class="stat-label">Assets Under Mgmt</span>
+            <span class="stat-label">Assets under management</span>
           </div>
           <div class="stat-val mono-font text-emerald">\${{ aumFormatted() }}</div>
         </div>
@@ -98,7 +107,7 @@ Chart.register(...registerables);
       <!-- Trading Activity Explorer with flexbox layout -->
       <div class="activity-section glass-panel">
         <div class="card-title-row">
-          <h2 class="card-title">Trading Activity Explorer</h2>
+          <h2 class="card-title">Explore trading activity</h2>
         </div>
 
         <div class="activity-filters">
@@ -125,7 +134,7 @@ Chart.register(...registerables);
                   <input
                     type="text"
                     class="dropdown-search-input"
-                    placeholder="Search instrument..."
+                    placeholder="Search instruments…"
                     [ngModel]="instrumentSearchText()"
                     (ngModelChange)="instrumentSearchText.set($event)"
                   />
@@ -188,7 +197,7 @@ Chart.register(...registerables);
                   <input
                     type="text"
                     class="dropdown-search-input"
-                    placeholder="Search client..."
+                    placeholder="Search clients…"
                     [ngModel]="clientSearchText()"
                     (ngModelChange)="clientSearchText.set($event)"
                   />
@@ -223,15 +232,15 @@ Chart.register(...registerables);
 
         <div class="activity-summary">
           <div class="summary-pill">
-            <span class="summary-label">Filtered Trades</span>
+            <span class="summary-label">Matching trades</span>
             <span class="summary-value mono-font">{{ filteredTradeCount().toLocaleString() }}</span>
           </div>
           <div class="summary-pill">
-            <span class="summary-label">Filtered Volume</span>
+            <span class="summary-label">Matching volume</span>
             <span class="summary-value mono-font">\${{ filteredVolumeFormatted() }}</span>
           </div>
           <div class="summary-pill">
-            <span class="summary-label">Active Days</span>
+            <span class="summary-label">Active days</span>
             <span class="summary-value mono-font">{{ activityBuckets().length }}</span>
           </div>
         </div>
@@ -242,7 +251,7 @@ Chart.register(...registerables);
         <!-- Main Line Chart: Volume Over Time -->
         <div class="chart-card glass-panel line-chart-card">
           <div class="card-title-row">
-            <h2 class="card-title">Trading Volume Velocity (Over Time)</h2>
+            <h2 class="card-title">Trading volume over time</h2>
           </div>
           <div class="chart-wrapper">
             <canvas #volumeTimeCanvas></canvas>
@@ -252,7 +261,7 @@ Chart.register(...registerables);
         <!-- Doughnut Chart: By Instrument Type -->
         <div class="chart-card glass-panel doughnut-chart-card">
           <div class="card-title-row">
-            <h2 class="card-title">Volume by Instrument Type</h2>
+            <h2 class="card-title">Volume by asset type</h2>
           </div>
           <div class="chart-wrapper square">
             <canvas #instrumentTypeCanvas></canvas>
@@ -442,11 +451,9 @@ Chart.register(...registerables);
       display: flex;
       flex-direction: column;
       gap: 5px;
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-muted);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
+      font-weight: 600;
       min-width: 180px;
       flex: 1;
     }
@@ -981,7 +988,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
       data: {
         labels,
         datasets: [{
-          label: 'Daily Traded Volume ($)',
+          label: 'Daily volume ($)',
           data: values,
           borderColor: '#4C2F24',
           backgroundColor: gradient,
@@ -1035,7 +1042,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     const existing = this.charts.find(c => c.canvas === this.instrumentTypeCanvas.nativeElement);
     if (existing) existing.destroy();
 
-    const labels = data.map(d => (d.instrument_type || 'Equity').toUpperCase());
+    const types = data.map(d => (d.instrument_type || 'equity').toLowerCase());
+    const labels = types.map(type => INSTRUMENT_TYPE_LABELS[type] ?? type.charAt(0).toUpperCase() + type.slice(1));
     const values = data.map(d => d.total_value);
 
     const chart = new Chart(ctx, {
@@ -1044,7 +1052,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         labels,
         datasets: [{
           data: values,
-          backgroundColor: ['#4C2F24', '#7A4638', '#c27d38', '#007F4B'],
+          backgroundColor: types.map((type, i) => INSTRUMENT_TYPE_COLORS[type] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]),
           borderColor: '#F8F3EE',
           borderWidth: 2
         }]

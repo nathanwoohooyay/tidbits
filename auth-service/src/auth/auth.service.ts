@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
 import '../env';
-import { publishUserAuditEvent, resolveIpAddress } from '../audit/userAuditPublisher';
+import { publishUserAuditEvent } from '../audit/userAuditPublisher';
 import { sendError } from '../utils/errorResponse';
 import { clientIp } from '../utils/clientIp';
 import { ensureAuthSchema } from './auth-schema';
@@ -24,6 +24,12 @@ const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_SESSIONS_PER_USER = 20;
 const THROTTLE_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 const SCHEMA_RETRY_MS = 10_000;
+
+// Where an audited request came from: the caller's IP (see utils/clientIp) and browser.
+function auditSource(req: Request) {
+  const agent = req.headers?.['user-agent'];
+  return { ipAddress: clientIp(req), userAgent: typeof agent === 'string' && agent.trim() ? agent.trim().slice(0, 512) : null };
+}
 
 // One signed-in device, as listed on the Settings page.
 export type SessionSummary = {
@@ -122,7 +128,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId: null,
         username: (body as Record<string, unknown> | undefined)?.username,
         status: 'FAILURE',
-        ipAddress: resolveIpAddress(req),
+        ...auditSource(req),
         details: validation.errorCode,
       });
       return sendError(res, req, validation.status, validation.errorCode, validation.message);
@@ -165,7 +171,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId: result.rows[0].user_id,
         username: result.rows[0].username,
         status: 'SUCCESS',
-        ipAddress: resolveIpAddress(req),
+        ...auditSource(req),
         details: null,
       });
 
@@ -189,7 +195,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           userId: null,
           username: (body as Record<string, unknown> | undefined)?.username,
           status: 'FAILURE',
-          ipAddress: resolveIpAddress(req),
+          ...auditSource(req),
           details: conflict.errorCode,
         });
         return sendError(res, req, 409, conflict.errorCode, conflict.message);
@@ -201,7 +207,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           userId: null,
           username: (body as Record<string, unknown> | undefined)?.username,
           status: 'FAILURE',
-          ipAddress: resolveIpAddress(req),
+          ...auditSource(req),
           details: 'DATABASE_CONSTRAINT_VIOLATION',
         });
         return sendError(res, req, 400, 'DATABASE_CONSTRAINT_VIOLATION', 'a required database constraint was violated');
@@ -212,7 +218,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId: null,
         username: (body as Record<string, unknown> | undefined)?.username,
         status: 'FAILURE',
-        ipAddress: resolveIpAddress(req),
+        ...auditSource(req),
         details: 'INTERNAL_SERVER_ERROR',
       });
       return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
@@ -229,7 +235,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId: null,
         username: (body as Record<string, unknown> | undefined)?.username,
         status: 'FAILURE',
-        ipAddress: resolveIpAddress(req),
+        ...auditSource(req),
         details: validation.errorCode,
       });
       return sendError(res, req, validation.status, validation.errorCode, validation.message);
@@ -248,7 +254,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           userId: null,
           username: (body as Record<string, unknown> | undefined)?.username,
           status: 'FAILURE',
-          ipAddress,
+          ...auditSource(req),
           details: 'TOO_MANY_ATTEMPTS',
         });
         const minutes = Math.max(1, Math.ceil(retryAfter / 60));
@@ -272,7 +278,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           userId: null,
           username: (body as Record<string, unknown> | undefined)?.username,
           status: 'FAILURE',
-          ipAddress: resolveIpAddress(req),
+          ...auditSource(req),
           details: 'INVALID_LOGIN',
         });
         await this.throttle.recordFailure(throttleKeys);
@@ -296,7 +302,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           userId: profileUser.user_id,
           username: (body as Record<string, unknown> | undefined)?.username,
           status: 'FAILURE',
-          ipAddress: resolveIpAddress(req),
+          ...auditSource(req),
           details: 'INVALID_LOGIN',
         });
         await this.throttle.recordFailure(throttleKeys);
@@ -311,7 +317,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           userId: profileUser.user_id,
           username: (body as Record<string, unknown> | undefined)?.username,
           status: 'FAILURE',
-          ipAddress: resolveIpAddress(req),
+          ...auditSource(req),
           details: 'INVALID_LOGIN',
         });
         await this.throttle.recordFailure(throttleKeys);
@@ -341,7 +347,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId: profileUser.user_id,
         username: (body as Record<string, unknown> | undefined)?.username,
         status: 'SUCCESS',
-        ipAddress,
+        ...auditSource(req),
         details: null,
       });
 
@@ -354,7 +360,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId: null,
         username: (body as Record<string, unknown> | undefined)?.username,
         status: 'FAILURE',
-        ipAddress: resolveIpAddress(req),
+        ...auditSource(req),
         details: 'INTERNAL_SERVER_ERROR',
       });
       return sendError(res, req, 500, 'INTERNAL_SERVER_ERROR', 'internal server error');
@@ -491,7 +497,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId: user.userId,
         username: null,
         status: 'SUCCESS',
-        ipAddress: clientIp(req),
+        ...auditSource(req),
         details: `${signedOut} session${signedOut === 1 ? '' : 's'} ended`,
       });
       return res.json({ signedOut });
@@ -572,7 +578,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId,
         username,
         status: 'SUCCESS',
-        ipAddress: resolveIpAddress(req),
+        ...auditSource(req),
         details: null,
       });
 
@@ -583,7 +589,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId,
         username,
         status: 'FAILURE',
-        ipAddress: resolveIpAddress(req),
+        ...auditSource(req),
         details: null,
       });
 
@@ -696,7 +702,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         userId,
         username: profileResult.rows[0].username,
         status: 'SUCCESS',
-        ipAddress: resolveIpAddress(req),
+        ...auditSource(req),
         details: null,
       });
 
@@ -915,8 +921,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
   }
 
   private userAgent(req: Request): string | null {
-    const value = req.headers?.['user-agent'];
-    return typeof value === 'string' && value.trim() ? value.trim().slice(0, 512) : null;
+    return auditSource(req).userAgent;
   }
 
   private handleAuthenticationError(req: Request, res: Response, error: unknown) {

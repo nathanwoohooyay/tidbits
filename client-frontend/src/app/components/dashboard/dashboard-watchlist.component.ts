@@ -80,10 +80,6 @@ interface WatchRow {
       display: block;
     }
 
-    .watch-row {
-      grid-template-columns: auto minmax(0, 1fr) auto auto auto;
-    }
-
     .watch-actions {
       display: flex;
       align-items: center;

@@ -54,7 +54,7 @@ export interface AggregatedOrder {
     <div class="logs-container">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Audit Event Logs</h1>
+          <h1 class="page-title">Audit logs</h1>
         </div>
         <div class="header-actions">
           <button id="btn-export-logs" class="btn btn-secondary btn-sm" (click)="exportLogsCsv()">
@@ -85,7 +85,7 @@ export interface AggregatedOrder {
             [class.active]="activeTab() === 'USER'"
             (click)="activeTab.set('USER')"
           >
-            <span>User Activity Logs</span>
+            <span>User activity</span>
             <span class="tab-badge">{{ filteredUserLogs().length }}</span>
           </button>
           <button
@@ -94,7 +94,7 @@ export interface AggregatedOrder {
             [class.active]="activeTab() === 'TXN'"
             (click)="activeTab.set('TXN')"
           >
-            <span>Account Transactions</span>
+            <span>Account transactions</span>
             <span class="tab-badge">{{ filteredAccountTxnLogs().length }}</span>
           </button>
           <button
@@ -112,7 +112,7 @@ export interface AggregatedOrder {
             [class.active]="activeTab() === 'POINTS'"
             (click)="activeTab.set('POINTS')"
           >
-            <span>Reward Points</span>
+            <span>Reward points</span>
             <span class="tab-badge">{{ filteredPointsLogs().length }}</span>
           </button>
         </div>
@@ -122,7 +122,7 @@ export interface AggregatedOrder {
           <!-- Date Range Filters -->
           <div class="filter-group">
             <label class="filter-field">
-              <span>Start Date</span>
+              <span>Start date</span>
               <input
                 type="date"
                 class="input-control"
@@ -131,7 +131,7 @@ export interface AggregatedOrder {
               />
             </label>
             <label class="filter-field">
-              <span>End Date</span>
+              <span>End date</span>
               <input
                 type="date"
                 class="input-control"
@@ -175,7 +175,7 @@ export interface AggregatedOrder {
                 <input
                   type="text"
                   class="input-control search-input"
-                  placeholder="Client, ticker, details..."
+                  placeholder="Client, ticker or details…"
                   [ngModel]="pointsSearchQuery()"
                   (ngModelChange)="pointsSearchQuery.set($event)"
                 />
@@ -189,7 +189,7 @@ export interface AggregatedOrder {
             <label class="filter-field">
               <span>Side</span>
               <select class="input-control select-sm" [ngModel]="selectedSide()" (ngModelChange)="selectedSide.set($event || 'ALL')">
-                <option value="ALL">All Sides</option>
+                <option value="ALL">All sides</option>
                 <option value="BUY">BUY</option>
                 <option value="SELL">SELL</option>
               </select>
@@ -202,7 +202,7 @@ export interface AggregatedOrder {
                 <input
                   type="text"
                   class="input-control search-input"
-                  placeholder="Search Txn ID..."
+                  placeholder="Search transaction ID…"
                   [ngModel]="txnSearchQuery()"
                   (ngModelChange)="txnSearchQuery.set($event)"
                 />
@@ -233,7 +233,7 @@ export interface AggregatedOrder {
                       #clientSearchInput
                       type="text"
                       class="dropdown-search-input"
-                      placeholder="Search client..."
+                      placeholder="Search clients…"
                       [ngModel]="clientSearchText()"
                       (ngModelChange)="onClientSearchChange($event)"
                     />
@@ -286,7 +286,7 @@ export interface AggregatedOrder {
                       #instrumentSearchInput
                       type="text"
                       class="dropdown-search-input"
-                      placeholder="Search instrument..."
+                      placeholder="Search instruments…"
                       [ngModel]="instrumentSearchText()"
                       (ngModelChange)="onInstrumentSearchChange($event)"
                     />
@@ -333,14 +333,14 @@ export interface AggregatedOrder {
               [class.active]="statusFilter() === 'SUCCESS'"
               (click)="statusFilter.set('SUCCESS')"
             >
-              Success / Filled
+              Succeeded or filled
             </button>
             <button
               class="status-pill failure"
               [class.active]="statusFilter() === 'FAILURE'"
               (click)="statusFilter.set('FAILURE')"
             >
-              Failures / Rejected
+              Failed or rejected
             </button>
           </div>
         </div>
@@ -357,8 +357,8 @@ export interface AggregatedOrder {
                 <th>User</th>
                 <th>Action</th>
                 <th>Outcome</th>
-                <th>IP Address</th>
-                <th>Client Device</th>
+                <th>IP address</th>
+                <th>Device</th>
               </tr>
             </thead>
             <tbody>
@@ -377,7 +377,7 @@ export interface AggregatedOrder {
                   </span>
                 </td>
                 <td class="mono-font text-muted">{{ log.ipAddress || '127.0.0.1' }}</td>
-                <td class="device-cell">{{ log.deviceInfo || 'Standard Web Session' }}</td>
+                <td class="device-cell" [attr.title]="log.userAgent ?? null">{{ log.deviceInfo || '—' }}</td>
               </tr>
               <tr *ngIf="filteredUserLogs().length === 0">
                 <td colspan="7" class="empty-cell">No matching user audit events found.</td>
@@ -399,10 +399,10 @@ export interface AggregatedOrder {
                 <th>Timestamp</th>
                 <th>Account</th>
                 <th>Instrument</th>
-                <th>Type / Side</th>
+                <th>Type</th>
                 <th>Quantity</th>
                 <th>Price</th>
-                <th>Total Value</th>
+                <th>Total value</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -471,8 +471,8 @@ export interface AggregatedOrder {
                   <th>Activity</th>
                   <th>Details</th>
                   <th class="text-right">Points</th>
-                  <th class="text-right">Balance After</th>
-                  <th class="text-right">Cash Value</th>
+                  <th class="text-right">Balance after</th>
+                  <th class="text-right">Cash value</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -514,14 +514,14 @@ export interface AggregatedOrder {
             <thead>
               <tr>
                 <th>Order ID</th>
-                <th>Account / Client</th>
+                <th>Account</th>
                 <th>Instrument</th>
                 <th>Side</th>
                 <th>Quantity</th>
                 <th>Price</th>
-                <th>Total Value</th>
-                <th>Final Status</th>
-                <th>Last Event Time</th>
+                <th>Total value</th>
+                <th>Status</th>
+                <th>Last event</th>
                 <th style="text-align: right;">Details</th>
               </tr>
             </thead>
@@ -555,7 +555,7 @@ export interface AggregatedOrder {
                 <td class="mono-font text-muted">{{ order.latestTimestamp | date:'short' }}</td>
                 <td style="text-align: right;">
                   <button class="btn btn-secondary btn-sm" (click)="openOrderDetail(order); $event.stopPropagation()">
-                    <span>Inspect</span>
+                    <span>View</span>
                   </button>
                 </td>
               </tr>
@@ -586,7 +586,7 @@ export interface AggregatedOrder {
           <div class="modal-body">
             <div class="modal-overview-layout">
               <div class="lifecycle-panel">
-                <h3 class="overview-title">Status History</h3>
+                <h3 class="overview-title">Status history</h3>
                 <div class="lifecycle-timeline">
                   <div
                     class="timeline-step timeline-step-chain"
@@ -635,7 +635,7 @@ export interface AggregatedOrder {
               </div>
 
               <div class="metrics-panel">
-                <h3 class="overview-title">Order Snapshot</h3>
+                <h3 class="overview-title">Order details</h3>
                 <div class="order-metrics-grid">
                   <div class="metric-item">
                     <span class="metric-lbl">Instrument</span>
@@ -656,11 +656,11 @@ export interface AggregatedOrder {
                     <span class="metric-val mono-font">\${{ selectedOrder()!.price | number:'1.2-2' }}</span>
                   </div>
                   <div class="metric-item">
-                    <span class="metric-lbl">Total Value</span>
+                    <span class="metric-lbl">Total value</span>
                     <span class="metric-val mono-font font-bold">\${{ selectedOrder()!.totalValue | number:'1.2-2' }}</span>
                   </div>
                   <div class="metric-item">
-                    <span class="metric-lbl">Account / User</span>
+                    <span class="metric-lbl">Account</span>
                     <span class="metric-val mono-font">Acc #{{ selectedOrder()!.accountId }}</span>
                   </div>
                 </div>
@@ -669,7 +669,7 @@ export interface AggregatedOrder {
 
             <!-- Kafka Audit Event Stream -->
             <div class="events-history">
-              <h3 class="events-title">Event Audit Trail (Kafka Records)</h3>
+              <h3 class="events-title">Event history</h3>
               <div class="events-table-wrap">
                 <table class="data-table">
                   <thead>
@@ -853,10 +853,8 @@ export interface AggregatedOrder {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.35px;
+      font-size: 12px;
+      font-weight: 600;
       color: var(--text-muted);
     }
 

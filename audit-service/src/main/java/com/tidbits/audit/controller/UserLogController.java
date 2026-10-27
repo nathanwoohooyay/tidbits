@@ -48,7 +48,7 @@ public class UserLogController {
     }
 
     private UserLogDTO toDto(UserLog log) {
-        return new UserLogDTO(
+        UserLogDTO dto = new UserLogDTO(
                 log.getLogId(),
                 log.getUserId(),
                 log.getUsername(),
@@ -57,5 +57,7 @@ public class UserLogController {
                 log.getStatus(),
                 log.getHappenedAt()
         );
+        dto.setUserAgent(log.getUserAgent());
+        return dto;
     }
 }

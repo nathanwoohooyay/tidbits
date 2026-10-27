@@ -8,17 +8,25 @@
 
   <main class="app-content" role="main">
     <div class="page dashboard-grid">
-      <div class="dashboard-search-row">
-        <app-dashboard-stock-search (stockSelected)="openTrade($event)"></app-dashboard-stock-search>
-        <app-notification-bell></app-notification-bell>
-      </div>
+      <header class="page-head dashboard-head">
+        <div>
+          <h1 class="page-title">Dashboard</h1>
+          <p class="page-sub">
+            {{ selectedAccount()?.nickname ? 'Balances, holdings and trades for ' + selectedAccount()!.nickname + '.' : 'Balances, holdings and trades.' }}
+          </p>
+        </div>
+        <div class="dashboard-search-row">
+          <app-dashboard-stock-search (stockSelected)="openTrade($event)"></app-dashboard-stock-search>
+          <app-notification-bell></app-notification-bell>
+        </div>
+      </header>
 
       <app-dashboard-metrics
         [loading]="metricsLoading()"
         [totalNetWorth]="totalNetWorth()"
         [cashBalance]="cashBalance()"
+        [reservedCash]="reservedCash()"
         [portfolioValue]="portfolioValue()"
-        [accountName]="selectedAccount()?.nickname ?? ''"
         [portfolioGainLoss]="portfolioGainLoss()"
         [dayChange]="dayChange()"
         [dayChangePercent]="dayChangePercent()"

@@ -15,7 +15,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
       <!-- Header -->
       <div class="page-header">
         <div>
-          <h1 class="page-title">Compliance & Surveillance</h1>
+          <h1 class="page-title">Compliance and surveillance</h1>
         </div>
         <div class="header-actions">
           <button id="btn-export-outliers" class="btn btn-secondary btn-sm" (click)="exportOutliersCsv()">
@@ -24,7 +24,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            <span>Export Outliers CSV</span>
+            <span>Export outliers (CSV)</span>
           </button>
           <button id="btn-generate-pdf-top" class="btn btn-primary btn-sm" (click)="generatePdfReport()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -32,7 +32,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
               <rect x="6" y="14" width="12" height="8"></rect>
             </svg>
-            <span>Generate PDF Report</span>
+            <span>Download PDF report</span>
           </button>
         </div>
       </div>
@@ -41,7 +41,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
       <div class="glass-panel section-panel">
         <div class="panel-header-row">
           <div>
-            <h2 class="panel-title">Statistical Trade Outliers & Anomalies</h2>
+            <h2 class="panel-title">Unusual trades</h2>
           </div>
           <div class="header-filters">
             <div class="threshold-control">
@@ -58,14 +58,14 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
             <thead>
               <tr>
                 <th>Order ID</th>
-                <th>Account ID</th>
+                <th>Account</th>
                 <th>Ticker</th>
                 <th>Side</th>
                 <th>Quantity</th>
-                <th>Execution Price</th>
-                <th>Estimated Value</th>
-                <th>Z-Score</th>
-                <th>Surveillance Status</th>
+                <th>Price</th>
+                <th>Value</th>
+                <th>Z-score</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -89,7 +89,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
                   </span>
                 </td>
                 <td>
-                  <span class="badge badge-danger">FLAGGED</span>
+                  <span class="badge badge-danger">Flagged</span>
                 </td>
               </tr>
               <tr *ngIf="filteredOutliers().length === 0">
@@ -105,38 +105,38 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
         <!-- Configuration Card -->
         <div class="config-card glass-panel">
           <div class="card-header">
-            <h2 class="card-title">Generate Compliance Report</h2>
+            <h2 class="card-title">Build a compliance report</h2>
           </div>
 
           <div class="config-form">
             <div class="form-group">
-              <label>Report Template</label>
+              <label>Template</label>
               <select class="input-control" [(ngModel)]="selectedTemplate">
-                <option value="EXECUTIVE">Executive Summary (Compliance Snapshot)</option>
-                <option value="ANOMALIES">Anomaly Investigation (Outlier Trades)</option>
-                <option value="REVENUE">Revenue & AUM Reconciliation</option>
-                <option value="FULL">Full Regulatory Report (All Sections)</option>
+                <option value="EXECUTIVE">Executive summary</option>
+                <option value="ANOMALIES">Unusual trades investigation</option>
+                <option value="REVENUE">Revenue and AUM reconciliation</option>
+                <option value="FULL">Full regulatory report (all sections)</option>
               </select>
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label>Audit Period Start</label>
+                <label>Period start</label>
                 <input type="date" class="input-control" [(ngModel)]="startDate">
               </div>
               <div class="form-group">
-                <label>Audit Period End</label>
+                <label>Period end</label>
                 <input type="date" class="input-control" [(ngModel)]="endDate">
               </div>
             </div>
 
             <div class="form-group">
-              <label>Compliance Notes & Auditor Assessment</label>
+              <label>Notes and assessment</label>
               <textarea
                 class="input-control textarea"
                 rows="3"
                 [(ngModel)]="complianceNotes"
-                placeholder="Enter formal observations, audit scope, or specific findings..."
+                placeholder="Observations, scope or findings…"
               ></textarea>
             </div>
 
@@ -151,7 +151,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
                   <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                   <rect x="6" y="14" width="12" height="8"></rect>
                 </svg>
-                <span>Generate Official PDF Report</span>
+                <span>Download PDF</span>
               </button>
 
               <button
@@ -164,7 +164,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                <span>Export Dataset as CSV</span>
+                <span>Export CSV</span>
               </button>
             </div>
           </div>
@@ -173,7 +173,7 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
         <!-- Live Preview Summary Card -->
         <div class="preview-card glass-panel">
           <div class="card-header">
-            <h2 class="card-title">Live Report Preview</h2>
+            <h2 class="card-title">Preview</h2>
           </div>
 
           <div class="report-preview-box">
@@ -187,32 +187,32 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
                 <span class="meta-val mono-font">REP-2026-{{ reportSerial() }}</span>
               </div>
               <div class="meta-item">
-                <span class="meta-label">Lead Examiner:</span>
+                <span class="meta-label">Prepared by:</span>
                 <span class="meta-val">{{ authService.currentUser()?.username || 'Compliance Officer' }}</span>
               </div>
               <div class="meta-item">
-                <span class="meta-label">Audit Window:</span>
+                <span class="meta-label">Period:</span>
                 <span class="meta-val mono-font">{{ startDate }} to {{ endDate }}</span>
               </div>
             </div>
 
             <div class="preview-kpis">
               <div class="preview-kpi-item">
-                <span class="kpi-tag">SAMPLE VOLUME</span>
+                <span class="kpi-tag">Volume sampled</span>
                 <div class="kpi-num mono-font">\${{ totalSampledVolumeFormatted() }}</div>
               </div>
               <div class="preview-kpi-item">
-                <span class="kpi-tag">FLAGGED OUTLIERS</span>
-                <div class="kpi-num mono-font text-rose">{{ outliers().length }} Trades</div>
+                <span class="kpi-tag">Outliers flagged</span>
+                <div class="kpi-num mono-font text-rose">{{ outliers().length }} {{ outliers().length === 1 ? 'trade' : 'trades' }}</div>
               </div>
               <div class="preview-kpi-item">
-                <span class="kpi-tag">STATUS</span>
+                <span class="kpi-tag">Status</span>
                 <span class="badge badge-success">COMPLIANT</span>
               </div>
             </div>
 
             <div class="instrument-summary">
-              <h3 class="section-heading">Sampled Instrument Classes</h3>
+              <h3 class="section-heading">Asset types sampled</h3>
               <div class="classes-list">
                 <div *ngFor="let item of volumeSummary()" class="class-row">
                   <span class="class-name">{{ (item.instrument_type || 'Equity').toUpperCase() }}</span>
@@ -366,11 +366,9 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
     }
 
     .form-group label {
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 600;
       color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
 
     .form-row {
@@ -462,11 +460,9 @@ import { OutlierTrade, TradeVolumeByType } from '../../../core/models/models';
     .text-rose { color: #BA0B2F; }
 
     .section-heading {
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 600;
       color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
       margin-bottom: 6px;
     }
 

@@ -55,7 +55,9 @@ export interface UserLog {
   event?: string;
   status: 'SUCCESS' | 'FAILURE' | string;
   ipAddress?: string;
+  // Browser and OS read from the user agent ("Chrome on macOS"); the raw header is kept for the tooltip.
   deviceInfo?: string;
+  userAgent?: string;
   timestamp: string;
   happenedAt?: string;
 }

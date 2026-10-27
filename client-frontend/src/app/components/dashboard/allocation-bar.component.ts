@@ -11,11 +11,36 @@ interface Segment {
 }
 
 const MAX_NAMED = 5; // largest positions shown individually; the rest fold into "Other"
+const TICKER_SLOTS = 5; // --alloc-1..5 for named tickers; --alloc-6 is "Other"
+
+function homeSlot(ticker: string): number {
+  let hash = 0;
+  for (const ch of ticker.toUpperCase()) {
+    hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  }
+  return hash % TICKER_SLOTS;
+}
+
+// Tickers are placed alphabetically so a clash always resolves the same way for the same set of stocks.
+export function assignSlots(tickers: string[]): Map<string, number> {
+  const taken = new Set<number>();
+  const slots = new Map<string, number>();
+  for (const ticker of [...tickers].sort()) {
+    let slot = homeSlot(ticker);
+    while (taken.has(slot)) {
+      slot = (slot + 1) % TICKER_SLOTS;
+    }
+    taken.add(slot);
+    slots.set(ticker, slot + 1);
+  }
+  return slots;
+}
 
 // Where the account's money sits: one stacked bar of positions plus cash, with a legend and hover readout.
 // Colours come from --alloc-1..6 (validated for colour-blind separation in light and dark mode).
-// A stock's colour follows the stock: slots go to the named tickers alphabetically, so price moves that
-// reorder the segments never repaint them.
+// A stock's colour follows the stock: each ticker hashes to a home slot, so it gets the same colour here and on the
+// Overview, whichever other stocks are shown and however price moves reorder them. Only when two named tickers share a
+// home slot does one move to the next free one.
 @Component({
   selector: 'app-allocation-bar',
   standalone: true,
@@ -150,7 +175,7 @@ export class AllocationBarComponent {
     const named = byValue.slice(0, MAX_NAMED);
     const rest = byValue.slice(MAX_NAMED);
 
-    const slotByTicker = new Map([...named].map(h => h.ticker).sort().map((ticker, i) => [ticker, i + 1]));
+    const slotByTicker = assignSlots(named.map(h => h.ticker));
     const segments: Segment[] = named.map(h => ({
       key: h.ticker,
       label: h.ticker,

@@ -42,21 +42,21 @@ import { quantityUnit } from './stock';
                   }
                 </span>
               </div>
-              <div class="open-order-meta">
-                <span>
+              <ul class="open-order-meta">
+                <li>
                   @if (order.expiresAt) {
                     Good until {{ serverTime(order.expiresAt) | date:'MMM d' }}
                   } @else {
                     Fills at the next open
                   }
-                  @if (order.reservedAmount) {
-                    · {{ formatCurrency(order.reservedAmount) }} set aside
-                  }
-                </span>
-                @if (order.createdAt) {
-                  <span>Placed {{ serverTime(order.createdAt) | date:'MMM d, h:mm a' }}</span>
+                </li>
+                @if (order.reservedAmount) {
+                  <li>{{ formatCurrency(order.reservedAmount) }} set aside</li>
                 }
-              </div>
+                @if (order.createdAt) {
+                  <li>Placed {{ serverTime(order.createdAt) | date:'MMM d, h:mm a' }}</li>
+                }
+              </ul>
               <button type="button" class="btn-trade open-order-cancel" (click)="cancel.emit(order)"
                       [disabled]="cancellingId() === order.orderId" [attr.aria-busy]="cancellingId() === order.orderId"
                       [attr.aria-label]="'Cancel ' + order.orderType.toLowerCase() + ' order for ' + order.instrument.ticker">
@@ -110,12 +110,20 @@ import { quantityUnit } from './stock';
       color: var(--clr-sienna);
     }
 
+    /* One fact per line, each kept whole. */
     .open-order-meta {
       display: grid;
       gap: .1rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
       font-size: .76rem;
       color: var(--clr-sienna);
       font-variant-numeric: tabular-nums;
+    }
+
+    .open-order-meta li {
+      white-space: nowrap;
     }
 
     @media (max-width: 720px) {

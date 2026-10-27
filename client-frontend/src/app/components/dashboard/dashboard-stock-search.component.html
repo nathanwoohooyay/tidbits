@@ -3,12 +3,12 @@
   <input
     type="search"
     role="combobox"
-    aria-label="Search stocks or tickers"
+    aria-label="Search stocks, crypto or ETFs"
     aria-autocomplete="list"
     aria-controls="stock-search-results"
     [attr.aria-expanded]="open() && results().length > 0"
     [attr.aria-activedescendant]="open() && results().length ? 'stock-search-option-' + activeIndex() : null"
-    placeholder="Search stocks or tickers"
+    placeholder="Search stocks, crypto or ETFs"
     autocomplete="off"
     spellcheck="false"
     [value]="term()"
@@ -20,7 +20,7 @@
   <kbd class="stock-search-hint" aria-hidden="true">↵</kbd>
 
   @if (open() && results().length > 0) {
-    <ul id="stock-search-results" class="stock-search-results" role="listbox" aria-label="Matching stocks">
+    <ul id="stock-search-results" class="stock-search-results" role="listbox" aria-label="Matching stocks, crypto and ETFs">
       @for (stock of results(); track stock.ticker; let i = $index) {
         <li
           [id]="'stock-search-option-' + i"

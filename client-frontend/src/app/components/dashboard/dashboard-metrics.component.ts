@@ -12,8 +12,9 @@ import { RollingNumberComponent } from '../rolling-number.component';
 export class DashboardMetricsComponent {
   @Input() totalNetWorth = 0;
   @Input() cashBalance = 0;
+  // Part of cashBalance held for pending buy orders; the rest is what can be spent or transferred.
+  @Input() reservedCash = 0;
   @Input() portfolioValue = 0;
-  @Input() accountName = '';
   @Input() portfolioGainLoss = 0;
   @Input() loading = false;
   @Input() dayChange = 0;

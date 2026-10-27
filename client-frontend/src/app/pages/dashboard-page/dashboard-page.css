@@ -2,11 +2,35 @@
   min-width: 0;
 }
 
+/* Title on the left; search and notifications top right, level with the title like the Overview's bell. On narrow
+   screens they wrap below the title at full width. */
+.dashboard-head {
+  flex-wrap: wrap;
+}
+
 .dashboard-search-row {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  align-self: flex-start;
   gap: .5rem;
+  margin-left: auto;
+}
+
+/* The search keeps its full width rather than shrinking to fit beside the title. */
+.dashboard-search-row app-dashboard-stock-search {
+  width: 380px;
+  max-width: 100%;
+}
+
+@media (max-width: 720px) {
+  .dashboard-search-row {
+    width: 100%;
+  }
+
+  .dashboard-search-row app-dashboard-stock-search {
+    flex: 1;
+  }
 }
 
 .dashboard-body {

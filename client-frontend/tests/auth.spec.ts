@@ -35,10 +35,10 @@ async function fillSignupForm(page: Page, overrides: Partial<typeof signupDetail
   const values = { ...signupDetails, ...overrides };
   await page.getByLabel('Username').fill(values.username);
   await page.getByLabel('Email').fill(values.email);
-  await page.getByLabel('Date of Birth').fill(values.dateOfBirth);
-  await page.getByLabel('Phone Number').fill(values.phoneNumber);
+  await page.getByLabel('Date of birth').fill(values.dateOfBirth);
+  await page.getByLabel('Phone number').fill(values.phoneNumber);
   await page.getByLabel('Password', { exact: true }).fill(values.password);
-  await page.getByLabel('Confirm Password').fill(values.password);
+  await page.getByLabel('Confirm password').fill(values.password);
 }
 
 async function fulfillJson(route: Route, body: unknown, status = 200) {
@@ -134,14 +134,14 @@ test.describe('registration and trading account lifecycle', () => {
         message: 'Username must be 3-30 characters and use only letters, numbers, periods, underscores, or hyphens.',
       },
       { field: 'Email', value: 'invalid-email', message: 'Enter a valid email address.' },
-      { field: 'Date of Birth', value: '2099-01-01', message: 'Enter a valid date of birth.' },
-      { field: 'Phone Number', value: '12345', message: 'Enter a valid 10-digit US phone number.' },
+      { field: 'Date of birth', value: '2099-01-01', message: 'Enter a valid date of birth.' },
+      { field: 'Phone number', value: '12345', message: 'Enter a valid 10-digit US phone number.' },
       {
         field: 'Password',
         value: 'weak',
         message: 'Password must be 8-20 characters and include uppercase, lowercase, and a number.',
       },
-      { field: 'Confirm Password', value: 'DifferentPass123!', message: 'Password confirmation does not match.' },
+      { field: 'Confirm password', value: 'DifferentPass123!', message: 'Password confirmation does not match.' },
     ];
 
     for (const invalidCase of invalidCases) {
@@ -155,7 +155,7 @@ test.describe('registration and trading account lifecycle', () => {
       await page.goto('/signup');
       await fillSignupForm(page, invalidCase.field === 'Password' ? { password: invalidCase.value } : undefined);
       await page.getByLabel(invalidCase.field, { exact: true }).fill(invalidCase.value);
-      await page.getByRole('button', { name: 'Create Account' }).click();
+      await page.getByRole('button', { name: 'Create account' }).click();
 
       await expect(page.getByRole('alert')).toHaveText(invalidCase.message);
       await expect(page.locator('.field-error').filter({ hasText: invalidCase.message })).toBeVisible();
@@ -169,14 +169,14 @@ test.describe('registration and trading account lifecycle', () => {
     await page.goto('/signup');
     await fillSignupForm(page);
     const signupRequestPromise = page.waitForRequest('**/api/auth/signup');
-    await page.getByRole('button', { name: 'Create Account' }).click();
+    await page.getByRole('button', { name: 'Create account' }).click();
     expect((await signupRequestPromise).postDataJSON()).toEqual(signupDetails);
     await expect(page).toHaveURL(/\/login$/);
 
     await page.getByLabel('Username').fill(signupDetails.username);
     await page.getByLabel('Password', { exact: true }).fill(signupDetails.password);
     const loginRequestPromise = page.waitForRequest('**/api/auth/login');
-    await page.getByRole('button', { name: 'Sign In' }).click();
+    await page.getByRole('button', { name: 'Sign in' }).click();
     expect((await loginRequestPromise).postDataJSON()).toEqual({
       username: signupDetails.username,
       password: signupDetails.password,
@@ -187,7 +187,7 @@ test.describe('registration and trading account lifecycle', () => {
     await expect(page).toHaveURL(/\/account-management$/);
     await page.getByLabel('Account Nickname').fill('pTest');
     const createRequestPromise = page.waitForRequest('**/api/users/13/accounts');
-    await page.getByRole('button', { name: 'Create Account' }).click();
+    await page.getByRole('button', { name: 'Create account' }).click();
     expect((await createRequestPromise).postDataJSON()).toEqual({ nickname: 'pTest' });
     await expect(page.getByText('Trading account created successfully.')).toBeVisible();
     await expect(page.getByText('pTest', { exact: true })).toBeVisible();
@@ -223,6 +223,6 @@ test.describe('registration and trading account lifecycle', () => {
 
     await page.getByRole('button', { name: 'Sign Out' }).click();
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   });
 });

@@ -25,8 +25,8 @@ export class DashboardMarketSnapshotComponent {
   @Output() trade = new EventEmitter<TradeTarget>();
 
   readonly filters: Array<[TrendFilter, string]> = [
-    ['gainers', 'Top Gainers'],
-    ['losers', 'Top Losers'],
+    ['gainers', 'Top gainers'],
+    ['losers', 'Top losers'],
   ];
 
   readonly formatCurrency = formatCurrency;

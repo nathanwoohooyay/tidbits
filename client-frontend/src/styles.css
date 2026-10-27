@@ -1426,15 +1426,6 @@ app-dashboard-header {
   padding: .25rem 3rem 0 0
 }
 
-.metric-eyebrow {
-  font-size: .7rem;
-  font-weight: 700;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--clr-sienna);
-  margin-bottom: .6rem
-}
-
 .metric-label {
   font-size: .78rem;
   font-weight: 600;
@@ -1515,6 +1506,13 @@ app-rolling-number.metric-value {
 
 .metric-action {
   margin-top: .5rem
+}
+
+.metric-note {
+  margin-top: .35rem;
+  font-size: .78rem;
+  color: var(--clr-sienna);
+  font-variant-numeric: tabular-nums
 }
 
 .metric-change.positive {
@@ -1688,12 +1686,49 @@ app-rolling-number.metric-value {
   padding: 0
 }
 
+/* Logo | ticker, with the trend line beside it | value | action. The detail line under the ticker (quantity and
+   price, or the name) runs under the trend line too, so it isn't cut off in the narrow right-hand column. */
 .holding-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 1rem;
+  column-gap: .875rem;
   padding: .75rem 0
+}
+
+.holding-row > app-ticker-logo,
+.holding-row > .holding-value,
+.holding-row > :last-child {
+  grid-row: 1 / span 2
+}
+
+.holding-row > .instrument-cell {
+  display: contents
+}
+
+.holding-row .ticker-badge {
+  grid-column: 2;
+  grid-row: 1
+}
+
+.holding-row .stock-name {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  max-width: none
+}
+
+.holding-row > .holding-spark {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end
+}
+
+.holding-row > .holding-value {
+  grid-column: 4
+}
+
+.holding-row > :last-child {
+  grid-column: 5
 }
 
 .instrument-with-logo {

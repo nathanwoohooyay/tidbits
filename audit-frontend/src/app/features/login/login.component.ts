@@ -46,7 +46,7 @@ import { AuthService } from '../../core/services/auth.service';
           </div>
 
           <div class="form-group">
-            <label for="password">Security Password</label>
+            <label for="password">Password</label>
             <div class="input-with-icon">
               <input
                 id="password"
@@ -66,8 +66,8 @@ import { AuthService } from '../../core/services/auth.service';
             class="btn btn-primary btn-block"
             [disabled]="loading()"
           >
-            <span *ngIf="!loading()">Authenticate Session</span>
-            <span *ngIf="loading()">Verifying Credentials...</span>
+            <span *ngIf="!loading()">Sign in</span>
+            <span *ngIf="loading()">Signing in…</span>
           </button>
         </form>
 
@@ -154,11 +154,9 @@ import { AuthService } from '../../core/services/auth.service';
     }
 
     .form-group label {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
 
     .btn-block {

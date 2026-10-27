@@ -242,8 +242,4 @@ export class AccountPageComponent implements OnInit {
       }
     });
   }
-
-  goBack() {
-    void this.router.navigateByUrl('/dashboard');
-  }
 }

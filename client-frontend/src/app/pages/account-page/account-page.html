@@ -8,7 +8,6 @@
         <h1 class="page-title">Account settings</h1>
         <p class="page-sub">Manage your profile, password, signed-in devices, and activity.</p>
       </div>
-      <button type="button" class="btn-link" (click)="goBack()">← Back to Dashboard</button>
     </header>
 
     <nav class="text-tabs settings-tabs" aria-label="Account settings sections">
@@ -48,7 +47,7 @@
         </div>
 
         <div class="form-group">
-          <label for="update-phone-number">Phone Number</label>
+          <label for="update-phone-number">Phone number</label>
           <input
             id="update-phone-number"
             type="text"
@@ -64,7 +63,7 @@
           class="btn-primary"
           [disabled]="updateLoading()"
         >
-          {{ updateLoading() ? 'Updating…' : 'Update Account' }}
+          {{ updateLoading() ? 'Updating…' : 'Update account' }}
         </button>
       </form>
     </section>
@@ -82,7 +81,7 @@
 
       <form (ngSubmit)="changePassword()" class="form-grid">
         <div class="form-group">
-          <label for="old-password">Current Password</label>
+          <label for="old-password">Current password</label>
           <input
             id="old-password"
             type="password"
@@ -95,7 +94,7 @@
         </div>
 
         <div class="form-group">
-          <label for="new-password">New Password</label>
+          <label for="new-password">New password</label>
           <input
             id="new-password"
             type="password"
@@ -108,7 +107,7 @@
         </div>
 
         <div class="form-group">
-          <label for="confirm-password">Confirm New Password</label>
+          <label for="confirm-password">Confirm new password</label>
           <input
             id="confirm-password"
             type="password"
@@ -125,7 +124,7 @@
           class="btn-primary"
           [disabled]="passwordLoading()"
         >
-          {{ passwordLoading() ? 'Changing…' : 'Change Password' }}
+          {{ passwordLoading() ? 'Changing…' : 'Change password' }}
         </button>
       </form>
     </section>

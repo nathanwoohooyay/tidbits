@@ -7,6 +7,17 @@ import { isCrypto } from './stock';
 const LOGO_URL = (ticker: string) =>
   `https://financialmodelingprep.com/image-stock/${encodeURIComponent(isCrypto(ticker) ? `${ticker}USD` : ticker.replace('.', '-'))}.png`;
 
+// Fund issuers' logos are wide wordmarks ("SPDR", "Vanguard") that shrink to a sliver in a square, so ETFs get a
+// badge with their ticker in the issuer's colour instead.
+const SPDR = '#3B7A48', VANGUARD = '#8E1B22', INVESCO = '#1F4E8C', ISHARES = '#4A535C', ARK = '#5B4A8B';
+const FUND_COLORS: Record<string, string> = {
+  SPY: SPDR, DIA: SPDR, GLD: SPDR, XLK: SPDR,
+  VOO: VANGUARD, VTI: VANGUARD,
+  QQQ: INVESCO,
+  IWM: ISHARES, TLT: ISHARES,
+  ARKK: ARK,
+};
+
 const OUTPUT_SIZE = 96;     // normalised logo is drawn into a square of this many px
 const PADDING = 0.08;       // share of the square left empty on each side
 const ALPHA_CUTOFF = 24;    // pixels fainter than this count as background
@@ -117,12 +128,15 @@ function trimAndCentre(img: HTMLImageElement): NormalisedLogo | null {
   return { src: out.toDataURL('image/png'), tone };
 }
 
-// Company logo for a ticker, trimmed and centred, or a coloured initials badge when no logo is available.
+// Company logo for a ticker, trimmed and centred; a ticker badge for ETFs; or a coloured initials badge when no logo
+// is available.
 @Component({
   selector: 'app-ticker-logo',
   standalone: true,
   template: `
-    @if (logo(); as l) {
+    @if (fundColor(); as color) {
+      <span class="fund" [style.background]="color" [attr.data-length]="ticker().length">{{ ticker() }}</span>
+    } @else if (logo(); as l) {
       <img [src]="l.src" alt="" [class]="'tone-' + l.tone" />
     } @else if (failed()) {
       <span class="initials" [style.background]="tint()">{{ initials() }}</span>
@@ -150,6 +164,23 @@ function trimAndCentre(img: HTMLImageElement): NormalisedLogo | null {
       filter: invert(1);
     }
 
+    .fund {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      border-radius: 28%;
+      color: #fff;
+      font-size: calc(var(--logo-size, 2rem) * .3);
+      font-weight: 800;
+      letter-spacing: -.01em;
+      line-height: 1;
+    }
+
+    .fund[data-length="4"] {
+      font-size: calc(var(--logo-size, 2rem) * .25);
+    }
+
     .initials {
       display: grid;
       place-items: center;
@@ -166,6 +197,7 @@ function trimAndCentre(img: HTMLImageElement): NormalisedLogo | null {
 export class TickerLogoComponent {
   readonly ticker = input.required<string>();
 
+  readonly fundColor = computed(() => FUND_COLORS[this.ticker().toUpperCase()] ?? null);
   readonly logo = signal<NormalisedLogo | null>(null);
   readonly failed = signal(false);
   readonly initials = computed(() => this.ticker().replace(/[^A-Z]/gi, '').slice(0, 2).toUpperCase());
@@ -186,6 +218,9 @@ export class TickerLogoComponent {
       onCleanup(() => { active = false; });
       this.logo.set(null);
       this.failed.set(false);
+      if (FUND_COLORS[ticker.toUpperCase()]) {
+        return;
+      }
       void normalise(ticker).then(result => {
         if (!active) return;
         if (result) {

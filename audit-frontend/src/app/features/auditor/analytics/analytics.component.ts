@@ -5,6 +5,7 @@ import { Chart, registerables } from 'chart.js';
 import { finalize, switchMap } from 'rxjs/operators';
 import { MetricsService } from '../../../core/services/metrics.service';
 import { AuditLogService } from '../../../core/services/audit-log.service';
+import { FamilyColor, pickColors } from './brand-colors';
 import {
   AllMetricsResponse,
   TransactionLog,
@@ -29,8 +30,18 @@ const INSTRUMENT_TYPE_COLORS: Record<string, string> = {
   crypto: '#D08A1E',
 };
 const FALLBACK_COLORS = ['#007F4B', '#8E3B5A', '#6B6F2A'];
-// Top stocks pie: the instrument-type colours first, then more distinct hues; "Other" is always the neutral grey.
-const TOP_STOCK_COLORS = ['#4C2F24', '#2F6F8F', '#D08A1E', '#007F4B', '#8E3B5A', '#6B6F2A', '#7A4638', '#5B7FA6'];
+// Top stocks pie: each ticker in its brand colour where it has one (see brand-colors.ts); the rest take these, in order.
+// "Other" is always the neutral grey.
+const TOP_STOCK_FALLBACK_COLORS: FamilyColor[] = [
+  { color: '#4C2F24', family: 'brown' },
+  { color: '#2F6F8F', family: 'teal' },
+  { color: '#D08A1E', family: 'yellow' },
+  { color: '#007F4B', family: 'green' },
+  { color: '#8E3B5A', family: 'magenta' },
+  { color: '#6B6F2A', family: 'olive' },
+  { color: '#5B7FA6', family: 'blue' },
+  { color: '#7A4638', family: 'red' },
+];
 const OTHER_COLOR = '#B5A89E';
 const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 'ETFs', crypto: 'Crypto' };
 
@@ -1445,7 +1456,10 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         labels,
         datasets: [{
           data: values,
-          backgroundColor: [...TOP_STOCK_COLORS.slice(0, topStocks.length), ...(otherValue > 0 ? [OTHER_COLOR] : [])],
+          backgroundColor: [
+            ...pickColors(topStocks.map(stock => stock.label), TOP_STOCK_FALLBACK_COLORS).map(c => c.color),
+            ...(otherValue > 0 ? [OTHER_COLOR] : []),
+          ],
           borderColor: '#F8F3EE',
           borderWidth: 2
         }]

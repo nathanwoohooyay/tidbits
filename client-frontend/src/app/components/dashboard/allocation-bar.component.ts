@@ -1,6 +1,7 @@
 import { Component, computed, input, signal } from '@angular/core';
 import { HoldingDTO } from '../../services/portfolio-queries';
 import { formatCurrency } from './dashboard.utils';
+import { BRAND_COLORS, ColorFamily } from './brand-colors';
 
 interface Segment {
   key: string;
@@ -12,6 +13,7 @@ interface Segment {
 
 const MAX_NAMED = 5; // largest positions shown individually; the rest fold into "Other"
 const TICKER_SLOTS = 5; // --alloc-1..5 for named tickers; --alloc-6 is "Other"
+const SLOT_FAMILIES: ColorFamily[] = ['blue', 'yellow', 'magenta', 'purple', 'orange']; // hues of --alloc-1..5
 
 function homeSlot(ticker: string): number {
   let hash = 0;
@@ -22,12 +24,13 @@ function homeSlot(ticker: string): number {
 }
 
 // Tickers are placed alphabetically so a clash always resolves the same way for the same set of stocks.
-export function assignSlots(tickers: string[]): Map<string, number> {
-  const taken = new Set<number>();
+// `blocked` slots are skipped: their hue is already on screen as a brand colour.
+export function assignSlots(tickers: string[], blocked: ReadonlySet<number> = new Set()): Map<string, number> {
+  const taken = new Set<number>(blocked);
   const slots = new Map<string, number>();
   for (const ticker of [...tickers].sort()) {
     let slot = homeSlot(ticker);
-    while (taken.has(slot)) {
+    for (let tries = 0; taken.has(slot) && tries < TICKER_SLOTS; tries++) {
       slot = (slot + 1) % TICKER_SLOTS;
     }
     taken.add(slot);
@@ -36,11 +39,33 @@ export function assignSlots(tickers: string[]): Map<string, number> {
   return slots;
 }
 
+// Each ticker's colour: its brand colour (Tesla red, Nvidia green) when it has one, else an --alloc slot.
+// Tickers are given biggest first, so when two brands share a hue the bigger position keeps its brand colour.
+export function assignColors(tickers: string[]): Map<string, string> {
+  const usedFamilies = new Set<ColorFamily>();
+  const colors = new Map<string, string>();
+  const unbranded: string[] = [];
+  for (const ticker of tickers) {
+    const brand = BRAND_COLORS[ticker.toUpperCase()];
+    if (brand && !usedFamilies.has(brand.family)) {
+      usedFamilies.add(brand.family);
+      // Black brands would vanish in dark mode, so they use the ink colour for the current theme.
+      colors.set(ticker, brand.family === 'black' ? 'var(--alloc-ink)' : brand.color);
+    } else {
+      unbranded.push(ticker);
+    }
+  }
+  const blocked = new Set(SLOT_FAMILIES.flatMap((family, slot) => usedFamilies.has(family) ? [slot] : []));
+  for (const [ticker, slot] of assignSlots(unbranded, blocked)) {
+    colors.set(ticker, `var(--alloc-${slot})`);
+  }
+  return colors;
+}
+
 // Where the account's money sits: one stacked bar of positions plus cash, with a legend and hover readout.
-// Colours come from --alloc-1..6 (validated for colour-blind separation in light and dark mode).
-// A stock's colour follows the stock: each ticker hashes to a home slot, so it gets the same colour here and on the
-// Overview, whichever other stocks are shown and however price moves reorder them. Only when two named tickers share a
-// home slot does one move to the next free one.
+// A stock's colour follows the stock, so it's the same here and on the Overview: well-known tickers get their brand
+// colour (brand-colors.ts); the rest hash to a home slot in --alloc-1..5 (validated for colour-blind separation in
+// light and dark mode), skipping slots whose hue a brand colour already shows.
 @Component({
   selector: 'app-allocation-bar',
   standalone: true,
@@ -175,13 +200,13 @@ export class AllocationBarComponent {
     const named = byValue.slice(0, MAX_NAMED);
     const rest = byValue.slice(MAX_NAMED);
 
-    const slotByTicker = assignSlots(named.map(h => h.ticker));
+    const colorByTicker = assignColors(named.map(h => h.ticker));
     const segments: Segment[] = named.map(h => ({
       key: h.ticker,
       label: h.ticker,
       value: h.totalValue,
       share: h.totalValue / total,
-      color: `var(--alloc-${slotByTicker.get(h.ticker)})`,
+      color: colorByTicker.get(h.ticker)!,
     }));
     const otherValue = rest.reduce((sum, h) => sum + h.totalValue, 0);
     if (otherValue > 0) {

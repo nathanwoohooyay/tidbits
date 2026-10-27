@@ -63,6 +63,7 @@
   --alloc-5: #eb6834;
   --alloc-6: #1baf7a;
   --alloc-cash: #B7ACA2;
+  --alloc-ink: #1D1D1F; /* black brand colours (Apple, Nike) */
   --page-background: var(--clr-cream);
   /* One accent for interactive chrome: primary buttons, active tabs and toggles, focus rings. `--clr-accent` is the
      fill (white text on it), `--clr-accent-ink` the same hue as text or outline on a surface. */
@@ -157,6 +158,7 @@ body.dark-mode {
   --alloc-5: #d95926;
   --alloc-6: #199e70;
   --alloc-cash: #6E5848;
+  --alloc-ink: #E8E1DA; /* black brand colours, lightened so they show on dark */
   /* Derived tokens resolve where declared, so they must be re-declared here to pick up dark values. */
   --clr-hairline: color-mix(in oklab, var(--clr-border) 70%, transparent);
   --clr-accent-soft: color-mix(in oklab, var(--clr-accent-ink) 12%, transparent);

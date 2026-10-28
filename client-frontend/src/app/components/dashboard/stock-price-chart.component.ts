@@ -178,6 +178,7 @@ export class StockPriceChartComponent {
   private byDate = new Map<string, PricingCandleDTO>();
   private tradesByDate = new Map<string, string>();
   private viewKey = '';
+  private viewSelection = ''; // the mode and range the current view was made for
   private visibleKey = '';
   private gliding = false;
   // Set by the user's own wheel/drag/touch on the chart; until then the view is the selected range, even if the
@@ -249,19 +250,31 @@ export class StockPriceChartComponent {
     this.markers?.setMarkers(this.toMarkers(candles, trades, palette));
 
     // A new range, new data or a line/candles switch moves the view; a theme change leaves the user's zoom alone.
+    // Only picking a range or switching line/candles glides. New data on its own snaps: the chart keeps the newest
+    // candles in view when its data grows, so a glide would start from a sliver of candles at the right edge.
     const key = span ? `${mode}:${span.first}:${span.last}:${candles.length}` : '';
     if (key !== this.viewKey && span) {
-      const firstView = !this.viewKey;
+      const selection = `${mode}:${this.viewFrom()}`;
+      const glide = !!this.viewKey && selection !== this.viewSelection;
       this.viewKey = key;
-      if (firstView) {
-        this.chart.timeScale().setVisibleLogicalRange(rangeFor(this.chart, span.first, span.last, mode === 'candles'));
-      } else {
+      this.viewSelection = selection;
+      if (glide) {
         this.glideTo(span);
+      } else {
+        this.jumpTo(span);
       }
     }
     this.updateBaseline(this.userMoved
       ? visibleIndices(this.chart.timeScale().getVisibleLogicalRange(), candles.length)?.first
       : span?.first);
+  }
+
+  private jumpTo(span: { first: number; last: number }) {
+    this.stopGlide();
+    this.gliding = false;
+    this.userMoved = false;
+    this.emitVisible(null);
+    this.chart!.timeScale().setVisibleLogicalRange(rangeFor(this.chart!, span.first, span.last, this.mode() === 'candles'));
   }
 
   private glideTo(span: { first: number; last: number }) {

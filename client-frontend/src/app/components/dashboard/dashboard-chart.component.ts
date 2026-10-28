@@ -181,6 +181,7 @@ export class DashboardChartComponent {
   private startLine?: IPriceLine;
   private values = new Map<string, number>();
   private viewKey = '';
+  private viewTimeframe?: ChartTimeframe; // the timeframe the current view was made for
   private gliding = false;
   // Set by the user's own wheel/drag/touch on the chart; until then the view is the selected timeframe, even if the
   // chart's size settles after it was drawn (e.g. while a panel is still sliding in).
@@ -241,17 +242,30 @@ export class DashboardChartComponent {
     this.values = new Map(points.map(pt => [pt.day, pt.value]));
 
     // A new timeframe (or new data) moves the view; a theme change or same-shaped refresh leaves the user's zoom alone.
+    // Only picking a timeframe glides. New data snaps: the chart keeps the newest points in view when its data grows,
+    // so a glide would start from a sliver of points at the right edge (full history arriving after a partial first
+    // load looked like the line growing out of the right side).
     const key = span ? `${span.first}:${span.last}:${points.length}` : '';
     if (key !== this.viewKey && span) {
-      const firstView = !this.viewKey;
+      const timeframe = this.chartTimeframe();
+      const glide = !!this.viewKey && timeframe !== this.viewTimeframe;
       this.viewKey = key;
-      if (firstView) {
-        this.chart.timeScale().setVisibleLogicalRange(rangeFor(this.chart, span.first, span.last));
-      } else {
+      this.viewTimeframe = timeframe;
+      if (glide) {
         this.glideTo(span);
+      } else {
+        this.jumpTo(span);
       }
     }
     this.updateStart(this.visible()?.first ?? span?.first, p.muted);
+  }
+
+  private jumpTo(span: { first: number; last: number }) {
+    this.stopGlide();
+    this.gliding = false;
+    this.userMoved = false;
+    this.visible.set(null);
+    this.chart!.timeScale().setVisibleLogicalRange(rangeFor(this.chart!, span.first, span.last));
   }
 
   private glideTo(span: { first: number; last: number }) {

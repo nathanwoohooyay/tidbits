@@ -116,6 +116,7 @@ export class AuthBrandPanelComponent implements AfterViewInit {
         // Re-anchor to the new right edge rather than rebuilding: mobile browsers fire resize as the URL bar
         // slides, and restarting the walk each time would make the chart stutter.
         this.panX = this.width - RIGHT_GAP;
+        this.backfill();
       }
     };
     const observer = new ResizeObserver(resize);
@@ -165,9 +166,38 @@ export class AuthBrandPanelComponent implements AfterViewInit {
       close = c.close;
     }
     this.candles.push(openCandle(close));
+    this.fitScale();
+    this.panX = panX;
+  }
 
-    // A random walk's range depends on the path it took, so give the first frame at least MIN_RANGE of headroom;
-    // after that the scale eases to whatever the visible candles actually span.
+  // The canvas got wider than the chart: it was first measured before the page finished laying out (or the window
+  // grew). Fill the new space on the left with history so the chart never starts out bunched at the right edge: a
+  // fresh walk, rescaled to end exactly where the chart's first candle opens.
+  private backfill() {
+    const missing = Math.ceil(((this.panX ?? 0) + STEP) / STEP) + 1 - this.candles.length;
+    if (missing <= 0 || !this.candles.length) {
+      return;
+    }
+    const savedAnchor = anchor;
+    anchor = 100;
+    const history: Candle[] = [];
+    let close = 100;
+    for (let i = 0; i < missing; i++) {
+      const c = nextCandle(close);
+      history.push(c);
+      close = c.close;
+    }
+    anchor = savedAnchor;
+    const k = this.candles[0].open / close;
+    this.candles.unshift(...history.map(c => ({
+      open: c.open * k, high: c.high * k, low: c.low * k, close: c.close * k, path: c.path.map(p => p * k),
+    })));
+    this.fitScale();
+  }
+
+  // A random walk's range depends on the path it took, so start the scale at what the candles span with at least
+  // MIN_RANGE of headroom; after that it eases to whatever the visible candles actually span.
+  private fitScale() {
     let lo = Math.min(...this.candles.map(c => c.low));
     let hi = Math.max(...this.candles.map(c => c.high));
     const mid = (lo + hi) / 2;
@@ -177,12 +207,14 @@ export class AuthBrandPanelComponent implements AfterViewInit {
     }
     this.lo = lo;
     this.hi = hi;
-
-    this.panX = panX;
   }
 
   // The live candle is done: lock in its close and open the next one at the right edge, sliding everything left.
   private closeLiveCandle() {
+    // Not laid out yet (the canvas had no width so far); the first resize with a width builds the chart.
+    if (!this.candles.length) {
+      return;
+    }
     const last = this.candles[this.candles.length - 1];
     last.close = last.path[last.path.length - 1];
     this.candles.push(openCandle(last.close));

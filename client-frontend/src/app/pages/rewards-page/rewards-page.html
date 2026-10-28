@@ -6,20 +6,10 @@
     <header class="page-head">
       <div>
         <h1 class="page-title">Rewards</h1>
-        <p class="page-sub">Earn 1 point for every $1 you trade, then spend points on prize draws.</p>
+        <p class="page-sub">Extraordinary prizes. Your next possibility.</p>
       </div>
-    </header>
-
-    @if (loadError()) {
-      <div class="trade-error" role="alert">
-        {{ loadError() }}
-        <button type="button" class="link-btn" (click)="loadAll()">Retry</button>
-      </div>
-    }
-
-    <!-- Balance -->
     <section class="rewards-summary" aria-label="Points balance">
-      <span class="eyebrow">Points balance</span>
+      <span class="summary-label">Points balance</span>
       <p class="balance">
         @if (loading() && !summary()) {
           <span class="skeleton">—</span>
@@ -33,32 +23,63 @@
         · {{ (summary()?.lifetimeSpent ?? 0) | number }} spent
       </p>
     </section>
+    </header>
+
+    @if (loadError()) {
+      <div class="trade-error" role="alert">
+        {{ loadError() }}
+        <button type="button" class="link-btn" (click)="loadAll()">Retry</button>
+      </div>
+    }
 
     <!-- Prize draws: one per prize -->
     <section class="rewards-section" aria-labelledby="draws-title">
       <div class="section-row">
-        <h2 id="draws-title">Extraordinary draws</h2>
+        <h2 id="draws-title" class="section-title">This week's draws <span class="draw-count">{{ draws().length }}</span></h2>
         @if (nextDraw(); as next) {
           <span class="muted">Next draw in <span class="mono">{{ countdown(next) }}</span></span>
         }
       </div>
 
       <div class="prize-grid">
-        @for (draw of draws(); track draw.drawId) {
-          <article class="prize" [attr.data-prize]="draw.prizeCode">
+        @for (draw of displayDraws(); track draw.drawId; let featured = $first) {
+          <article class="prize" [class.prize-featured]="featured"
+                   [class.is-confirming]="entryReceipt()?.drawId === draw.drawId"
+                   [attr.data-prize]="draw.prizeCode" [attr.aria-busy]="busyDrawId() === draw.drawId">
             <div class="prize-thumb">
               <span class="prize-icon" aria-hidden="true">{{ prizeIcon(draw) }}</span>
               @if (prizeImage(draw); as src) {
-                <img [src]="src" alt="" loading="lazy" (error)="markImageMissing(draw)" />
+                <img [src]="src" alt="" [attr.loading]="featured ? 'eager' : 'lazy'" (error)="markImageMissing(draw)" />
+              }
+              @if (entryReceipt(); as receipt) {
+                @if (receipt.drawId === draw.drawId) {
+                     <div class="entry-celebration" [attr.role]="receipt.kind === 'insufficient-points' ? 'alert' : 'status'">
+                    <div class="entry-ticket" [class.entry-error]="receipt.kind === 'insufficient-points'">
+                      @if (receipt.kind === 'success') {
+                        <span class="ticket-check"><svg class="btn-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+                        <strong>Entry confirmed</strong>
+                        <span>{{ receipt.quantity }} {{ receipt.quantity === 1 ? 'ticket' : 'tickets' }} entered. Good luck!</span>
+                      } @else {
+                        <span class="ticket-check" aria-hidden="true">!</span>
+                        <strong>Not enough points</strong>
+                        <span>You need {{ receipt.shortfall | number }} more {{ receipt.shortfall === 1 ? 'point' : 'points' }}.</span>
+                      }
+                    </div>
+                  </div>
+                }
               }
             </div>
 
+            <div class="prize-info">
+            @if (featured) {
+              <span class="grand-label">Grand prize <span>Weekly draw</span></span>
+            }
             <h3 class="prize-name">{{ draw.prizeName ?? ((draw.potPoints | number) + ' pts points draw') }}</h3>
             <p class="prize-desc">{{ draw.prizeDescription ?? 'Existing entries retain their original points-prize terms.' }}</p>
             <p class="prize-meta">
-              <strong>{{ draw.ticketPrice | number }} pts</strong> per ticket · {{ draw.ticketsSold | number }} sold
+              <strong>{{ draw.ticketPrice | number }} pts</strong> per ticket
               @if (draw.myTickets > 0) {
-                · <span class="gain-text">{{ draw.myTickets | number }} yours ({{ (winOdds(draw)! * 100) | number:'1.0-1' }}%)</span>
+                · <span class="gain-text">{{ draw.myTickets | number }} {{ draw.myTickets === 1 ? 'ticket' : 'tickets' }} entered</span>
               }
               @if (draw.closesAt !== nextDraw()?.closesAt) {
                 · closes in {{ countdown(draw) }}
@@ -67,22 +88,35 @@
 
             <div class="prize-actions">
               <div class="stepper" role="group" [attr.aria-label]="'Ticket quantity for ' + (draw.prizeName ?? 'draw #' + draw.drawId)">
-                <button type="button" (click)="adjustTickets(draw, -1)" [disabled]="quantityFor(draw) <= 1" aria-label="Fewer tickets">−</button>
+                <button type="button" (click)="adjustTickets(draw, -1)" [disabled]="quantityFor(draw) <= 1 || busyDrawId() !== null" aria-label="Fewer tickets">−</button>
                 <span class="mono">{{ quantityFor(draw) }}</span>
-                <button type="button" (click)="adjustTickets(draw, 1)" aria-label="More tickets">+</button>
+                <button type="button" (click)="adjustTickets(draw, 1)" [disabled]="quantityFor(draw) >= (summary()?.maxTicketsPerPurchase ?? 50) || busyDrawId() !== null" aria-label="More tickets">+</button>
               </div>
-              <button type="button" class="enter-btn" [disabled]="busyDrawId() !== null" (click)="buyTickets(draw)">
-                {{ busyDrawId() === draw.drawId ? 'Entering…' : 'Enter · ' + (ticketCost(draw) | number) + ' pts' }}
+              <button type="button" class="enter-btn" [disabled]="busyDrawId() !== null" (click)="buyTickets(draw)"
+                      [class.is-loading]="busyDrawId() === draw.drawId && entryReceipt()?.drawId !== draw.drawId"
+                      [class.is-done]="entryReceipt()?.drawId === draw.drawId && entryReceipt()?.kind === 'success'"
+                      [attr.aria-busy]="busyDrawId() === draw.drawId && entryReceipt()?.drawId !== draw.drawId">
+                @if (entryReceipt()?.drawId === draw.drawId && entryReceipt()?.kind === 'success') {
+                  <svg class="btn-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                  <span class="sr-only">Entry confirmed</span>
+                } @else if (busyDrawId() === draw.drawId) {
+                  <span class="btn-spinner" aria-hidden="true"></span>
+                  <span class="sr-only">Entering draw</span>
+                } @else {
+                  Enter · {{ ticketCost(draw) | number }} pts
+                }
               </button>
             </div>
 
             @if (feedbackFor(draw); as feedback) {
-              <p class="prize-feedback" [class.loss-text]="feedback.kind === 'error'" [class.gain-text]="feedback.kind === 'success'"
-                 [attr.role]="feedback.kind === 'error' ? 'alert' : 'status'">{{ feedback.text }}</p>
+              @if (feedback.kind === 'error') {
+                <p class="prize-feedback loss-text" role="alert">{{ feedback.text }}</p>
+              }
             }
             @if (lastDrawFor(draw); as last) {
               <p class="prize-last" [class.gain-text]="last.wonByMe">Last draw: {{ drawResult(last) }}</p>
             }
+            </div>
           </article>
         } @empty {
           <p class="empty-state">{{ loading() ? 'Loading draws…' : 'No draws are open right now.' }}</p>
@@ -100,7 +134,7 @@
     <!-- Activity -->
     <section class="rewards-section" aria-labelledby="activity-title">
       <div class="section-row">
-        <h2 id="activity-title">Points activity</h2>
+        <h2 id="activity-title" class="section-title">Points activity</h2>
         <div class="text-tabs" role="tablist">
           @for (f of ['ALL', 'EARNED', 'SPENT']; track f) {
             <button type="button" role="tab"

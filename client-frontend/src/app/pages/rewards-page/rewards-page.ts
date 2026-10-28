@@ -14,6 +14,10 @@ import {
 
 type ActivityFilter = 'ALL' | 'EARNED' | 'SPENT';
 
+type EntryReceipt =
+  | { drawId: number; kind: 'success'; quantity: number }
+  | { drawId: number; kind: 'insufficient-points'; shortfall: number };
+
 interface DrawFeedback {
   drawId: number;
   kind: 'error' | 'success';
@@ -29,6 +33,16 @@ const PRIZE_ICONS: Record<string, string> = {
   LUXURY_WATCH: '⌚',
   SUPERCAR_WEEKEND: '🏎️',
   PRIVATE_JET: '🛩️'
+};
+
+const PRIZE_PHOTOS: Record<string, string> = {
+  SPORTS_TICKETS: 'photo-1522778119026-d647f0596c20',
+  WINE_COLLECTION: 'photo-1510812431401-41d2bd2722f3',
+  CHEFS_TABLE: 'photo-1414235077428-338989a2e8c0',
+  YACHT_CHARTER: 'photo-1567899378494-47b22a2ae96a',
+  LUXURY_WATCH: 'photo-1524805444758-089113d48a6d',
+  SUPERCAR_WEEKEND: 'photo-1503376780353-7e6692767b70',
+  PRIVATE_JET: 'photo-1540962351504-03099e0a754b'
 };
 
 const EVENT_LABELS: Record<PointsEventType, string> = {
@@ -54,6 +68,8 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
   private readonly rewardsApi = inject(RewardsService);
   private readonly router = inject(Router);
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
+  private receiptTimer: ReturnType<typeof setTimeout> | null = null;
+  private destroyed = false;
 
   userId = signal<number | null>(null);
   summary = signal<RewardsSummaryDto | null>(null);
@@ -66,12 +82,21 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
   ticketQuantities = signal<Record<number, number>>({});
   busyDrawId = signal<number | null>(null);
   drawFeedback = signal<DrawFeedback | null>(null);
+  entryReceipt = signal<EntryReceipt | null>(null);
   missingImages = signal<ReadonlySet<string>>(new Set());
 
   activityFilter = signal<ActivityFilter>('ALL');
 
   balance = computed(() => this.summary()?.balance ?? 0);
   draws = computed(() => this.summary()?.draws ?? []);
+  grandDraw = computed(() =>
+    this.draws().reduce<LotteryDrawDto | null>((grand, draw) =>
+      !grand || draw.ticketPrice > grand.ticketPrice ? draw : grand, null)
+  );
+  displayDraws = computed(() => {
+    const grand = this.grandDraw();
+    return grand ? [grand, ...this.draws().filter(draw => draw.drawId !== grand.drawId)] : [];
+  });
   lastDraws = computed(() => this.summary()?.lastDraws ?? []);
   nextDraw = computed(() =>
     this.draws().reduce<LotteryDrawDto | null>((next, draw) => !next || draw.closesAt < next.closesAt ? draw : next, null)
@@ -97,6 +122,8 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
+    this.clearEntryReceipt();
     if (this.countdownTimer) {
       clearInterval(this.countdownTimer);
     }
@@ -123,20 +150,23 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
   }
 
   async buyTickets(draw: LotteryDrawDto) {
-    if (this.busyDrawId() !== null) return;
+    if (this.busyDrawId() !== null || this.destroyed) return;
     const userId = this.userId();
     const quantity = this.quantityFor(draw);
     const cost = this.ticketCost(draw);
     this.drawFeedback.set(null);
+    this.clearEntryReceipt();
 
     if (cost > this.balance()) {
-      this.drawFeedback.set({ drawId: draw.drawId, kind: 'error', text: `You need ${cost.toLocaleString()} points for ${quantity} ticket(s).` });
+      this.showEntryReceipt({ drawId: draw.drawId, kind: 'insufficient-points', shortfall: cost - this.balance() });
       return;
     }
 
     this.busyDrawId.set(draw.drawId);
     try {
       await firstValueFrom(this.rewardsApi.buyLotteryTickets(userId!, draw.drawId, quantity));
+      if (this.destroyed) return;
+      this.showEntryReceipt({ drawId: draw.drawId, kind: 'success', quantity });
       this.drawFeedback.set({ drawId: draw.drawId, kind: 'success', text: `${quantity} ticket${quantity === 1 ? '' : 's'} entered. Good luck!` });
       this.ticketQuantities.update(quantities => ({ ...quantities, [draw.drawId]: 1 }));
       await this.refresh();
@@ -149,6 +179,20 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
 
   quantityFor(draw: LotteryDrawDto): number {
     return this.ticketQuantities()[draw.drawId] ?? 1;
+  }
+
+  private showEntryReceipt(receipt: EntryReceipt) {
+    this.clearEntryReceipt();
+    this.entryReceipt.set(receipt);
+    this.receiptTimer = setTimeout(() => this.clearEntryReceipt(), 1500);
+  }
+
+  private clearEntryReceipt() {
+    if (this.receiptTimer !== null) {
+      clearTimeout(this.receiptTimer);
+      this.receiptTimer = null;
+    }
+    this.entryReceipt.set(null);
   }
 
   ticketCost(draw: LotteryDrawDto): number {
@@ -164,13 +208,6 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
   feedbackFor(draw: LotteryDrawDto): DrawFeedback | null {
     const feedback = this.drawFeedback();
     return feedback?.drawId === draw.drawId ? feedback : null;
-  }
-
-  winOdds(draw: LotteryDrawDto): number | null {
-    if (draw.ticketsSold === 0 || draw.myTickets === 0) {
-      return null;
-    }
-    return draw.myTickets / draw.ticketsSold;
   }
 
   countdown(draw: LotteryDrawDto): string {
@@ -190,9 +227,10 @@ export class RewardsPageComponent implements OnInit, OnDestroy {
     return PRIZE_ICONS[draw.prizeCode ?? ''] ?? '🎟️';
   }
 
-  /** Thumbnail served from public/prizes, e.g. YACHT_CHARTER -> prizes/yacht-charter.jpg. */
   prizeImage(draw: LotteryDrawDto): string | null {
     if (!draw.prizeCode || this.missingImages().has(draw.prizeCode)) return null;
+    const photo = PRIZE_PHOTOS[draw.prizeCode];
+    if (photo) return `https://images.unsplash.com/${photo}?auto=format&fit=crop&w=1400&q=85`;
     return `prizes/${draw.prizeCode.toLowerCase().replaceAll('_', '-')}.jpg`;
   }
 

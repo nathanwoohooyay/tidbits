@@ -72,7 +72,7 @@ function openCandle(prevClose: number): Candle {
   imports: [BrandLogoComponent],
   template: `
     <div class="auth-brand-logo">
-      <app-brand-logo [size]="34"></app-brand-logo>
+      <app-brand-logo [size]="30"></app-brand-logo>
       <span class="auth-wordmark">BitTrader</span>
     </div>
 

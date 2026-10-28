@@ -10,6 +10,7 @@ import { ThemeService } from '../../services/theme.service';
   standalone: true,
   imports: [RouterOutlet, AuthBrandPanelComponent],
   template: `
+    <div class="auth-handoff-edge" aria-hidden="true"></div>
     <div class="login-screen">
       <app-auth-brand-panel class="auth-brand"></app-auth-brand-panel>
       <main class="auth-main">

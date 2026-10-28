@@ -7,10 +7,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authInterceptor } from './auth-interceptor';
 import { SessionService } from './session.service';
 
-// An unsigned token with a subject and expiry, enough for the session to read.
+// An unsigned token with a subject and expiry, enough for the session to read. The expiry is fixed once, so the same
+// name always gives the same token: tests build it once to store and again to compare, and a clock tick between the
+// two used to make them differ.
+const EXP = Math.floor(Date.now() / 1000) + 900;
 const token = (name: string) => {
   const part = (value: object) => btoa(JSON.stringify(value)).replace(/=+$/, '');
-  return `${part({ alg: 'HS256' })}.${part({ sub: '7', exp: Math.floor(Date.now() / 1000) + 900, name })}.sig`;
+  return `${part({ alg: 'HS256' })}.${part({ sub: '7', exp: EXP, name })}.sig`;
 };
 
 describe('authInterceptor', () => {

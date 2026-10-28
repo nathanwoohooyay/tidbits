@@ -544,17 +544,27 @@ th.right {
   justify-content: center
 }
 
+/* Exactly where the dashboard sidebar's logo and wordmark sit, at the same size (sidebar padding plus the brand row's;
+   see .app-sidebar and .sidebar-brand), so on signing in they stay put while the screen slides away from under them. */
 .auth-brand-logo {
   position: absolute;
   z-index: 1;
-  top: 2rem;
-  left: clamp(1.5rem, 6vw, 7rem);
+  top: 1.5rem;
+  left: 1.5rem;
   display: flex;
   align-items: center;
   gap: .75rem;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
+  line-height: 1.15;
   letter-spacing: -.01em
+}
+
+/* The sidebar is a narrow icon rail there, with the logo centred in it. */
+@media (max-width: 1100px) {
+  .auth-brand-logo {
+    left: calc((var(--sidebar-width) - 30px) / 2)
+  }
 }
 
 .auth-brand-headline {
@@ -757,21 +767,38 @@ html.auth-swap::view-transition-new(auth-form) {
 :root {
   --vt-pan: .6s;
   --vt-ease: ease-in-out;
-  /* Once it has stopped over the sidebar, the leftover strip fades into it. */
+  /* Once the edge strip has stopped over the sidebar, it fades into it. */
   --vt-fade: .15s;
-  /* Where the sliding sign-in screen stops: its right edge lines up with the sidebar's right edge, so it hands over
-     to the sidebar in place. On phones the sidebar is a top bar, so there it slides all the way off. */
-  --vt-pan-to: calc(-100vw + var(--sidebar-width))
+  /* The sign-in screen slides all the way off; the edge strip that trails it lands exactly over the sidebar. */
+  --vt-pan-to: -100vw
 }
 
+/* A sidebar-wide strip in the sign-in screen's colour, parked just past the right edge of the window. During the
+   hand-off it slides in with the screen as one sheet and stops over the sidebar, so what fades into the sidebar is
+   plain brand colour rather than the right-hand edge of the sign-in form. Fixed boxes off-screen don't scroll. */
+.auth-handoff-edge {
+  position: fixed;
+  top: 0;
+  left: 100vw;
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--clr-header-bg);
+  pointer-events: none
+}
+
+/* On phones the sidebar is a top bar, so the screen just slides off and there's nothing to hand over to. */
 @media (max-width: 720px) {
-  :root {
-    --vt-pan-to: -100vw
+  .auth-handoff-edge {
+    display: none
   }
 }
 
 html.auth-handoff .login-screen {
   view-transition-name: auth-shell
+}
+
+html.auth-handoff .auth-handoff-edge {
+  view-transition-name: auth-edge
 }
 
 html.auth-handoff .auth-brand-logo app-brand-logo,
@@ -794,8 +821,12 @@ html.auth-handoff::view-transition-new(root) {
 }
 
 html.auth-handoff::view-transition-old(auth-shell) {
-  /* Slides to the sidebar's edge, then (sitting exactly over the sidebar, brown on brown) fades into it. Fading while
-     still moving would leave a see-through band over the page. */
+  animation: vt-pan-out var(--vt-pan) var(--vt-ease) both
+}
+
+/* Moves in step with the screen, then (sitting exactly over the sidebar, brown on brown) fades into it. Fading while
+   still moving would leave a see-through band over the page. */
+html.auth-handoff::view-transition-old(auth-edge) {
   animation:
     vt-pan-out var(--vt-pan) var(--vt-ease) both,
     vt-fade-out var(--vt-fade) ease var(--vt-pan) both
@@ -804,7 +835,9 @@ html.auth-handoff::view-transition-old(auth-shell) {
 html.auth-handoff::view-transition-group(auth-logo),
 html.auth-handoff::view-transition-group(auth-wordmark) {
   animation-duration: var(--vt-pan);
-  animation-timing-function: var(--vt-ease)
+  animation-timing-function: var(--vt-ease);
+  /* Above the edge strip: they glide to the sidebar spot it ends up covering. */
+  z-index: 1
 }
 
 @keyframes vt-pan-out {

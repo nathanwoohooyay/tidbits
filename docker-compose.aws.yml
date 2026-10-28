@@ -1,5 +1,14 @@
 # AWS deployment: runs on the EC2 instance. The frontends live in S3 behind CloudFront, so this file doesn't build
 # them; CloudFront forwards each frontend's API paths to the edge nginx (ports 8090 and 8084). See DEPLOY.md.
+# The Java services log at TRACE/DEBUG in application.properties, which is useful locally but slows every request and
+# fills the disk here. These take precedence over application.properties.
+x-quiet-spring-logs: &quiet-spring-logs >-
+  {"logging.level.root":"INFO","logging.level.com.tidbits":"INFO","logging.level.com.tidbits.audit":"INFO",
+  "logging.level.org.springframework.web":"INFO","logging.level.org.springframework.web.filter":"INFO",
+  "logging.level.org.springframework.security":"INFO","logging.level.org.springframework.security.web.FilterChainProxy":"INFO",
+  "logging.level.org.springframework.security.oauth2":"INFO","logging.level.org.hibernate.SQL":"INFO",
+  "logging.level.org.hibernate.type.descriptor.sql.BasicBinder":"INFO","spring.jpa.show-sql":"false"}
+
 services:
   postgres:
     image: postgres:18.4
@@ -102,6 +111,7 @@ services:
       KAFKA_USER_AUDIT_TOPIC: user-audit-events
       KAFKA_POINTS_TOPIC: points-events
       JAVA_TOOL_OPTIONS: "-Xmx512m"
+      SPRING_APPLICATION_JSON: *quiet-spring-logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -125,6 +135,7 @@ services:
       KAFKA_USER_AUDIT_TOPIC: user-audit-events
       KAFKA_POINTS_TOPIC: points-events
       JAVA_TOOL_OPTIONS: "-Xmx512m"
+      SPRING_APPLICATION_JSON: *quiet-spring-logs
     depends_on:
       postgres:
         condition: service_healthy

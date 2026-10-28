@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { afterNextRender, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
@@ -9,8 +9,12 @@ import { SessionService } from '../../services/session.service';
 import { ToastService } from '../../services/toast.service';
 import { PortfolioQueries } from '../../services/portfolio-queries';
 
-// Longest the spinner waits for the dashboard to preload before handing off anyway (it then finishes loading there).
-const PRELOAD_CAP_MS = 6000;
+// Longest the check waits for the dashboard's own data before handing off anyway (it then finishes loading there).
+const PRELOAD_CAP_MS = 1500;
+// Shortest time the check shows, long enough to see it draw in.
+const CHECK_MIN_MS = 400;
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 @Component({
   selector: 'app-login-page',
@@ -42,6 +46,15 @@ export class LoginPageComponent {
 
   constructor() {
     this.title.setTitle('BitTrader');
+    // Fetch the dashboard's code (and its chart library) while the user types, so signing in doesn't wait for it.
+    afterNextRender(() => {
+      const load = () => void import('../dashboard-page/dashboard-page');
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(load);
+      } else {
+        setTimeout(load);
+      }
+    });
     const created = this.router.currentNavigation()?.extras.state?.['createdUsername'];
     if (typeof created === 'string' && created) {
       this.loginUsername = created;
@@ -77,16 +90,18 @@ export class LoginPageComponent {
         }
 
         this.session.setAuthToken(res.token);
-        // Keep spinning while the dashboard's code and data load, so it's complete the moment the screen hands off.
-        await Promise.race([this.preloadDashboard(), new Promise(resolve => setTimeout(resolve, PRELOAD_CAP_MS))]);
+        // Signed in: show the check straight away, and hand off once it has drawn and the dashboard's own data is in
+        // (capped), so the page arrives complete. Live quotes keep loading and fill in there.
         this.loginLoading = false;
         this.loginDone = true;
         this.cdr.markForCheck();
-        // Long enough to see the button turn green and the check draw in.
-        await new Promise(resolve => setTimeout(resolve, 700));
+        await Promise.all([
+          Promise.race([this.preloadDashboard(), delay(PRELOAD_CAP_MS)]),
+          delay(CHECK_MIN_MS),
+        ]);
         await this.router.navigateByUrl('/dashboard');
         // After the pan and the sidebar/section cascade have settled.
-        setTimeout(() => this.toasts.show({ kind: 'success', title: `Welcome back, ${username}`, message: 'You\'re signed in to BitTrader.' }), 2700);
+        setTimeout(() => this.toasts.show({ kind: 'success', title: `Welcome back, ${username}`, message: 'You\'re signed in to BitTrader.' }), 1500);
       },
       error: err => {
         this.loginLoading = false;

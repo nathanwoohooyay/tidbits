@@ -146,8 +146,9 @@ export class PortfolioQueries {
   }
 
   // Loads what the dashboard shows for an account into the cache, using the same keys as the page, so it renders
-  // complete the moment it opens: the user, accounts, the account's holdings, orders and value history, the market
-  // snapshot and the watchlist. Used while the sign-in button is still spinning, so it resolves once those are in.
+  // complete the moment it opens: the user, accounts, the account's holdings, orders and value history, and the
+  // watchlist. Used during the sign-in hand-off, so it resolves once those are in; the market and watchlist quotes
+  // are started too but not waited for.
   // The 1-month sparklines beside each holding, market and watchlist stock are slow to fetch and the page shows
   // placeholders for them, so they're only started then and keep loading in the background (starting them earlier
   // would hold up the rest, as the browser only makes a few requests to the server at a time). Uses the preferred
@@ -166,17 +167,19 @@ export class PortfolioQueries {
         this.queryClient.prefetchQuery(this.snapshots('account', id)),
       ]);
     });
+    // Live quotes come from the outside pricing service and can take seconds on a cold cache, so they're started here
+    // but not waited for: the page shows them as they arrive.
+    void this.queryClient.prefetchQuery(this.quotes(MARKET_SYMBOLS));
     const watchlist = this.queryClient.fetchQuery(this.watchlistApi.list(userId)).then(items => {
       const tickers = items.map(item => item.ticker);
       if (!tickers.length) {
         return;
       }
       queueSparklines(tickers);
-      return this.queryClient.prefetchQuery(this.quotes(tickers));
+      void this.queryClient.prefetchQuery(this.quotes(tickers));
     });
     await Promise.allSettled([
       this.queryClient.prefetchQuery(this.user(userId)),
-      this.queryClient.prefetchQuery(this.quotes(MARKET_SYMBOLS)),
       account,
       watchlist,
     ]);

@@ -6,7 +6,7 @@ import {routes} from './routes';
 import {authInterceptor} from './services/auth-interceptor';
 
 // How long the sidebar/section cascade keeps going after the pan (last item's delay plus its duration).
-const ARRIVAL_TAIL_MS = 1200;
+const ARRIVAL_TAIL_MS = 800;
 
 const leafPath = (route: ActivatedRouteSnapshot) => {
   while (route.firstChild) {

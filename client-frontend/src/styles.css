@@ -755,10 +755,10 @@ html.auth-swap::view-transition-new(auth-form) {
    and wordmark glide to their sidebar spots. Then the sidebar items fly in from the left one after another and the
    page sections rise into place. --vt-pan is how long the pan takes; everything after it waits for it. */
 :root {
-  --vt-pan: 1.2s;
+  --vt-pan: .6s;
   --vt-ease: ease-in-out;
   /* Once it has stopped over the sidebar, the leftover strip fades into it. */
-  --vt-fade: .25s;
+  --vt-fade: .15s;
   /* Where the sliding sign-in screen stops: its right edge lines up with the sidebar's right edge, so it hands over
      to the sidebar in place. On phones the sidebar is a top bar, so there it slides all the way off. */
   --vt-pan-to: calc(-100vw + var(--sidebar-width))
@@ -811,10 +811,10 @@ html.auth-handoff::view-transition-group(auth-wordmark) {
   to { transform: translateX(var(--vt-pan-to)) }
 }
 
-/* After the pan: sidebar items fly in from off-screen left, ~60 ms apart (--i is each item's place in the queue). */
+/* After the pan: sidebar items fly in from off-screen left, ~35 ms apart (--i is each item's place in the queue). */
 html.auth-arrive .app-sidebar .nav-item,
 html.auth-arrive .app-sidebar .sidebar-account {
-  animation: vt-fly-in .5s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + var(--i, 0) * 60ms) backwards
+  animation: vt-fly-in .4s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + var(--i, 0) * 35ms) backwards
 }
 
 html.auth-arrive .sidebar-nav > :nth-child(1) { --i: 0 }
@@ -832,7 +832,7 @@ html.auth-arrive .sidebar-footer > :nth-child(2) { --i: 7 }
 
 /* ...and the page's sections rise into place, one after another. */
 html.auth-arrive .app-content .page > * {
-  animation: vt-rise-in .55s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + 60ms + var(--j, 0) * 80ms) backwards
+  animation: vt-rise-in .4s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + 40ms + var(--j, 0) * 45ms) backwards
 }
 
 html.auth-arrive .app-content .page > :nth-child(2) { --j: 1 }
@@ -2275,11 +2275,11 @@ app-rolling-number.metric-value {
   /* The one-off sign-in arrival still plays too. */
   html.auth-arrive .app-sidebar .nav-item,
   html.auth-arrive .app-sidebar .sidebar-account {
-    animation: vt-fly-in .5s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + var(--i, 0) * 60ms) backwards !important
+    animation: vt-fly-in .4s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + var(--i, 0) * 35ms) backwards !important
   }
 
   html.auth-arrive .app-content .page > * {
-    animation: vt-rise-in .55s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + 60ms + var(--j, 0) * 80ms) backwards !important
+    animation: vt-rise-in .4s cubic-bezier(.2, .8, .2, 1) calc(var(--vt-pan) + var(--vt-fade) + 40ms + var(--j, 0) * 45ms) backwards !important
   }
 }
 

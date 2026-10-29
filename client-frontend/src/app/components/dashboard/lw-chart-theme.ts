@@ -17,13 +17,13 @@ export function readChartPalette(): ChartPalette {
   const style = getComputedStyle(document.body);
   const v = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
   return {
-    text: v('--clr-text', '#3D2C25'),
-    muted: v('--clr-sienna', '#7A5F54'),
-    grid: v('--clr-border', '#D2C9C0'),
-    border: v('--clr-border-mid', '#B7ACA2'),
+    text: v('--clr-text', '#1E293B'),
+    muted: v('--clr-sienna', '#526075'),
+    grid: v('--clr-border', '#CBD5E1'),
+    border: v('--clr-border-mid', '#A6B3C4'),
     gain: v('--clr-gain', '#007F4B'),
     loss: v('--clr-loss', '#BA0B2F'),
-    surface: v('--clr-surface', '#F6F0EA'),
+    surface: v('--clr-surface', '#FBFCFD'),
     font: v('--font-body', 'Public Sans, sans-serif'),
   };
 }

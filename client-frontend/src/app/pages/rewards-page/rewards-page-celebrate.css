@@ -1,0 +1,78 @@
+/* Entry celebration: confetti, ticket and balance floaters, card ring and icon hop. */
+.burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.confetti {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: .45rem;
+  height: .7rem;
+  border-radius: 2px;
+  background: var(--color);
+  opacity: 0;
+  animation: confetti-fly 1.2s cubic-bezier(.15, .7, .3, 1) var(--delay) forwards;
+}
+
+.confetti--ticket {
+  width: auto;
+  height: auto;
+  background: none;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.ticket-float {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--clr-gain);
+  white-space: nowrap;
+  opacity: 0;
+  animation: ticket-rise 1.3s var(--ease-out) forwards;
+}
+
+@keyframes celebrate-ring {
+  from { box-shadow: 0 0 0 0 color-mix(in oklab, var(--clr-gain-mid) 60%, transparent); }
+  to { box-shadow: 0 0 0 16px transparent; }
+}
+
+@keyframes icon-hop {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-14px) rotate(-10deg) scale(1.15); }
+  55% { transform: translateY(0) rotate(6deg); }
+  75% { transform: translateY(-4px) rotate(-2deg); }
+}
+
+@keyframes confetti-fly {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(.3); }
+  55% { opacity: 1; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 40px)) rotate(calc(var(--rot) * 1.5)); }
+}
+
+@keyframes ticket-rise {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); }
+  20% { opacity: 1; transform: translate(-50%, -160%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -320%) scale(1); }
+}
+
+@keyframes float-away {
+  0% { opacity: 0; transform: translateY(6px); }
+  20% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-22px); }
+}
+
+@keyframes chip-pop {
+  0% { transform: scale(.6); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}

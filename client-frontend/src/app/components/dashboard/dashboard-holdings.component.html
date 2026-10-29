@@ -15,7 +15,8 @@
   } @else {
     <ul class="holding-list">
       @for (holding of sortedHoldings; track holding.instrument_id) {
-        <li class="holding-row">
+        <li class="holding-row trade-row" tabindex="0" role="button" [attr.aria-label]="'Trade ' + holding.ticker"
+            (click)="openTrade(holding)" (keydown.enter)="openTrade(holding)" (keydown.space)="$event.preventDefault(); openTrade(holding)">
           <app-ticker-logo [ticker]="holding.ticker"></app-ticker-logo>
           <div class="instrument-cell">
             <span class="ticker-badge">{{ holding.ticker }}</span>
@@ -28,8 +29,6 @@
               {{ formatPercent(holding.changePercent) }}
             </span>
           </div>
-          <button type="button" class="btn-trade" (click)="trade.emit({ instrumentId: holding.instrument_id, ticker: holding.ticker, name: holding.name })"
-                  [attr.aria-label]="'Trade ' + holding.ticker">Trade</button>
         </li>
       }
     </ul>

@@ -1721,11 +1721,12 @@ app-rolling-number.metric-value {
   padding: 0
 }
 
-/* Logo | ticker, with the trend line beside it | value | action. The detail line under the ticker (quantity and
-   price, or the name) runs under the trend line too, so it isn't cut off in the narrow right-hand column. */
+/* Logo | ticker, with the trend line beside it | value, plus an action column on watchlist rows. The detail line
+   under the ticker (quantity and price, or the name) runs under the trend line too, so it isn't cut off in the
+   narrow right-hand column. */
 .holding-row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   column-gap: .875rem;
   padding: .75rem 0
@@ -1733,7 +1734,7 @@ app-rolling-number.metric-value {
 
 .holding-row > app-ticker-logo,
 .holding-row > .holding-value,
-.holding-row > :last-child {
+.holding-row > .watch-unstar {
   grid-row: 1 / span 2
 }
 
@@ -1762,8 +1763,25 @@ app-rolling-number.metric-value {
   grid-column: 4
 }
 
-.holding-row > :last-child {
+.holding-row > .watch-unstar {
   grid-column: 5
+}
+
+/* Rows that open the trade window when clicked. List rows bleed into the card's padding so the hover fill has
+   room around the content. */
+.trade-row {
+  cursor: pointer
+}
+
+.holding-row.trade-row {
+  margin: 0 -.5rem;
+  padding-inline: .5rem;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition)
+}
+
+.holding-row.trade-row:hover {
+  background: color-mix(in oklab, var(--clr-surface-soft) 70%, transparent)
 }
 
 .instrument-with-logo {

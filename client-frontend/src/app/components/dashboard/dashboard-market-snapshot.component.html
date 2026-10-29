@@ -25,12 +25,12 @@
           <th class="right spark-col">1M</th>
           <th class="right">Price</th>
           <th class="right">Change</th>
-          <th class="right"><span class="sr-only">Action</span></th>
         </tr>
       </thead>
       <tbody>
         @for (stock of trendingStocks; track stock.instrument_id) {
-          <tr>
+          <tr class="trade-row" tabindex="0" [attr.aria-label]="'Trade ' + stock.ticker"
+              (click)="openTrade(stock)" (keydown.enter)="openTrade(stock)" (keydown.space)="$event.preventDefault(); openTrade(stock)">
             <td>
               <div class="instrument-with-logo">
                 <app-ticker-logo [ticker]="stock.ticker"></app-ticker-logo>
@@ -46,10 +46,6 @@
               <span class="change-badge" [class.positive]="stock.changePercent >= 0" [class.negative]="stock.changePercent < 0">
                 {{ formatPercent(stock.changePercent) }}
               </span>
-            </td>
-            <td class="right">
-              <button type="button" class="btn-trade" (click)="trade.emit({ instrumentId: stock.instrument_id, ticker: stock.ticker, name: stock.name })"
-                      [attr.aria-label]="'Trade ' + stock.ticker">Trade</button>
             </td>
           </tr>
         }

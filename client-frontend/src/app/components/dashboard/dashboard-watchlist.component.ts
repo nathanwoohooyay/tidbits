@@ -20,7 +20,7 @@ interface WatchRow {
 }
 
 // Stocks the user follows, under Holdings in the dashboard's right-hand column: live price, today's change, a
-// one-month sparkline, a Trade button, and the star to stop following. Stocks are starred from the trade window.
+// one-month sparkline, and the star to stop following; clicking the row opens the trade window. Stocks are starred from the trade window.
 @Component({
   selector: 'app-dashboard-watchlist',
   standalone: true,
@@ -44,7 +44,8 @@ interface WatchRow {
       } @else {
         <ul class="holding-list">
           @for (row of rows(); track row.ticker) {
-            <li class="holding-row watch-row">
+            <li class="holding-row watch-row trade-row" tabindex="0" role="button" [attr.aria-label]="'Trade ' + row.ticker"
+                (click)="openTrade(row)" (keydown.enter)="openTrade(row)" (keydown.space)="$event.preventDefault(); openTrade(row)">
               <app-ticker-logo [ticker]="row.ticker"></app-ticker-logo>
               <div class="instrument-cell">
                 <span class="ticker-badge">{{ row.ticker }}</span>
@@ -61,14 +62,11 @@ interface WatchRow {
                   <span class="muted-cell">—</span>
                 }
               </div>
-              <span class="watch-actions">
-                <button type="button" class="watch-unstar" (click)="watchlist.toggle(row.ticker)"
-                        [attr.aria-label]="'Stop watching ' + row.ticker" title="Remove from watchlist">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.8 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5 2.7.9-5.6-4-3.9 5.6-.8z"/></svg>
-                </button>
-                <button type="button" class="btn-trade" (click)="trade.emit({ instrumentId: row.instrumentId, ticker: row.ticker, name: row.name })"
-                        [attr.aria-label]="'Trade ' + row.ticker">Trade</button>
-              </span>
+              <button type="button" class="watch-unstar" (click)="$event.stopPropagation(); watchlist.toggle(row.ticker)"
+                      (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()"
+                      [attr.aria-label]="'Stop watching ' + row.ticker" title="Remove from watchlist">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.8 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5 2.7.9-5.6-4-3.9 5.6-.8z"/></svg>
+              </button>
             </li>
           }
         </ul>
@@ -78,12 +76,6 @@ interface WatchRow {
   styles: [`
     :host {
       display: block;
-    }
-
-    .watch-actions {
-      display: flex;
-      align-items: center;
-      gap: .25rem;
     }
 
     .watch-unstar {
@@ -139,6 +131,10 @@ export class DashboardWatchlistComponent {
   readonly watchlist = inject(WatchlistService);
   private readonly queries = inject(PortfolioQueries);
   private readonly userId = this.watchlist.userId();
+
+  openTrade(row: WatchRow) {
+    this.trade.emit({ instrumentId: row.instrumentId, ticker: row.ticker, name: row.name });
+  }
 
   readonly formatCurrency = formatCurrency;
   readonly formatPercent = formatPercent;

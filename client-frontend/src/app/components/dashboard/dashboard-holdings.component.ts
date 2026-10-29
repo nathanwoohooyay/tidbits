@@ -28,6 +28,10 @@ export class DashboardHoldingsComponent {
   readonly quantityUnit = quantityUnit;
   readonly formatPercent = formatPercent;
 
+  openTrade(holding: HoldingDTO) {
+    this.trade.emit({ instrumentId: holding.instrument_id, ticker: holding.ticker, name: holding.name });
+  }
+
   // Largest positions first.
   get sortedHoldings(): HoldingDTO[] {
     return [...this.holdings].sort((a, b) => b.totalValue - a.totalValue);

@@ -48,6 +48,10 @@ export class DashboardMarketSnapshotComponent {
     return err && !this.quotesQuery.data() ? err.error?.message ?? err.error?.error ?? 'Failed to load market data.' : '';
   });
 
+  openTrade(stock: Instrument) {
+    this.trade.emit({ instrumentId: stock.instrument_id, ticker: stock.ticker, name: stock.name });
+  }
+
   retry() {
     void this.quotesQuery.refetch();
   }

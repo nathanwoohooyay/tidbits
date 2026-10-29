@@ -1,30 +1,30 @@
 @import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
-/* Shares the BitTrader client palette: warm cream surfaces, brown sidebar, hairline separators. */
+/* Shares the BitTrader client palette: cool slate surfaces, slate sidebar, teal accent, hairline separators. */
 :root {
   /* Surfaces */
-  --bg-main: #F3EEE8;
-  --bg-subtle: #EEE7DF;
-  --bg-card: #F6F0EA;
-  --bg-card-hover: #F6F0EA;
-  --bg-card-solid: #F8F3EE;
-  --bg-glass: #F6F0EA;
-  --bg-glass-subtle: rgba(76, 47, 36, 0.04);
-  --bg-input: #FAF5F0;
-  --bg-input-focus: #FFFCF9;
+  --bg-main: #F1F5F9;
+  --bg-subtle: #EEF2F6;
+  --bg-card: #FBFCFD;
+  --bg-card-hover: #FBFCFD;
+  --bg-card-solid: #FBFCFD;
+  --bg-glass: #FBFCFD;
+  --bg-glass-subtle: rgba(30, 41, 59, 0.04);
+  --bg-input: #FFFFFF;
+  --bg-input-focus: #FFFFFF;
 
   /* Borders */
-  --border-subtle: rgba(76, 47, 36, 0.14);
-  --border-card: rgba(76, 47, 36, 0.14);
-  --border-glow: rgba(118, 80, 67, 0.4);
+  --border-subtle: rgba(30, 41, 59, 0.14);
+  --border-card: rgba(30, 41, 59, 0.14);
+  --border-glow: rgba(15, 118, 110, 0.4);
 
-  /* Brand accents (client: header brown, primary brown, caramel, gain/loss) */
-  --accent-brown: #4C2F24;
-  --accent-brown-dark: #3A2219;
-  --accent-brown-light: #765043;
-  --accent-brown-glow: rgba(76, 47, 36, 0.2);
-  --accent-cognac: #7A4638;
-  --accent-cognac-light: #8B6E62;
+  /* Brand accents (client: slate header, teal primary, gain/loss) */
+  --accent-brown: #1E293B;
+  --accent-brown-dark: #0F172A;
+  --accent-brown-light: #0F766E;
+  --accent-brown-glow: rgba(30, 41, 59, 0.2);
+  --accent-cognac: #115E59;
+  --accent-cognac-light: #4B8F88;
   --accent-amber: #A06820;
   --accent-sage: #007F4B;
   --accent-sage-light: #3A9A72;
@@ -32,22 +32,22 @@
   --accent-terracotta-light: #C94B66;
 
   /* Text (muted meets WCAG AA on every surface) */
-  --text-primary: #3D2C25;
-  --text-heading: #653025;
-  --text-secondary: #5E463C;
-  --text-muted: #7A5F54;
-  --text-dim: #9C8478;
+  --text-primary: #1E293B;
+  --text-heading: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #526075;
+  --text-dim: #8391A5;
 
   /* Sidebar */
-  --sidebar-bg: #4C2F24;
-  --sidebar-text: #F1ECE6;
-  --sidebar-control-bg: rgba(248, 245, 241, 0.08);
-  --sidebar-control-border: rgba(248, 245, 241, 0.18);
+  --sidebar-bg: #1E293B;
+  --sidebar-text: #F1F5F9;
+  --sidebar-control-bg: rgba(248, 250, 252, 0.08);
+  --sidebar-control-border: rgba(248, 250, 252, 0.18);
 
   /* Elevation: flat, with a soft shadow only for floating layers (menus, modals) */
   --shadow-sm: none;
   --shadow-md: none;
-  --shadow-lg: 0 18px 48px rgba(72, 52, 42, 0.18);
+  --shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.18);
   --shadow-glow: none;
 
   --radius-sm: 6px;
@@ -91,12 +91,12 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(76, 47, 36, 0.22);
+  background: rgba(30, 41, 59, 0.22);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(76, 47, 36, 0.4);
+  background: rgba(30, 41, 59, 0.4);
 }
 
 /* Common UI Elements */
@@ -144,14 +144,14 @@ html, body {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #654033;
-  border-color: #654033;
+  background: #115E59;
+  border-color: #115E59;
 }
 
 .btn-secondary {
   background: transparent;
   color: var(--text-primary);
-  border: 1px solid rgba(76, 47, 36, 0.28);
+  border: 1px solid rgba(30, 41, 59, 0.28);
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -241,7 +241,7 @@ html, body {
 .input-control {
   width: 100%;
   background: var(--bg-input);
-  border: 1px solid rgba(76, 47, 36, 0.2);
+  border: 1px solid rgba(30, 41, 59, 0.2);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-family: inherit;
@@ -254,7 +254,7 @@ html, body {
 .input-control:focus {
   background: var(--bg-input-focus);
   border-color: var(--accent-cognac);
-  box-shadow: 0 0 0 3px rgba(101, 48, 37, 0.14);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
 .input-control::placeholder {
@@ -284,13 +284,13 @@ html, body {
   color: var(--text-muted);
   font-size: 11.5px;
   letter-spacing: 0.01em;
-  border-bottom: 1px solid rgba(76, 47, 36, 0.18);
+  border-bottom: 1px solid rgba(30, 41, 59, 0.18);
   white-space: nowrap;
 }
 
 .data-table td {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(76, 47, 36, 0.08);
+  border-bottom: 1px solid rgba(30, 41, 59, 0.08);
   color: var(--text-primary);
   vertical-align: middle;
 }
@@ -300,7 +300,7 @@ html, body {
 }
 
 .data-table tr:hover td {
-  background: rgba(238, 231, 223, 0.6);
+  background: rgba(238, 242, 246, 0.6);
 }
 
 /* Animations */

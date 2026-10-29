@@ -169,15 +169,15 @@ import { AdminDashboardStats, ComponentHealth, HealthStatus, SystemHealth } from
     }
 
     .stat-icon-wrap.purple {
-      background: rgba(76, 47, 36, 0.08);
-      color: #4C2F24;
-      border: 1px solid rgba(76, 47, 36, 0.18);
+      background: rgba(30, 41, 59, 0.08);
+      color: #1E293B;
+      border: 1px solid rgba(30, 41, 59, 0.18);
     }
 
     .stat-icon-wrap.blue {
-      background: rgba(122, 70, 56, 0.08);
-      color: #7A4638;
-      border: 1px solid rgba(122, 70, 56, 0.18);
+      background: rgba(15, 118, 110, 0.08);
+      color: #115E59;
+      border: 1px solid rgba(15, 118, 110, 0.18);
     }
 
     .stat-icon-wrap.cyan {
@@ -283,8 +283,8 @@ import { AdminDashboardStats, ComponentHealth, HealthStatus, SystemHealth } from
       width: 32px;
       height: 32px;
       border-radius: var(--radius-sm);
-      background: rgba(122, 70, 56, 0.08);
-      border: 1px solid rgba(122, 70, 56, 0.16);
+      background: rgba(15, 118, 110, 0.08);
+      border: 1px solid rgba(15, 118, 110, 0.16);
       display: flex;
       align-items: center;
       justify-content: center;

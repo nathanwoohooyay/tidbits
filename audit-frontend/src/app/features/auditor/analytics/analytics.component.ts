@@ -25,7 +25,7 @@ Chart.register(...registerables);
 
 // One distinct colour per instrument type, so a slice keeps its colour whatever else is in the chart.
 const INSTRUMENT_TYPE_COLORS: Record<string, string> = {
-  equity: '#4C2F24',
+  equity: '#1E293B',
   etf: '#2F6F8F',
   crypto: '#D08A1E',
 };
@@ -33,7 +33,7 @@ const FALLBACK_COLORS = ['#007F4B', '#8E3B5A', '#6B6F2A'];
 // Top stocks pie: each ticker in its brand colour where it has one (see brand-colors.ts); the rest take these, in order.
 // "Other" is always the neutral grey.
 const TOP_STOCK_FALLBACK_COLORS: FamilyColor[] = [
-  { color: '#4C2F24', family: 'brown' },
+  { color: '#1E293B', family: 'navy' },
   { color: '#2F6F8F', family: 'teal' },
   { color: '#D08A1E', family: 'yellow' },
   { color: '#007F4B', family: 'green' },
@@ -42,7 +42,7 @@ const TOP_STOCK_FALLBACK_COLORS: FamilyColor[] = [
   { color: '#5B7FA6', family: 'blue' },
   { color: '#7A4638', family: 'red' },
 ];
-const OTHER_COLOR = '#B5A89E';
+const OTHER_COLOR = '#A6B3C4';
 const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 'ETFs', crypto: 'Crypto' };
 
 @Component({
@@ -445,15 +445,15 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
     }
 
     .stat-icon-wrap.cyan {
-      background: rgba(122, 70, 56, 0.08);
-      color: #7A4638;
-      border: 1px solid rgba(122, 70, 56, 0.2);
+      background: rgba(15, 118, 110, 0.08);
+      color: #115E59;
+      border: 1px solid rgba(15, 118, 110, 0.2);
     }
 
     .stat-icon-wrap.blue {
-      background: rgba(76, 47, 36, 0.08);
-      color: #4C2F24;
-      border: 1px solid rgba(76, 47, 36, 0.2);
+      background: rgba(30, 41, 59, 0.08);
+      color: #1E293B;
+      border: 1px solid rgba(30, 41, 59, 0.2);
     }
 
     .stat-icon-wrap.cognac {
@@ -473,7 +473,7 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: #5d4638;
+      color: #475569;
     }
 
     .stat-val {
@@ -561,10 +561,10 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
     }
 
     .input-control {
-      border: 1px solid rgba(62, 36, 21, 0.24);
+      border: 1px solid rgba(15, 23, 42, 0.24);
       border-radius: var(--radius-sm);
       padding: 8px 10px;
-      background: #F8F3EE;
+      background: #FBFCFD;
       color: var(--text-primary);
       font-size: 13px;
       font-weight: 600;
@@ -604,8 +604,8 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
       left: 0;
       min-width: 220px;
       z-index: 100;
-      background: #F8F3EE;
-      border: 1px solid rgba(76, 47, 36, 0.2);
+      background: #FBFCFD;
+      border: 1px solid rgba(30, 41, 59, 0.2);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-md);
       padding: 8px;
@@ -619,7 +619,7 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
       align-items: center;
       gap: 8px;
       padding: 4px 8px;
-      background: #F8F3EE;
+      background: #FBFCFD;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }
@@ -657,13 +657,13 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
     }
 
     .dropdown-item:hover {
-      background: #EEE7DF;
+      background: #EEF2F6;
       color: var(--accent-cognac);
     }
 
     .dropdown-item.selected {
-      background: #4C2F24;
-      color: #F1ECE6;
+      background: #1E293B;
+      color: #F1F5F9;
     }
 
     .dropdown-empty {
@@ -707,7 +707,7 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
     }
 
     .panel-caption {
-      color: #5d4638;
+      color: #475569;
       font-size: 11px;
       font-weight: 600;
     }
@@ -751,7 +751,7 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
       flex-direction: column;
       gap: 6px;
       padding: 12px 14px;
-      background: #faf6ee;
+      background: #F8FAFC;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }
@@ -765,7 +765,7 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
     .cash-value.negative { color: #a23b2a; }
 
     .summary-pill {
-      background: #F8F3EE;
+      background: #FBFCFD;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
       padding: 8px 14px;
@@ -777,7 +777,7 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = { equity: 'Stocks', etf: 
     .summary-label {
       font-size: 11px;
       text-transform: uppercase;
-      color: #5d4638;
+      color: #475569;
       letter-spacing: 0.45px;
       font-weight: 700;
     }
@@ -1274,8 +1274,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
     const values = data.map(d => d.total_value);
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 250);
-    gradient.addColorStop(0, 'rgba(122, 70, 56, 0.22)');
-    gradient.addColorStop(1, 'rgba(122, 70, 56, 0.0)');
+    gradient.addColorStop(0, 'rgba(15, 118, 110, 0.22)');
+    gradient.addColorStop(1, 'rgba(15, 118, 110, 0.0)');
 
     const chart = new Chart(ctx, {
       type: 'line',
@@ -1284,12 +1284,12 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         datasets: [{
           label: 'Daily volume ($)',
           data: values,
-          borderColor: '#4C2F24',
+          borderColor: '#1E293B',
           backgroundColor: gradient,
           fill: true,
           tension: 0.35,
-          pointBackgroundColor: '#7A4638',
-          pointBorderColor: '#F8F3EE',
+          pointBackgroundColor: '#115E59',
+          pointBorderColor: '#FBFCFD',
           pointRadius: 4,
           pointHoverRadius: 6
         }]
@@ -1300,23 +1300,23 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#4C2F24',
-            titleColor: '#F1ECE6',
-            bodyColor: '#e0a973',
-            borderColor: 'rgba(76, 47, 36, 0.2)',
+            backgroundColor: '#1E293B',
+            titleColor: '#F1F5F9',
+            bodyColor: '#7DD3C8',
+            borderColor: 'rgba(30, 41, 59, 0.2)',
             borderWidth: 1,
             padding: 10
           }
         },
         scales: {
           x: {
-            grid: { color: 'rgba(76, 47, 36, 0.06)' },
-            ticks: { color: '#5E463C', font: { size: 11 } }
+            grid: { color: 'rgba(30, 41, 59, 0.06)' },
+            ticks: { color: '#475569', font: { size: 11 } }
           },
           y: {
-            grid: { color: 'rgba(76, 47, 36, 0.06)' },
+            grid: { color: 'rgba(30, 41, 59, 0.06)' },
             ticks: {
-              color: '#5E463C',
+              color: '#475569',
               font: { size: 11 },
               callback: (val) => '$' + Number(val).toLocaleString()
             }
@@ -1347,7 +1347,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         datasets: [{
           data: values,
           backgroundColor: types.map((type, i) => INSTRUMENT_TYPE_COLORS[type] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]),
-          borderColor: '#F8F3EE',
+          borderColor: '#FBFCFD',
           borderWidth: 2
         }]
       },
@@ -1357,7 +1357,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         plugins: {
           legend: {
             position: 'right',
-            labels: { color: '#3f2a1d', font: { size: 12 }, padding: 14 }
+            labels: { color: '#1E293B', font: { size: 12 }, padding: 14 }
           }
         },
         cutout: '70%'
@@ -1411,11 +1411,11 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         },
         scales: {
-          x: { grid: { display: false }, ticks: { color: '#5E463C', font: { size: 11 } } },
+          x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 11 } } },
           y: {
             beginAtZero: true,
-            grid: { color: 'rgba(76, 47, 36, 0.06)' },
-            ticks: { color: '#5E463C', font: { size: 11 }, callback: value => '$' + Number(value).toLocaleString() }
+            grid: { color: 'rgba(30, 41, 59, 0.06)' },
+            ticks: { color: '#475569', font: { size: 11 }, callback: value => '$' + Number(value).toLocaleString() }
           }
         }
       }
@@ -1460,7 +1460,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
             ...pickColors(topStocks.map(stock => stock.label), TOP_STOCK_FALLBACK_COLORS).map(c => c.color),
             ...(otherValue > 0 ? [OTHER_COLOR] : []),
           ],
-          borderColor: '#F8F3EE',
+          borderColor: '#FBFCFD',
           borderWidth: 2
         }]
       },
@@ -1470,7 +1470,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
         plugins: {
           legend: {
             position: 'right',
-            labels: { color: '#574032', font: { size: 11 }, padding: 10 }
+            labels: { color: '#334155', font: { size: 11 }, padding: 10 }
           },
           tooltip: {
             callbacks: {

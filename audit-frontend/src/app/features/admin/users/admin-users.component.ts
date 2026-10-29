@@ -390,7 +390,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     .role-track {
       height: 9px;
       overflow: hidden;
-      background: #e5dac9;
+      background: #E2E8F0;
       border-radius: 999px;
     }
 
@@ -400,7 +400,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       border-radius: inherit;
     }
 
-    .role-fill.badge-admin { background: #713b22; }
+    .role-fill.badge-admin { background: #334155; }
     .role-fill.badge-auditor { background: #1f6b4a; }
     .role-fill.badge-reporter { background: #a8651b; }
     .role-fill.badge-user { background: #46617a; }
@@ -449,7 +449,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       display: flex;
       align-items: center;
       gap: 10px;
-      background: #F8F3EE;
+      background: #FBFCFD;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
       padding: 2px 12px;
@@ -519,7 +519,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(34, 28, 24, 0.65);
+      background: rgba(15, 23, 42, 0.65);
       backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
@@ -532,8 +532,8 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     .modal-card {
       width: 100%;
       max-width: 600px;
-      background: #F8F3EE;
-      border: 1px solid rgba(76, 47, 36, 0.2);
+      background: #FBFCFD;
+      border: 1px solid rgba(30, 41, 59, 0.2);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-lg);
       padding: 26px;
@@ -601,7 +601,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
     }
 
     .account-item {
-      background: #F8F3EE;
+      background: #FBFCFD;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
       padding: 14px;
@@ -633,7 +633,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       justify-content: space-between;
       margin-top: 4px;
       padding-top: 6px;
-      border-top: 1px dashed rgba(76, 47, 36, 0.12);
+      border-top: 1px dashed rgba(30, 41, 59, 0.12);
     }
 
     .bal-label {
@@ -650,7 +650,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       font-size: 12px;
       color: var(--text-secondary);
       line-height: 1.4;
-      background: #F8F3EE;
+      background: #FBFCFD;
       border: 1px solid var(--border-subtle);
       padding: 10px;
       border-radius: var(--radius-sm);
@@ -667,7 +667,7 @@ import { PhoneFormatPipe } from '../pipes/phoneformat.pipe';
       color: var(--text-secondary);
       line-height: 1.5;
       padding: 10px 12px;
-      background: #F8F3EE;
+      background: #FBFCFD;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }

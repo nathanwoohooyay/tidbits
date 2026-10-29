@@ -97,9 +97,9 @@ import { AuthService } from '../../core/services/auth.service';
       padding: 40px;
       position: relative;
       z-index: 10;
-      background: rgba(246, 240, 234, 0.94);
-      border: 1px solid rgba(76, 47, 36, 0.2);
-      box-shadow: 0 25px 60px -15px rgba(76, 47, 36, 0.16), 0 0 25px rgba(122, 70, 56, 0.08);
+      background: rgba(251, 252, 253, 0.94);
+      border: 1px solid rgba(30, 41, 59, 0.2);
+      box-shadow: 0 25px 60px -15px rgba(30, 41, 59, 0.16), 0 0 25px rgba(15, 118, 110, 0.08);
     }
 
     .brand-logo {
@@ -116,8 +116,8 @@ import { AuthService } from '../../core/services/auth.service';
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(122, 70, 56, 0.1);
-      border: 1px solid rgba(122, 70, 56, 0.28);
+      background: rgba(15, 118, 110, 0.1);
+      border: 1px solid rgba(15, 118, 110, 0.28);
       color: var(--accent-cognac);
       font-size: 11px;
       font-weight: 700;

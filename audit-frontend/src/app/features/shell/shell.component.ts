@@ -141,7 +141,7 @@ import { AuthService } from '../../core/services/auth.service';
       font-size: 0.66rem;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: rgba(241, 236, 230, 0.72);
+      color: rgba(241, 245, 249, 0.72);
     }
 
     .nav-scroll {
@@ -158,7 +158,7 @@ import { AuthService } from '../../core/services/auth.service';
       font-weight: 600;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: rgba(241, 236, 230, 0.72);
+      color: rgba(241, 245, 249, 0.72);
       padding: 0 0.75rem 0.45rem;
     }
 
@@ -175,7 +175,7 @@ import { AuthService } from '../../core/services/auth.service';
       gap: 0.8rem;
       padding: 0.6rem 0.75rem;
       border-radius: 10px;
-      color: rgba(241, 236, 230, 0.8);
+      color: rgba(241, 245, 249, 0.8);
       text-decoration: none;
       font-size: 0.88rem;
       font-weight: 500;
@@ -205,12 +205,12 @@ import { AuthService } from '../../core/services/auth.service';
       bottom: 22%;
       width: 3px;
       border-radius: 0 3px 3px 0;
-      background: #E8E1DA;
+      background: #E2E8F0;
     }
 
     .nav-item:focus-visible,
     .logout-btn:focus-visible {
-      outline-color: #E8E1DA;
+      outline-color: #E2E8F0;
     }
 
     .sidebar-footer {
@@ -269,7 +269,7 @@ import { AuthService } from '../../core/services/auth.service';
       border: none;
       border-radius: 10px;
       background: transparent;
-      color: rgba(241, 236, 230, 0.8);
+      color: rgba(241, 245, 249, 0.8);
       font: inherit;
       font-size: 0.88rem;
       font-weight: 500;

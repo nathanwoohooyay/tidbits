@@ -749,7 +749,7 @@ export interface AggregatedOrder {
     .tabs-wrap {
       display: flex;
       gap: 8px;
-      background: #ece3d2;
+      background: #E2E8F0;
       padding: 4px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-subtle);
@@ -772,8 +772,8 @@ export interface AggregatedOrder {
     }
 
     .tab-btn.active {
-      background: #4C2F24;
-      color: #F1ECE6;
+      background: #1E293B;
+      color: #F1F5F9;
     }
 
     .points-panel {
@@ -861,7 +861,7 @@ export interface AggregatedOrder {
     .input-control {
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
-      background: #F8F3EE;
+      background: #FBFCFD;
       padding: 6px 10px;
       font-size: 12.5px;
       color: var(--text-primary);
@@ -919,8 +919,8 @@ export interface AggregatedOrder {
       left: 0;
       min-width: 210px;
       z-index: 1400;
-      background: #F8F3EE;
-      border: 1px solid rgba(76, 47, 36, 0.2);
+      background: #FBFCFD;
+      border: 1px solid rgba(30, 41, 59, 0.2);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-md);
       padding: 8px;
@@ -934,7 +934,7 @@ export interface AggregatedOrder {
       align-items: center;
       gap: 8px;
       padding: 4px 8px;
-      background: #F8F3EE;
+      background: #FBFCFD;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }
@@ -972,13 +972,13 @@ export interface AggregatedOrder {
     }
 
     .dropdown-item:hover {
-      background: #EEE7DF;
+      background: #EEF2F6;
       color: var(--accent-cognac);
     }
 
     .dropdown-item.selected {
-      background: #4C2F24;
-      color: #F1ECE6;
+      background: #1E293B;
+      color: #F1F5F9;
     }
 
     .dropdown-empty {
@@ -1019,9 +1019,9 @@ export interface AggregatedOrder {
     }
 
     .status-pill.active {
-      background: #4C2F24;
-      color: #F1ECE6;
-      border-color: #4C2F24;
+      background: #1E293B;
+      color: #F1F5F9;
+      border-color: #1E293B;
     }
 
     .status-pill.success.active {
@@ -1057,7 +1057,7 @@ export interface AggregatedOrder {
     }
 
     .action-tag {
-      background: #fbf7ef;
+      background: #F8FAFC;
       border: 1px solid var(--border-subtle);
       padding: 2px 7px;
       border-radius: var(--radius-sm);
@@ -1067,9 +1067,9 @@ export interface AggregatedOrder {
     }
 
     .ticker-pill {
-      background: #EEE7DF;
-      color: #765043;
-      border: 1px solid rgba(122, 70, 56, 0.2);
+      background: #EEF2F6;
+      color: #0F766E;
+      border: 1px solid rgba(15, 118, 110, 0.2);
       padding: 2px 8px;
       border-radius: var(--radius-sm);
       font-weight: 700;
@@ -1087,7 +1087,7 @@ export interface AggregatedOrder {
     }
 
     .clickable-row:hover td {
-      background: #f7efe1;
+      background: #F1F5F9;
     }
 
     .device-cell {
@@ -1114,7 +1114,7 @@ export interface AggregatedOrder {
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(34, 28, 24, 0.6);
+      background: rgba(15, 23, 42, 0.6);
       backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
@@ -1126,8 +1126,8 @@ export interface AggregatedOrder {
     .modal-card {
       width: 100%;
       max-width: 1060px;
-      background: #F8F3EE;
-      border: 1px solid rgba(76, 47, 36, 0.2);
+      background: #FBFCFD;
+      border: 1px solid rgba(30, 41, 59, 0.2);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-lg);
       padding: 24px;
@@ -1207,7 +1207,7 @@ export interface AggregatedOrder {
       justify-content: flex-start;
       gap: 12px;
       padding: 16px 14px;
-      background: #F8F3EE;
+      background: #FBFCFD;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }
@@ -1228,7 +1228,7 @@ export interface AggregatedOrder {
       top: 14px;
       bottom: -12px;
       width: 2px;
-      background: #D2C9C0;
+      background: #CBD5E1;
       border-radius: 2px;
     }
 
@@ -1244,8 +1244,8 @@ export interface AggregatedOrder {
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background: #D2C9C0;
-      border: 2px solid #b5a48e;
+      background: #CBD5E1;
+      border: 2px solid #A6B3C4;
       flex-shrink: 0;
       margin-top: 2px;
     }
@@ -1291,7 +1291,7 @@ export interface AggregatedOrder {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
       padding: 12px 14px;
-      background: #fdfbf7;
+      background: #FCFDFE;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
     }
